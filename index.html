@@ -3,44 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saver3D - Site vitrine</title>
+    <title>Nolimi</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; }
+        html { scroll-behavior: smooth; overscroll-behavior: none; }
+        body { font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; overscroll-behavior: none; }
         .panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
             width: 100%;
-            padding: 1rem 1.5rem;
+            padding: 0.4rem 1rem;
             display: flex;
             align-items: center;
-            justify-content: flex-end;
-            background: #1a1a1a;
-            color: #fff;
+            justify-content: space-between;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            z-index: 10;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
-        .panel button {
-            padding: 0.5rem 1.25rem;
+        .panel-logo {
             font-size: 1rem;
-            cursor: pointer;
-            background: #333;
+            font-weight: 600;
+            color: #000;
+        }
+        .panel-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .panel-nav a {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.875rem;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: color 0.25s ease;
+        }
+        .panel-nav a:hover { background: #f0f0f0; color: #000; }
+        .panel-nav a.active { color: #0066cc; }
+        .panel-cta {
+            padding: 0.35rem 0.9rem;
+            font-size: 0.875rem;
+            background: #0066cc;
             color: #fff;
-            border: 1px solid #555;
+            text-decoration: none;
+            border: none;
             border-radius: 6px;
         }
-        .panel button:hover { background: #444; }
-        .centre {
+        .panel-cta:hover { background: #0052a3; }
+        section {
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 60px);
+            padding: 5rem 1.5rem 4rem;
             font-size: 2rem;
             color: #666;
             font-weight: 300;
+        }
+        #accueil {
+            background: #fafafa;
+            padding-top: 4rem;
+        }
+        #fonctionnalites {
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        #galerie {
+            background: #fff;
+            min-height: 100vh;
+        }
+        #licence {
+            background: #e8e8e8;
+            min-height: 100vh;
+        }
+        #cgu {
+            min-height: 25vh;
+            background: #e0e0e0;
+        }
+        .section-title {
+            font-size: 3.5rem;
+            font-weight: 300;
+            color: #444;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <header class="panel">
-        <a href="login.html" style="padding: 0.5rem 1.25rem; font-size: 1rem; background: #333; color: #fff; text-decoration: none; border: 1px solid #555; border-radius: 6px;">Accéder à l'app</a>
+        <span class="panel-logo">Nolimi</span>
+        <nav class="panel-nav">
+            <a href="#accueil">Accueil</a>
+            <a href="#fonctionnalites">Fonctionnalité</a>
+            <a href="#galerie">Galérie</a>
+            <a href="#licence">Licence</a>
+        </nav>
+        <a href="login.html" class="panel-cta">Accéder à l'app</a>
     </header>
-    <main class="centre">prochainement</main>
+    <section id="accueil"><h2 class="section-title">Accueil</h2></section>
+    <section id="fonctionnalites"><h2 class="section-title">Fonctionnalité</h2></section>
+    <section id="galerie"><h2 class="section-title">Galérie</h2></section>
+    <section id="licence"><h2 class="section-title">Licence</h2></section>
+    <footer id="cgu"></footer>
+    <script>
+        (function () {
+            var sections = ['accueil', 'fonctionnalites', 'galerie', 'licence'];
+            var links = {};
+            sections.forEach(function (id) {
+                var a = document.querySelector('.panel-nav a[href="#' + id + '"]');
+                if (a) links[id] = a;
+            });
+            function setActive() {
+                var top = window.scrollY + 120;
+                var current = sections[0];
+                sections.forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el && el.offsetTop <= top) current = id;
+                });
+                sections.forEach(function (id) {
+                    if (links[id]) links[id].classList.toggle('active', id === current);
+                });
+            }
+            setActive();
+            window.addEventListener('scroll', setActive);
+        })();
+    </script>
 </body>
 </html>

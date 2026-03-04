@@ -21,13 +21,12 @@ btnNewProject.addEventListener('click', () => {
     }, 50);
 });
 
-// Retour Menu depuis le menu "Fichier"
+// Retour au site web depuis le menu "Fichier"
 const btnBackMenu = document.getElementById('btn-back-menu');
 if (btnBackMenu) {
     btnBackMenu.addEventListener('click', () => {
-        pageBouteille.classList.add('hidden');
-        pageMenu.classList.remove('hidden');
         document.getElementById('fichier-dropdown').classList.add('hidden');
+        window.location.href = 'index.html';
     });
 }
 
