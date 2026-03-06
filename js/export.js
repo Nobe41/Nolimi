@@ -115,7 +115,7 @@ async function saveProject(isSaveAs = false) {
             
             const btnFichierMenu = document.getElementById('btn-fichier-menu');
             btnFichierMenu.innerText = "SAUVEGARDÉ ✓";
-            setTimeout(() => { btnFichierMenu.innerText = "Fichier ▼"; }, 1500);
+            setTimeout(() => { btnFichierMenu.innerText = "Fichier"; }, 1500);
 
         } catch (err) {
             console.log("Sauvegarde annulée", err);

@@ -1,116 +1,143 @@
+// ==========================================
+// PROFIL BOUTEILLE — MODÈLE 6 SECTIONS
+// Sections reliées par courbes (pied, épaule, bas col).
+// Toutes les grandeurs en mm.
+// ==========================================
+
+function getSectionParam(id, def) {
+    var el = document.getElementById(id);
+    if (!el) return def;
+    var v = parseFloat(el.value);
+    return isNaN(v) ? def : v;
+}
+
 function generateBottleProfile() {
-    const H_base = parseFloat(document.getElementById('height-slider').value) || 320;
-    const H_corps_fin = parseFloat(document.getElementById('body-height-slider').value) || 200;
-    const H_col_vertical_start = parseFloat(document.getElementById('neck-height-slider').value) || 270;
-    const H_finish = parseFloat(document.getElementById('finish-height-input').value) || 15;
-    
-    const Y_bague_start = H_base - 15; 
-    const H_tot_reel = Y_bague_start + H_finish;
+    // —— Bouteille conçue avec les 6 sections : chaque section fournit hauteur / largeur / profondeur au profil. ——
 
-    const R_bas = (parseFloat(document.getElementById('diameter-slider').value) || 75) / 2;
-    const R_epaule_ext = (parseFloat(document.getElementById('shoulder-slider').value) || 75) / 2;
-    const R_bas_col_ext = (parseFloat(document.getElementById('neck-bottom-diameter-slider').value) || 30) / 2;
-    const R_haut_col = (parseFloat(document.getElementById('neck-top-diameter-slider').value) || 29) / 2;
-    const R_finish = (parseFloat(document.getElementById('finish-diameter-input').value) || 30) / 2;
+    // Section 1 — Pied : largeur = diamètre au sol
+    var R_base = getSectionParam('s1-L', 75) / 2;
+    var r_pied = getSectionParam('r12-rho', 5);
 
-    const R_pied = parseFloat(document.getElementById('base-radius-slider').value) || 5;
-    const r1 = parseFloat(document.getElementById('shoulder-curve-slider').value) || 40; 
-    const r2 = parseFloat(document.getElementById('neck-curve-slider').value) || 20; 
+    // Section 2 — Corps : hauteur, largeur (bas), section 3 largeur (haut du corps)
+    var h_corps = getSectionParam('s2-h', 200);
+    var R_corps0 = getSectionParam('s2-L', 75) / 2;
+    var R_corps1 = getSectionParam('s3-L', 75) / 2;
 
-    // MOTEUR GÉOMÉTRIQUE
-    const dx_body = R_epaule_ext - R_bas;
-    const dy_body = H_corps_fin - 0;
-    const theta_body = Math.atan2(dy_body, dx_body);
-    const theta_body_norm = theta_body + Math.PI / 2; 
+    // Rattachement 2 : courbe épaule (corps → col)
+    var rho_epaule = getSectionParam('r23-rho', 40);
 
-    const cx1 = R_epaule_ext + r1 * Math.cos(theta_body_norm);
-    const cy1 = H_corps_fin + r1 * Math.sin(theta_body_norm);
-    const T_body_x = R_epaule_ext;
-    const T_body_y = H_corps_fin;
+    // Section 3 — Épaule : profondeur = rayon bas du col (jonction)
+    // Section 4 — Col : hauteur, largeur (bas col), section 5 largeur (haut du col)
+    var R_col0 = getSectionParam('s4-L', 30) / 2;
+    var h_col = getSectionParam('s4-h', 70);
+    var R_col1 = getSectionParam('s5-L', 30) / 2;
 
-    const dx_neck = R_haut_col - R_bas_col_ext;
-    const dy_neck = Y_bague_start - H_col_vertical_start;
-    const theta_neck = Math.atan2(dy_neck, dx_neck);
-    const theta_neck_norm = theta_neck - Math.PI / 2;
+    // Rattachement 4 : courbe bas col (col → bague)
+    var rho_col = getSectionParam('r45-rho', 20);
 
-    const cx2 = R_bas_col_ext + r2 * Math.cos(theta_neck_norm);
-    const cy2 = H_col_vertical_start + r2 * Math.sin(theta_neck_norm);
-    const T_neck_x = R_bas_col_ext;
-    const T_neck_y = H_col_vertical_start;
+    // Section 5 — Bas col : profondeur = rayon bague (jonction)
+    // Section 6 — Bague : hauteur, largeur = diamètre bague
+    var R_bague = getSectionParam('s6-L', 29.6) / 2;
+    var h_bague = getSectionParam('s6-h', 15);
 
-    let d_pied = R_pied * Math.tan(theta_body / 2); 
-    let cx_pied = R_bas - d_pied;
-    let cy_pied = R_pied;
-    let T_pied_body_x = R_bas + d_pied * Math.cos(theta_body);
-    let T_pied_body_y = d_pied * Math.sin(theta_body);
+    // —— Positions Y (ordonnées) des jonctions ——
+    // Corps : ligne de (R_corps0, y_pied_end) à (R_corps1, y_corps_end). Pied : arc de (R_base, 0) à (R_corps0, y_pied_end).
+    var theta_corps = Math.atan2(h_corps, R_corps1 - R_corps0);
+    var L_corps = Math.sqrt(h_corps * h_corps + (R_corps1 - R_corps0) * (R_corps1 - R_corps0));
+    var B_pied = R_base - R_corps0 + (r_pied * h_corps / L_corps);
+    var A_pied = r_pied * (R_corps1 - R_corps0) / L_corps;
+    var disc = r_pied * r_pied - B_pied * B_pied;
+    var y_pied_end = disc >= 0 ? (-A_pied + Math.sqrt(disc)) : (r_pied * Math.tan(theta_corps / 2) * Math.sin(theta_corps));
+    var cx_pied = R_corps0 - r_pied * h_corps / L_corps;
+    var cy_pied = y_pied_end + A_pied;
 
-    const dx_c = cx2 - cx1;
-    const dy_c = cy2 - cy1;
-    const dist_c = Math.sqrt(dx_c*dx_c + dy_c*dy_c);
-    const r_sum = r1 + r2;
-    let T1x = cx1, T1y = cy1 + r1; 
-    let T2x = cx2, T2y = cy2 - r2;
-    let bitangent_valid = dist_c >= r_sum;
-    
+    var y_corps_start = y_pied_end;
+    var y_corps_end = y_corps_start + h_corps;
+
+    // Courbe épaule (S3) : arc tangent corps → col. Centre (cx1, cy1), rayon rho_epaule.
+    var theta_corps_norm = theta_corps + Math.PI / 2;
+    var cx1 = R_corps1 + rho_epaule * Math.cos(theta_corps_norm);
+    var cy1 = y_corps_end + rho_epaule * Math.sin(theta_corps_norm);
+    var T_epaule_x = R_corps1;
+    var T_epaule_y = y_corps_end;
+
+    // Col (S4) : ligne de (R_col0, y_col_start) à (R_col1, y_col_end). Début col = fin courbe épaule.
+    var y_col_start = cy1 - rho_epaule * Math.sin(theta_corps_norm - Math.PI);
+    var y_col_end = y_col_start + h_col;
+    var theta_col = Math.atan2(h_col, R_col1 - R_col0);
+    var theta_col_norm = theta_col - Math.PI / 2;
+    var cx2 = R_col0 + rho_col * Math.cos(theta_col_norm);
+    var cy2 = y_col_start + rho_col * Math.sin(theta_col_norm);
+    var T_col_x = R_col0;
+    var T_col_y = y_col_start;
+
+    // Points de tangence courbe épaule (T1) et courbe col (T2)
+    var dx_c = cx2 - cx1;
+    var dy_c = cy2 - cy1;
+    var dist_c = Math.sqrt(dx_c * dx_c + dy_c * dy_c);
+    var r_sum = rho_epaule + rho_col;
+    var bitangent_valid = dist_c >= r_sum;
+    var T1x = cx1, T1y = cy1 + rho_epaule;
+    var T2x = cx2, T2y = cy2 - rho_col;
     if (bitangent_valid) {
-        const angle_centres = Math.atan2(dy_c, dx_c);
-        const angle_offset = Math.acos(r_sum / dist_c);
-        const theta1 = angle_centres - angle_offset;
-        T1x = cx1 + r1 * Math.cos(theta1);
-        T1y = cy1 + r1 * Math.sin(theta1);
-        const theta2 = angle_centres - angle_offset + Math.PI;
-        T2x = cx2 + r2 * Math.cos(theta2);
-        T2y = cy2 + r2 * Math.sin(theta2);
+        var angle_centres = Math.atan2(dy_c, dx_c);
+        var angle_offset = Math.acos(r_sum / dist_c);
+        var theta1 = angle_centres - angle_offset;
+        T1x = cx1 + rho_epaule * Math.cos(theta1);
+        T1y = cy1 + rho_epaule * Math.sin(theta1);
+        var theta2 = angle_centres - angle_offset + Math.PI;
+        T2x = cx2 + rho_col * Math.cos(theta2);
+        T2y = cy2 + rho_col * Math.sin(theta2);
     }
 
-    let keyY = [0, T_pied_body_y, T_body_y, T1y, T2y, T_neck_y, Y_bague_start, H_tot_reel];
-    keyY.sort((a, b) => a - b); 
+    // Début bague (S6)
+    var y_bague_start = y_col_end;
+    var y_bague_end = y_bague_start + h_bague;
 
-    const finalY = [];
-    for (let i = 0; i < keyY.length - 1; i++) {
-        const yStart = keyY[i];
-        const yEnd = keyY[i+1];
-        const dist = yEnd - yStart;
-        if (dist < 0.01) continue; 
-        const steps = Math.ceil(dist * 2); 
-        for (let j = 0; j < steps; j++) {
-            finalY.push(yStart + (dist * (j / steps)));
+    // Échantillonnage Y
+    var keyY = [0, y_pied_end, y_corps_end, T1y, T2y, T_col_y, y_col_start, y_col_end, y_bague_start, y_bague_end];
+    keyY.sort(function (a, b) { return a - b; });
+    var finalY = [];
+    for (var i = 0; i < keyY.length - 1; i++) {
+        var yS = keyY[i];
+        var yE = keyY[i + 1];
+        var dist = yE - yS;
+        if (dist < 0.01) continue;
+        var steps = Math.max(2, Math.ceil(dist * 2));
+        for (var j = 0; j < steps; j++) {
+            finalY.push(yS + (dist * j / steps));
         }
     }
-    finalY.push(H_tot_reel); 
+    finalY.push(y_bague_end);
 
-    const points = [];
-    for (let y of finalY) {
-        if (y < T_pied_body_y) {
-            let r = cx_pied + Math.sqrt(Math.max(0, R_pied**2 - (y - cy_pied)**2));
-            points.push(new THREE.Vector2(Math.max(0.1, r), y));
-        } else if (y <= T_body_y) {
-            let r = R_bas + (y - 0) * (R_epaule_ext - R_bas) / (H_corps_fin - 0);
-            points.push(new THREE.Vector2(Math.max(0.1, r), y));
+    var points = [];
+    for (var k = 0; k < finalY.length; k++) {
+        var y = finalY[k];
+        var r;
+        if (y < y_pied_end) {
+            r = cx_pied + Math.sqrt(Math.max(0, r_pied * r_pied - (y - cy_pied) * (y - cy_pied)));
+        } else if (y <= y_corps_end) {
+            var t = (y - y_corps_start) / (y_corps_end - y_corps_start);
+            r = R_corps0 + t * (R_corps1 - R_corps0);
         } else if (bitangent_valid && y <= T1y) {
-            let r = cx1 + Math.sqrt(Math.max(0, r1**2 - (y - cy1)**2));
-            points.push(new THREE.Vector2(Math.max(0.1, r), y));
+            r = cx1 + Math.sqrt(Math.max(0, rho_epaule * rho_epaule - (y - cy1) * (y - cy1)));
         } else if (bitangent_valid && y <= T2y) {
-            const t = (y - T1y) / (T2y - T1y);
-            let r = T1x + t * (T2x - T1x);
-            points.push(new THREE.Vector2(Math.max(0.1, r), y));
-        } else if (bitangent_valid && y <= T_neck_y) {
-            let r = cx2 - Math.sqrt(Math.max(0, r2**2 - (y - cy2)**2));
-            points.push(new THREE.Vector2(Math.max(0.1, r), y));
-        } else if (!bitangent_valid && y <= T_neck_y) {
-            const t = (y - T_body_y) / (T_neck_y - T_body_y);
-            let r = T_body_x + t * (T_neck_x - T_body_x);
-            points.push(new THREE.Vector2(Math.max(0.1, r), y));
-        } else if (y < Y_bague_start - 0.001) {
-            const t = (y - H_col_vertical_start) / (Y_bague_start - H_col_vertical_start);
-            let r = R_bas_col_ext + t * (R_haut_col - R_bas_col_ext);
-            points.push(new THREE.Vector2(Math.max(0.1, r), y));
-        } else if (Math.abs(y - Y_bague_start) <= 0.001) {
-            points.push(new THREE.Vector2(Math.max(0.1, R_haut_col), Y_bague_start));
-            points.push(new THREE.Vector2(Math.max(0.1, R_finish), Y_bague_start));
+            var t_ = (y - T1y) / (T2y - T1y);
+            r = T1x + t_ * (T2x - T1x);
+        } else if (bitangent_valid && y <= T_col_y) {
+            r = cx2 - Math.sqrt(Math.max(0, rho_col * rho_col - (y - cy2) * (y - cy2)));
+        } else if (!bitangent_valid && y <= T_col_y) {
+            var t_ = (y - y_corps_end) / (T_col_y - y_corps_end);
+            r = T_epaule_x + t_ * (T_col_x - T_epaule_x);
+        } else if (y < y_col_end - 0.001) {
+            var t = (y - y_col_start) / (y_col_end - y_col_start);
+            r = R_col0 + t * (R_col1 - R_col0);
+        } else if (y <= y_bague_start + 0.001) {
+            r = R_col1;
         } else {
-            points.push(new THREE.Vector2(Math.max(0.1, R_finish), y));
+            r = R_bague;
         }
+        points.push(new THREE.Vector2(Math.max(0.1, r), y));
     }
     return points;
 }
@@ -118,12 +145,11 @@ function generateBottleProfile() {
 function getRadiusAtHeight(targetY, profilPoints) {
     if (targetY <= profilPoints[0].y) return profilPoints[0].x;
     if (targetY >= profilPoints[profilPoints.length - 1].y) return profilPoints[profilPoints.length - 1].x;
-    
-    for (let i = 0; i < profilPoints.length - 1; i++) {
-        if (targetY >= profilPoints[i].y && targetY <= profilPoints[i+1].y) {
-            const t = (targetY - profilPoints[i].y) / (profilPoints[i+1].y - profilPoints[i].y);
-            return profilPoints[i].x + t * (profilPoints[i+1].x - profilPoints[i].x);
+    for (var i = 0; i < profilPoints.length - 1; i++) {
+        if (targetY >= profilPoints[i].y && targetY <= profilPoints[i + 1].y) {
+            var t = (targetY - profilPoints[i].y) / (profilPoints[i + 1].y - profilPoints[i].y);
+            return profilPoints[i].x + t * (profilPoints[i + 1].x - profilPoints[i].x);
         }
     }
-    return 30; 
+    return 30;
 }

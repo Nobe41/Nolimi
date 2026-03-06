@@ -167,7 +167,7 @@ function draw2D() {
     ctx2d.clearRect(0, 0, canvas2d.width, canvas2d.height);
     
     // NOUVEAU FOND ICI :
-    ctx2d.fillStyle = '#dde1e8'; 
+    ctx2d.fillStyle = '#ffffff'; 
     ctx2d.fillRect(0, 0, canvas2d.width, canvas2d.height);
 
     ctx2d.save();
@@ -247,32 +247,33 @@ function draw2D() {
     if (scaleValue === "1:5") drawingScale = 0.2;
     if (scaleValue === "2:1") drawingScale = 2;
 
-    if (typeof generateBottleProfile === 'function') {
-        const points = generateBottleProfile(); 
-        if (!points || points.length === 0) {
-            ctx2d.restore();
-            return;
-        }
-
-        const H_base = parseFloat(document.getElementById('height-slider').value) || 320;
-        const H_corps_fin = parseFloat(document.getElementById('body-height-slider').value) || 200;
-        const H_col_vertical_start = parseFloat(document.getElementById('neck-height-slider').value) || 270;
-        const H_finish = parseFloat(document.getElementById('finish-height-input').value) || 15;
-        const Y_bague_start = H_base - 15; 
-        const H_tot_reel = Y_bague_start + H_finish;
-
-        const D_bas = parseFloat(document.getElementById('diameter-slider').value) || 75;
-        const D_epaule = parseFloat(document.getElementById('shoulder-slider').value) || 75;
-        const D_bas_col = parseFloat(document.getElementById('neck-bottom-diameter-slider').value) || 30;
-        const D_haut_col = parseFloat(document.getElementById('neck-top-diameter-slider').value) || 29;
-        const D_finish = parseFloat(document.getElementById('finish-diameter-input').value) || 30;
-
-        const R_pied = parseFloat(document.getElementById('base-radius-slider').value) || 5;
-        const r1 = parseFloat(document.getElementById('shoulder-curve-slider').value) || 40; 
-        const r2 = parseFloat(document.getElementById('neck-curve-slider').value) || 20;
-
-        const max_R = Math.max(D_bas, D_epaule) / 2;
+    let points = null;
+    if (typeof getBottleProfileFromData === 'function') {
+        points = getBottleProfileFromData();
+    }
+    if ((!points || points.length === 0) && typeof generateBottleProfile === 'function') {
+        points = generateBottleProfile();
+    }
+    if (!points || points.length === 0) {
+        ctx2d.restore();
+        return;
+    }
+    {
+        // Dimensions dérivées du profil (modèle 6 sections)
         const bottleHeight = points[points.length - 1].y;
+        let max_R = 0;
+        let bodyY = 0;
+        for (let i = 0; i < points.length; i++) {
+            if (points[i].x > max_R) {
+                max_R = points[i].x;
+                bodyY = points[i].y;
+            }
+        }
+        const R_base = points[0].x;
+        const R_top = points[points.length - 1].x;
+        const D_bas = R_base * 2;
+        const D_epaule = max_R * 2;
+        const D_finish = R_top * 2;
         
         ctx2d.save();
         ctx2d.translate(mainViewOffsetX, (bottleHeight * drawingScale) / 2); 
@@ -307,21 +308,12 @@ function draw2D() {
         ctx2d.lineTo(-points[0].x, points[0].y);
         ctx2d.stroke();
 
-        // 3. Cotations Principales
-        drawCotation(ctx2d, D_bas/2, 0, D_epaule/2, H_corps_fin, max_R + 15, fText(H_corps_fin), true, drawingScale);
-        drawCotation(ctx2d, D_bas/2, 0, D_bas_col/2, H_col_vertical_start, max_R + 30, fText(H_col_vertical_start), true, drawingScale);
-        drawCotation(ctx2d, D_bas/2, 0, D_finish/2, H_tot_reel, max_R + 45, fText(H_tot_reel), true, drawingScale);
-        drawCotation(ctx2d, D_haut_col/2, Y_bague_start, D_finish/2, H_tot_reel, max_R + 15, fText(H_finish), true, drawingScale);
-
+        // 3. Cotations (dérivées du profil)
+        drawCotation(ctx2d, D_bas/2, 0, D_epaule/2, bodyY, max_R + 15, fText(bodyY), true, drawingScale);
+        drawCotation(ctx2d, D_bas/2, 0, D_finish/2, bottleHeight, max_R + 30, fText(bottleHeight), true, drawingScale);
         drawCotation(ctx2d, -D_bas/2, 0, D_bas/2, 0, -15, "Ø " + fText(D_bas), false, drawingScale);
-        drawCotation(ctx2d, -D_epaule/2, H_corps_fin, D_epaule/2, H_corps_fin, H_corps_fin, "Ø " + fText(D_epaule), false, drawingScale);
-        drawCotation(ctx2d, -D_bas_col/2, H_col_vertical_start, D_bas_col/2, H_col_vertical_start, H_col_vertical_start, "Ø " + fText(D_bas_col), false, drawingScale);
-        drawCotation(ctx2d, -D_haut_col/2, Y_bague_start, D_haut_col/2, Y_bague_start, Y_bague_start, "Ø " + fText(D_haut_col), false, drawingScale);
-        drawCotation(ctx2d, -D_finish/2, H_tot_reel, D_finish/2, H_tot_reel, H_tot_reel + 15, "Ø " + fText(D_finish), false, drawingScale);
-
-        drawLeaderLine(ctx2d, -D_bas/2, R_pied, fText(R_pied), drawingScale);
-        drawLeaderLine(ctx2d, -D_epaule/2, H_corps_fin, fText(r1), drawingScale);
-        drawLeaderLine(ctx2d, -D_bas_col/2, H_col_vertical_start, fText(r2), drawingScale);
+        drawCotation(ctx2d, -D_epaule/2, bodyY, D_epaule/2, bodyY, bodyY, "Ø " + fText(D_epaule), false, drawingScale);
+        drawCotation(ctx2d, -D_finish/2, bottleHeight, D_finish/2, bottleHeight, bottleHeight + 15, "Ø " + fText(D_finish), false, drawingScale);
 
         ctx2d.restore(); 
 
@@ -363,12 +355,12 @@ function draw2D() {
             ctx2d.lineWidth = 0.6; 
             
             ctx2d.beginPath();
-            ctx2d.arc(0, 0, (D_bas / 2) * drawingScale, 0, Math.PI * 2);
+            ctx2d.arc(0, 0, R_base * drawingScale, 0, Math.PI * 2);
             ctx2d.stroke();
 
-            if (D_epaule - D_bas > 1) {
+            if (max_R - R_base > 1) {
                 ctx2d.beginPath();
-                ctx2d.arc(0, 0, (D_epaule / 2) * drawingScale, 0, Math.PI * 2);
+                ctx2d.arc(0, 0, max_R * drawingScale, 0, Math.PI * 2);
                 ctx2d.stroke();
             }
 
@@ -380,7 +372,7 @@ function draw2D() {
             ctx2d.fillText("VUE DU DESSOUS", 0, -crossLen - 8);
 
             // COTATION MANUELLE DU DIAMÈTRE
-            const scaledRad = (D_bas / 2) * drawingScale;
+            const scaledRad = R_base * drawingScale;
             const dimY = scaledRad + 10; 
             
             ctx2d.beginPath();

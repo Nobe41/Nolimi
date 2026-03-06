@@ -21,30 +21,30 @@ btnAddEngraving.addEventListener('click', () => {
     gravureCounter++; 
     
     const card = document.createElement('div');
-    card.className = 'sub-block gravure-item';
+    card.className = 'setting-card setting-card--rattachement gravure-item';
     card.id = `gravure-${id}`;
     card.dataset.id = id;
     
     card.innerHTML = `
-        <button class="accordion sub-accordion active" style="text-transform: uppercase;">Gravure ${gravureCounter}</button>
-        <div class="panel-controls sub-panel" style="max-height: 2000px;">
+        <button class="accordion sub-accordion">Gravure ${gravureCounter}</button>
+        <div class="panel-controls">
 
-            <div class="control-group" style="margin-top: 10px;">
-                <label class="label-simple">Fichier Image (PNG)</label>
-                <div style="margin-top: 5px; display: flex; align-items: center;">
-                    <label for="gravure-file-${id}" style="background: #f5f5f5; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; color: #555; transition: 0.3s;">
-                        📁 Parcourir...
-                    </label>
-                    <input type="file" id="gravure-file-${id}" class="gravure-file" accept="image/png" data-id="${id}" style="display: none;">
-                    <span id="gravure-filename-${id}" style="font-size: 0.75rem; color: #0078d4; margin-left: 10px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;"></span>
+            <div class="control-group">
+                <div class="label-row"><label>Fichier image (PNG)</label></div>
+                <div class="gravure-file-row">
+                    <label for="gravure-file-${id}" class="gravure-file-btn">Parcourir…</label>
+                    <input type="file" id="gravure-file-${id}" class="gravure-file" accept="image/png" data-id="${id}">
+                    <span id="gravure-filename-${id}" class="gravure-filename"></span>
                 </div>
             </div>
 
-            <div class="control-group" style="padding-top: 5px; padding-bottom: 5px;">
-                <label style="display:flex; align-items:center; cursor:pointer; font-size: 0.8rem; color: #555; font-weight: bold;">
-                    <input type="checkbox" class="gravure-flip" id="gravure-flip-${id}" style="margin-right: 8px; transform: scale(1.2); cursor:pointer;">
-                    Miroir
-                </label>
+            <div class="control-group">
+                <div class="label-row">
+                    <label for="gravure-flip-${id}">Miroir</label>
+                    <div class="input-wrapper">
+                        <input type="checkbox" class="gravure-flip" id="gravure-flip-${id}">
+                    </div>
+                </div>
             </div>
 
             <div class="control-group">
@@ -60,7 +60,7 @@ btnAddEngraving.addEventListener('click', () => {
 
             <div class="control-group">
                 <div class="label-row">
-                    <label>Angle (Rotation)</label>
+                    <label>Angle (rotation)</label>
                     <div class="input-wrapper">
                         <input type="number" id="gravure-angle-num-${id}" value="0" min="0" max="360">
                         <span class="unit">°</span>
@@ -91,10 +91,8 @@ btnAddEngraving.addEventListener('click', () => {
                 <input type="range" class="gravure-profondeur" id="gravure-profondeur-slider-${id}" min="0.1" max="5" step="0.1" value="1.5">
             </div>
 
-            <div style="text-align: center; padding: 10px 15px 15px 15px; border-top: 1px solid #eee; margin-top: 10px;">
-                <button onclick="removeEngraving(${id})" style="color:#ff3333; background:none; border:1px solid #ff3333; border-radius: 4px; padding: 5px 10px; cursor:pointer; font-weight:bold; font-size: 0.75rem; transition: 0.3s;" onmouseover="this.style.background='#fff0f0'" onmouseout="this.style.background='none'">
-                    SUPPRIMER LA GRAVURE
-                </button>
+            <div class="control-group">
+                <button type="button" class="btn-remove-gravure" onclick="removeEngraving(${id})">Supprimer la gravure</button>
             </div>
 
         </div>
@@ -112,13 +110,8 @@ btnAddEngraving.addEventListener('click', () => {
             panel.style.maxHeight = "0px";
         } else {
             panel.style.maxHeight = panel.scrollHeight + "px";
-            const parentPanel = this.parentElement.closest('.panel-controls');
-            if (parentPanel) parentPanel.style.maxHeight = "2000px";
         }
     };
-
-    const parentPanel = card.parentElement.closest('.panel-controls');
-    if (parentPanel) parentPanel.style.maxHeight = "2000px";
 
     const fileInput = card.querySelector('.gravure-file');
     const fileNameDisplay = card.querySelector(`#gravure-filename-${id}`);

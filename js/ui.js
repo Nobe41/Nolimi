@@ -5,6 +5,35 @@ const btnNewProject = document.getElementById('btn-new-project');
 viewport3D = document.getElementById('viewport-3d');
 
 // ==========================================
+// PANNEAU GAUCHE — Onglets Sections / Gravure
+// ==========================================
+function setupPanelTabs() {
+    const tabSections = document.getElementById('panel-tab-sections');
+    const tabGravure = document.getElementById('panel-tab-gravure');
+    const contentSections = document.getElementById('panel-content-sections');
+    const contentGravure = document.getElementById('panel-content-gravure');
+    if (!tabSections || !tabGravure || !contentSections || !contentGravure) return;
+
+    function showSections() {
+        contentSections.classList.remove('hidden');
+        contentGravure.classList.add('hidden');
+        tabSections.classList.add('active');
+        tabGravure.classList.remove('active');
+    }
+    function showGravure() {
+        contentSections.classList.add('hidden');
+        contentGravure.classList.remove('hidden');
+        tabSections.classList.remove('active');
+        tabGravure.classList.add('active');
+    }
+
+    tabSections.addEventListener('click', showSections);
+    tabGravure.addEventListener('click', showGravure);
+    tabSections.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSections(); } });
+    tabGravure.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showGravure(); } });
+}
+
+// ==========================================
 // NAVIGATION GLOBALE (MENU)
 // ==========================================
 
@@ -94,38 +123,93 @@ function setupListeners() {
     inputs.forEach(input => {
         if (input.classList.contains('gravure-y') || input.classList.contains('gravure-angle') || input.classList.contains('gravure-largeur') || input.classList.contains('gravure-profondeur')) return;
 
-        input.addEventListener('input', () => {
+        const onUpdate = () => {
             const controlGroup = input.closest('.control-group');
             if (controlGroup) {
                 if (input.type === 'range') {
                     const num = controlGroup.querySelector('input[type=number]');
                     if (num && num !== input) num.value = input.value;
+                    const valSpan = controlGroup.querySelector('.carre-niveau-value');
+                    if (valSpan) valSpan.textContent = input.value + ' %';
                 } else if (input.type === 'number') {
                     const rng = controlGroup.querySelector('input[type=range]');
                     if (rng && rng !== input) rng.value = input.value;
                 }
             }
-            
             clearTimeout(updateTimer);
             updateTimer = setTimeout(() => {
                 if (typeof updateBouteille === 'function') updateBouteille();
                 if (typeof draw2D === 'function' && !document.getElementById('viewport-2d').classList.contains('hidden')) draw2D();
-            }, 20); 
+            }, 20);
+        };
+        input.addEventListener('input', onUpdate);
+        if (input.tagName === 'SELECT') input.addEventListener('change', onUpdate);
+    });
+
+    function toggleCarreNiveauVisibility() {
+        document.querySelectorAll('.js-carre-niveau').forEach(cg => {
+            const card = cg.closest('.setting-card');
+            const formeSelect = card && card.querySelector('select[id$="-forme"]');
+            const isCarre = formeSelect && formeSelect.value === 'carre';
+            cg.style.display = isCarre ? 'block' : 'none';
+            const rng = cg.querySelector('input[type="range"]');
+            const valSpan = cg.querySelector('.carre-niveau-value');
+            if (rng && valSpan) valSpan.textContent = rng.value + ' %';
         });
+        // Réouvrir la hauteur du panneau dépliant pour afficher le slider si visible
+        document.querySelectorAll('.panel-controls').forEach(panel => {
+            if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
+                panel.style.maxHeight = panel.scrollHeight + 'px';
+            }
+        });
+    }
+    toggleCarreNiveauVisibility();
+    document.querySelectorAll('select[id$="-forme"]').forEach(sel => {
+        sel.addEventListener('change', toggleCarreNiveauVisibility);
     });
     
-    const acc = document.getElementsByClassName("accordion");
-    for (let i = 0; i < acc.length; i++) {
-        acc[i].onclick = function() {
-            this.classList.toggle("active");
-            const panel = this.nextElementSibling;
-            if (panel.style.maxHeight && panel.style.maxHeight !== "0px") {
+    const allAccordions = document.getElementsByClassName("accordion");
+    const mainAccordions = document.querySelectorAll(".accordion.main-accordion");
+
+    function closeAllAccordions() {
+        for (let i = 0; i < allAccordions.length; i++) {
+            allAccordions[i].classList.remove("active");
+            const panel = allAccordions[i].nextElementSibling;
+            if (panel && panel.classList.contains("panel-controls")) {
                 panel.style.maxHeight = "0px";
-            } else {
-                panel.style.maxHeight = panel.scrollHeight + "px";
-                const parentPanel = this.parentElement.closest('.panel-controls');
-                if (parentPanel) parentPanel.style.maxHeight = "2000px";
             }
+        }
+    }
+
+    function getMainAccordionIndex(btn) {
+        if (!btn.classList.contains("main-accordion")) return 0;
+        for (let i = 0; i < mainAccordions.length; i++) {
+            if (mainAccordions[i] === btn) return i + 1;
+        }
+        return 0;
+    }
+
+    for (let i = 0; i < allAccordions.length; i++) {
+        allAccordions[i].onclick = function () {
+            const panel = this.nextElementSibling;
+            const isOpen = panel && panel.style.maxHeight && panel.style.maxHeight !== "0px";
+
+            closeAllAccordions();
+
+            if (!isOpen) {
+                this.classList.add("active");
+                if (panel && panel.classList.contains("panel-controls")) {
+                    panel.style.maxHeight = panel.scrollHeight + "px";
+                }
+                const sectionIndex = getMainAccordionIndex(this);
+                window.activeSectionIndex = sectionIndex;
+            } else {
+                window.activeSectionIndex = 0;
+            }
+
+            if (typeof updateBouteille === 'function') updateBouteille();
         };
     }
 }
+
+setupPanelTabs();

@@ -98,13 +98,98 @@ body {
     overflow: hidden;
 }
 
-/* Panneau Gauche */
+/* Panneau Gauche : colonne logo + contenu (sections) */
 #Panel-gauche {
     width: 320px;
     height: 100vh;
-    padding: 15px;
-    overflow-y: auto; 
     flex-shrink: 0;
+    display: flex;
+    flex-direction: row;
+}
+
+.panel-logo-col {
+    width: 54px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+}
+
+.panel-logo {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+}
+
+.panel-logo svg {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+/* Emoji (ex. 🥃 ✏️) : plus petits, couleurs d’origine */
+.panel-logo:not(:has(svg)) {
+    font-size: 25px;
+    line-height: 1;
+    color: unset;
+}
+
+.panel-col-tab {
+    cursor: pointer;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+.panel-col-tab:hover {
+    opacity: 0.8;
+}
+.panel-col-tab.active {
+    opacity: 1;
+}
+.panel-col-tab:first-child {
+    margin-top: 0;
+}
+
+.panel-gravure-content {
+    flex: 1;
+    min-width: 0;
+    padding: 15px 21px 15px 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.panel-gravure-content .btn-add-gravure {
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+.panel-gravure-content #engravings-container {
+    width: 100%;
+    max-width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+/* Blocs gravure : même largeur que les blocs section (annule le 75 % de --rattachement) */
+.setting-card.gravure-item {
+    max-width: 260px;
+}
+
+.panel-content {
+    flex: 1;
+    min-width: 0;
+    padding: 15px 21px 15px 15px; /* droite 15+6 pour la scrollbar = même espace visuel à gauche et à droite */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 /* Colonne de droite */
@@ -120,37 +205,40 @@ body {
 #Panel-haut {
     min-height: 40px; 
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     margin: 10px 15px 8px 15px; 
     padding: 0; 
     flex-shrink: 0;
 }
 
-/* SOLUTION CSS POUR L'ALIGNEMENT : On cache la div vide qui bloquait le placement */
-#Panel-haut > div:empty {
-    display: none !important;
+.panel-haut-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    width: fit-content;
+    height: 36px;
+    padding: 0 16px;
+    background-color: #EAEDF2;
+    border-radius: 9999px;
+    box-sizing: border-box;
+}
+
+.panel-haut-vues .view-switcher {
+    gap: 4px;
+}
+
+.panel-haut-label {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: #333333 !important;
 }
 
 .header-left-group {
     display: flex;
     gap: 10px;
     align-items: center;
-}
-
-.right-controls {
-    display: flex;
-    flex-direction: row; 
-    align-items: center; 
-    width: 100%; /* Force le bloc à prendre toute la largeur */
-    justify-content: space-between; /* Place Fichier à gauche, et le Switcher à droite */
-    gap: 10px; 
-}
-
-/* Si Fichier n'est pas dans right-controls, on redonne à right-controls sa taille normale */
-.header-left-group:not(:empty) ~ .right-controls {
-    width: auto;
-    justify-content: flex-end;
 }
 
 /* Boutons plus compacts */
@@ -220,14 +308,28 @@ main {
 ========================================== */
 .setting-card { 
     margin-bottom: 10px; 
-    overflow: hidden; 
+    overflow: hidden;
+    width: 100%;
+    max-width: 260px;
+}
+
+.setting-card--rattachement {
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 6px;
+    max-width: 75%;
+    border-left: 3px solid rgba(0, 0, 0, 0.15);
+    padding-left: 0;
 }
 
 .accordion {
     width: 100%;
     text-align: left;
-    padding: 10px 12px; 
-    font-size: 0.9rem;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
 }
 
 .panel-controls { 
@@ -245,9 +347,10 @@ main {
 
 .accordion.sub-accordion {
     width: 100%;
-    padding: 6px 12px; 
+    padding: 6px 12px;
     margin-top: 0;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    box-sizing: border-box;
 }
 
 .accordion.sub-accordion:after {
@@ -334,7 +437,6 @@ input[type="text"], .input-select, .input-select-disabled {
 .btn-add-gravure {
     width: 100%;
     padding: 6px;
-    margin-top: 6px;
     font-size: 0.8rem;
 }
 
