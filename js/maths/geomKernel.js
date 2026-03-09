@@ -41,6 +41,31 @@ var GeomKernel = (function () {
     // -------------------------------------------------------------------------
     function computeFilletTangentPoints(P1, P2, P3, R) {
         if (R <= 0) return null;
+
+        // Directions des segments autour du coin P2
+        var v1 = normalize(sub(P1, P2)); // vers la section précédente
+        var v2 = normalize(sub(P3, P2)); // vers la section suivante
+
+        // Angle interne entre les deux segments
+        var dot12 = Math.max(-1, Math.min(1, dot(v1, v2)));
+        var theta = Math.acos(dot12);
+        if (theta < 1e-4 || Math.abs(Math.PI - theta) < 1e-4) return null; // quasi aligné
+
+        // Longueurs réelles disponibles de chaque côté
+        var seg1Len = length(sub(P2, P1));
+        var seg2Len = length(sub(P3, P2));
+        if (seg1Len < 1e-6 || seg2Len < 1e-6) return null;
+
+        // Pour un congé circulaire tangent, distance coin→tangence = R * tan(theta/2).
+        // On impose que cette distance ne dépasse jamais la longueur du segment le plus court.
+        var tanHalf = Math.tan(theta / 2);
+        if (tanHalf < 1e-6) return null;
+        var tMax = Math.min(seg1Len, seg2Len);
+        var Rmax = (tMax / tanHalf) * 0.99; // marge 1 %
+        if (Rmax <= 0) return null;
+        if (R > Rmax) R = Rmax;
+
+        // Reprise du calcul standard du centre et des tangences avec ce rayon bridé.
         var d1 = normalize(sub(P2, P1));
         var d2 = normalize(sub(P3, P2));
         var n1 = perpLeft(d1);

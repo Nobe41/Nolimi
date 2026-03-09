@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saver3D - Atelier Bouteille</title>
+    <title>Nolimi - Atelier Bouteille</title>
     
     <link rel="stylesheet" href="css/structure.css">
     <link rel="stylesheet" href="css/theme.css">
@@ -19,7 +19,7 @@
         <div class="menu-split-container">
             <div class="menu-col-left">
                 <div class="menu-left-panel">
-                    <h1 class="menu-title">Saver3D</h1>
+                    <h1 class="menu-title">Nolimi</h1>
                     <button id="btn-new-project" class="menu-big-btn"><span>+</span> NOUVEAU</button>
                     <button id="btn-open-project" class="menu-big-btn secondary"><span>📂</span> OUVRIR</button>
                     <input type="file" id="file-loader" class="hidden-file">
@@ -36,6 +36,7 @@
             <div id="sidebar" class="panel-logo-col">
                 <div class="panel-logo panel-col-tab active" id="panel-tab-sections" title="Sections" role="button" tabindex="0">🔧</div>
                 <div class="panel-logo panel-col-tab" id="panel-tab-gravure" title="Gravures" role="button" tabindex="0">✏️</div>
+                <div class="panel-logo panel-col-tab" id="panel-tab-information" title="Information" role="button" tabindex="0">ℹ️</div>
             </div>
             <!-- Inspector : zone où s'affiche le contenu (pages pilotées par le Brand Header) -->
             <div id="inspector" class="panel-right">
@@ -47,428 +48,74 @@
                         <span class="panel-bar-icon" id="panel-bar-tab-bague" title="Sections bague">⭕</span>
                     </div>
                     <div class="panel-content" id="panel-content-sections">
-            <!-- Modèle par 6 sections : hauteur / largeur / profondeur + rattachements (courbes) entre sections -->
-
-            <div class="setting-card">
-                <button class="accordion main-accordion">1 — Pied</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="s1-h" value="0" min="0" max="80"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s1-h-slider" min="0" max="80" step="0.5" value="0">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="s1-L" value="71" min="40" max="120"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s1-L-slider" min="40" max="120" step="0.5" value="71">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="s1-P" value="71" min="40" max="120"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s1-P-slider" min="40" max="120" step="0.5" value="71">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="s1-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                    </div>
-                    <div class="control-group js-carre-niveau" data-section="1" style="display: none;">
-                        <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                        <input type="range" id="s1-carre-niveau" min="0" max="100" value="0">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card setting-card--rattachement">
-                <button class="accordion sub-accordion">Rattachement 1</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="r12-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="r12-rho" value="5" min="0" max="50"><span class="unit">mm</span></div></div>
-                        <input type="range" id="r12-rho-slider" min="0" max="50" step="0.5" value="5">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card">
-                <button class="accordion main-accordion">2 — Corps</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="s2-h" value="10" min="0" max="350"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s2-h-slider" min="0" max="350" step="1" value="10">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="s2-L" value="85" min="40" max="120"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s2-L-slider" min="40" max="120" step="0.5" value="85">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="s2-P" value="85" min="40" max="120"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s2-P-slider" min="40" max="120" step="0.5" value="85">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="s2-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                    </div>
-                    <div class="control-group js-carre-niveau" data-section="2" style="display: none;">
-                        <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                        <input type="range" id="s2-carre-niveau" min="0" max="100" value="0">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card setting-card--rattachement">
-                <button class="accordion sub-accordion">Rattachement 2</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="r23-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="r23-rho" value="40" min="5" max="120"><span class="unit">mm</span></div></div>
-                        <input type="range" id="r23-rho-slider" min="5" max="120" step="1" value="40">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card">
-                <button class="accordion main-accordion">3 — Épaule</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="s3-h" value="120" min="0" max="350"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s3-h-slider" min="0" max="350" step="0.5" value="120">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="s3-L" value="85" min="20" max="120"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s3-L-slider" min="20" max="120" step="0.5" value="85">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="s3-P" value="85" min="20" max="120"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s3-P-slider" min="20" max="120" step="0.5" value="85">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="s3-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                    </div>
-                    <div class="control-group js-carre-niveau" data-section="3" style="display: none;">
-                        <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                        <input type="range" id="s3-carre-niveau" min="0" max="100" value="0">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card setting-card--rattachement">
-                <button class="accordion sub-accordion">Rattachement 3</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="r34-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="r34-rho" value="0" min="0" max="40"><span class="unit">mm</span></div></div>
-                        <input type="range" id="r34-rho-slider" min="0" max="40" step="0.5" value="0">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card">
-                <button class="accordion main-accordion">4 — Col</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="s4-h" value="200" min="20" max="250"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s4-h-slider" min="20" max="250" step="1" value="200">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="s4-L" value="32" min="20" max="70"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s4-L-slider" min="20" max="70" step="0.5" value="32">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="s4-P" value="32" min="20" max="70"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s4-P-slider" min="20" max="70" step="0.5" value="32">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="s4-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                    </div>
-                    <div class="control-group js-carre-niveau" data-section="4" style="display: none;">
-                        <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                        <input type="range" id="s4-carre-niveau" min="0" max="100" value="0">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card setting-card--rattachement">
-                <button class="accordion sub-accordion">Rattachement 4</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="r45-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="r45-rho" value="20" min="5" max="60"><span class="unit">mm</span></div></div>
-                        <input type="range" id="r45-rho-slider" min="5" max="60" step="1" value="20">
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-card">
-                <button class="accordion main-accordion">5 — Bas col</button>
-                <div class="panel-controls">
-                    <div class="control-group">
-                        <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="s5-h" value="280" min="0" max="350"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s5-h-slider" min="0" max="350" step="0.5" value="280">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="s5-L" value="32" min="20" max="50"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s5-L-slider" min="20" max="50" step="0.5" value="32">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="s5-P" value="32" min="20" max="50"><span class="unit">mm</span></div></div>
-                        <input type="range" id="s5-P-slider" min="20" max="50" step="0.1" value="32">
-                    </div>
-                    <div class="control-group">
-                        <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="s5-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                    </div>
-                    <div class="control-group js-carre-niveau" data-section="5" style="display: none;">
-                        <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                        <input type="range" id="s5-carre-niveau" min="0" max="100" value="0">
-                    </div>
-                </div>
-            </div>
-
-                </div><!-- #panel-content-sections -->
+                        <!-- Rempli par UIInspector.renderSections() -->
+                    </div><!-- #panel-content-sections -->
                     <div class="panel-content panel-piqure-content hidden" id="panel-content-piqure">
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">1 — Piqûre</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sp-L" value="58" min="10" max="71"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp-L-slider" min="10" max="71" step="0.5" value="58">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sp-P" value="58" min="10" max="71"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp-P-slider" min="10" max="71" step="0.5" value="58">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="sp-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                                </div>
-                                <div class="control-group js-carre-niveau" data-section="piqure" style="display: none;">
-                                    <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                                    <input type="range" id="sp-carre-niveau" min="0" max="100" value="0">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card setting-card--rattachement">
-                            <button class="accordion sub-accordion">Rattachement 1</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="rp1-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="rp1-rho" value="5" min="0" max="50"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="rp1-rho-slider" min="0" max="50" step="0.5" value="5">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">2 — Bas piqûre</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="sp2-h" value="4" min="0" max="80"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp2-h-slider" min="0" max="80" step="0.5" value="4">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sp2-L" value="48" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp2-L-slider" min="10" max="120" step="0.5" value="48">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sp2-P" value="48" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp2-P-slider" min="10" max="120" step="0.5" value="48">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="sp2-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                                </div>
-                                <div class="control-group js-carre-niveau" data-section="sp2" style="display: none;">
-                                    <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                                    <input type="range" id="sp2-carre-niveau" min="0" max="100" value="0">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card setting-card--rattachement">
-                            <button class="accordion sub-accordion">Rattachement 2</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="rp2-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="rp2-rho" value="5" min="0" max="50"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="rp2-rho-slider" min="0" max="50" step="0.5" value="5">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">3 — Haut piqûre</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="sp3-h" value="20" min="0" max="80"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp3-h-slider" min="0" max="80" step="0.5" value="20">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sp3-L" value="35" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp3-L-slider" min="10" max="120" step="0.5" value="35">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sp3-P" value="35" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sp3-P-slider" min="10" max="120" step="0.5" value="35">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="sp3-forme"><option value="rond">Rond (actuel)</option><option value="carre">Carré</option></select></div></div>
-                                </div>
-                                <div class="control-group js-carre-niveau" data-section="sp3" style="display: none;">
-                                    <div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>
-                                    <input type="range" id="sp3-carre-niveau" min="0" max="100" value="0">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card setting-card--rattachement">
-                            <button class="accordion sub-accordion">Rattachement 3</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="rp3-h" value="30" min="0" max="100"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="rp3-h-slider" min="0" max="100" step="0.5" value="30">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        <!-- Rempli par UIInspector.renderSections() -->
+                    </div><!-- #panel-content-piqure -->
                     <div class="panel-content panel-bague-content hidden" id="panel-content-bague">
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">1 — Bas bague</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="sb1-h" value="282" min="0" max="400"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb1-h-slider" min="0" max="400" step="0.5" value="282">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sb1-L" value="35" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb1-L-slider" min="10" max="120" step="0.5" value="35">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sb1-P" value="35" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb1-P-slider" min="10" max="120" step="0.5" value="35">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card setting-card--rattachement">
-                            <button class="accordion sub-accordion">Rattachement</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="rb1-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="rb1-rho" value="5" min="0" max="50"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="rb1-rho-slider" min="0" max="50" step="0.5" value="5">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">2 — Haut bague</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="sb2-h" value="297" min="0" max="400"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb2-h-slider" min="0" max="400" step="0.5" value="297">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sb2-L" value="35" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb2-L-slider" min="10" max="120" step="0.5" value="35">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sb2-P" value="35" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb2-P-slider" min="10" max="120" step="0.5" value="35">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card setting-card--rattachement">
-                            <button class="accordion sub-accordion">Rattachement 2</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="rb2-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="rb2-rho" value="5" min="0" max="50"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="rb2-rho-slider" min="0" max="50" step="0.5" value="5">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">3 — Haut bague</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="sb3-h" value="299" min="0" max="400"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb3-h-slider" min="0" max="400" step="0.5" value="299">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sb3-L" value="33" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb3-L-slider" min="10" max="120" step="0.5" value="33">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sb3-P" value="33" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb3-P-slider" min="10" max="120" step="0.5" value="33">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card setting-card--rattachement">
-                            <button class="accordion sub-accordion">Rattachement 3</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="rb3-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="rb3-rho" value="5" min="0" max="50"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="rb3-rho-slider" min="0" max="50" step="0.5" value="5">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">4 — Plat bague</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sb4-L" value="31" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb4-L-slider" min="10" max="120" step="0.5" value="31">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sb4-P" value="31" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb4-P-slider" min="10" max="120" step="0.5" value="31">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card setting-card--rattachement">
-                            <button class="accordion sub-accordion">Rattachement 4</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profil</label><div class="input-wrapper"><select id="rb4-type"><option value="ligne">Ligne</option><option value="courbe">Courbe</option><option value="courbeS">Courbe S</option></select></div></div>
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Rayon courbure ρ (mm)</label><div class="input-wrapper"><input type="number" id="rb4-rho" value="5" min="0" max="50"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="rb4-rho-slider" min="0" max="50" step="0.5" value="5">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="setting-card">
-                            <button class="accordion main-accordion">5 — Bas plat bague</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="sb5-h" value="297" min="0" max="400"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb5-h-slider" min="0" max="400" step="0.5" value="297">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="sb5-L" value="29" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb5-L-slider" min="10" max="120" step="0.5" value="29">
-                                </div>
-                                <div class="control-group">
-                                    <div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="sb5-P" value="29" min="10" max="120"><span class="unit">mm</span></div></div>
-                                    <input type="range" id="sb5-P-slider" min="10" max="120" step="0.5" value="29">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        <!-- Rempli par UIInspector.renderSections() -->
+                    </div><!-- #panel-content-bague -->
                 </div><!-- #panel-sections-area -->
-
-                <!-- Visible uniquement quand le 2e emoji (Gravures) est sélectionné -->
                 <div class="panel-content panel-gravure-content hidden" id="panel-content-gravure">
                     <button type="button" class="btn-add-gravure" id="btn-add-engraving">Ajouter une gravure</button>
                     <div id="engravings-container"></div>
                 </div>
-            </div><!-- .panel-right -->
+                <div class="panel-content panel-information-content hidden" id="panel-content-information">
+                    <div class="setting-card">
+                        <button class="accordion main-accordion">Format</button>
+                        <div class="panel-controls">
+                            <div class="control-group">
+                                <div class="label-row"><label>Format feuille</label></div>
+                                <select id="paper-format-select">
+                                    <option value="A4_P">A4 Portrait</option>
+                                    <option value="A4_L">A4 Paysage</option>
+                                    <option value="A3_P">A3 Portrait</option>
+                                    <option value="A3_L">A3 Paysage</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <div class="label-row"><label>Échelle</label></div>
+                                <select id="drawing-scale-select">
+                                    <option value="1:1">1:1</option>
+                                    <option value="1:2" selected>1:2</option>
+                                    <option value="1:5">1:5</option>
+                                    <option value="2:1">2:1</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-card">
+                        <button class="accordion main-accordion">Vues</button>
+                        <div class="panel-controls">
+                            <div class="control-group">
+                                <label><input type="checkbox" id="cb-vue-dessous"> Vue du dessous</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-card">
+                        <button class="accordion main-accordion">Information</button>
+                        <div class="panel-controls">
+                            <div class="control-group">
+                                <div class="label-row"><label>Projet</label></div>
+                                <input type="text" id="cartouche-title" placeholder="Nom du projet">
+                            </div>
+                            <div class="control-group">
+                                <div class="label-row"><label>Dessinateur</label></div>
+                                <input type="text" id="cartouche-drafter" placeholder="Nom">
+                            </div>
+                            <div class="control-group">
+                                <div class="label-row"><label>Vérificateur</label></div>
+                                <input type="text" id="cartouche-checker" placeholder="Nom">
+                            </div>
+                            <div class="control-group">
+                                <div class="label-row"><label>Contenance</label></div>
+                                <input type="text" id="cartouche-capacity" placeholder="ex. 75 cL">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- #inspector -->
         </aside>
 
         <div id="right-column">
@@ -508,15 +155,24 @@
         </div>
     </section>
 
-    <script src="js/state.js"></script>
-    <script src="js/math.js"></script>
+    <script src="js/state/state.js"></script>
+    <script src="js/state/validator.js"></script>
     <script src="js/maths/geomKernel.js"></script>
-    <script src="js/maths/bottleMaths.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/export.js"></script>
-    <script src="js/gravure.js"></script>
-    <script src="js/viewer.js"></script>
-    <script src="js/viewer2d.js"></script> 
+    <script src="js/maths/sections.js"></script>
+    <script src="js/maths/rattachements.js"></script>
+    <script src="js/maths/profileBuilder.js"></script>
+    <script src="js/3d/sceneSetup.js"></script>
+    <script src="js/3d/materials.js"></script>
+    <script src="js/3d/bottleMesh.js"></script>
+    <script src="js/3d/bottleView.js"></script>
+    <script src="js/3d/viewer.js"></script>
+    <script src="js/2d/viewer2d.js"></script>
+    <script src="js/ui/inspector.js"></script>
+    <script src="js/ui/ui.js"></script>
+    <script src="js/ui/events.js"></script>
+    <script src="js/io/storage.js"></script>
+    <script src="js/io/export.js"></script>
+    <script src="js/ui/gravure.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

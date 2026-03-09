@@ -1,6 +1,6 @@
-// ==========================================
-// SYSTÈME DE GESTION DES GRAVURES (PIXELS PNG)
-// ==========================================
+// js/ui/gravure.js
+// UI du panneau Gravures : ajout/suppression de cartes, fichier PNG, réglages (Y, angle, taille, relief).
+// Données exposées : window.getEngravingsData(), window.removeEngraving(), window.engravingImages.
 
 const btnAddEngraving = document.getElementById('btn-add-engraving');
 const engravingsContainer = document.getElementById('engravings-container');

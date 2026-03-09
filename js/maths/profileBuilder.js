@@ -92,21 +92,6 @@ var BottleMaths = (function () {
         return pts;
     }
 
-    // -------------------------------------------------------------------------
-    // PROFIL MÉRIDIEN : points (x = rayon, y = hauteur) pour un angle theta
-    // sectionsData.sections = [{ H, a, b, shape, carreNiveau }, ...]
-    // -------------------------------------------------------------------------
-    function getMeridianSectionPoints(theta, sectionsData) {
-        var sections = sectionsData.sections || [];
-        var points = [];
-        for (var i = 0; i < sections.length; i++) {
-            var s = sections[i];
-            var r = getSectionRadiusAtAngle(s.a, s.b, s.shape || 'rond', s.carreNiveau || 0, theta);
-            points.push({ x: Math.max(0.1, r), y: s.H });
-        }
-        return points;
-    }
-
     /**
      * Contour extérieur : entités B-Rep (segments et arcs) pour un méridien à l'angle theta.
      * sectionsData = { sections: [...], edgeTypes: ['ligne'|'courbe', ...], rhos: [R12, R23, ...] }
@@ -114,15 +99,36 @@ var BottleMaths = (function () {
      */
     function buildExteriorProfile(theta, sectionsData) {
         if (!K) return [];
-        var points = getMeridianSectionPoints(theta, sectionsData);
-        if (points.length < 2) return [];
-        var edgeTypes = sectionsData.edgeTypes || [];
-        var rhos = sectionsData.rhos || [];
-        var edgeFilletRadii = [];
-        for (var i = 0; i < points.length - 1; i++) {
-            edgeFilletRadii.push((edgeTypes[i] === 'courbe' && rhos[i] > 0) ? rhos[i] : 0);
+        sectionsData = sectionsData || {};
+        var sections = sectionsData.sections || [];
+        if (sections.length < 2) return [];
+
+        // 1) Calcul des points bruts de section pour ce méridien (rayon en fonction de theta).
+        var rawPoints = [];
+        for (var i = 0; i < sections.length; i++) {
+            var s = sections[i];
+            var r = getSectionRadiusAtAngle(s.a, s.b, s.shape || 'rond', s.carreNiveau || 0, theta);
+            rawPoints.push({ x: Math.max(0.1, r), y: s.H });
         }
-        return K.buildProfileFromPolyline(points, edgeFilletRadii);
+
+        // 2) Application des règles de sécurité sur les hauteurs (Y(n+1) >= Y(n)).
+        var sectionPoints = (typeof SectionsMaths !== 'undefined' && SectionsMaths.computeSectionPoints)
+            ? SectionsMaths.computeSectionPoints(rawPoints)
+            : rawPoints;
+
+        // 3) Construction des liaisons (segments + congés circulaires bridés) via GeomKernel.
+        if (typeof RattachementsMaths !== 'undefined' && RattachementsMaths.buildProfileCurves) {
+            return RattachementsMaths.buildProfileCurves(sectionPoints, sectionsData);
+        } else {
+            // Fallback : comportement historique si les modules ne sont pas chargés.
+            var edgeTypes = sectionsData.edgeTypes || [];
+            var rhos = sectionsData.rhos || [];
+            var edgeFilletRadii = [];
+            for (var j = 0; j < sectionPoints.length - 1; j++) {
+                edgeFilletRadii.push((edgeTypes[j] === 'courbe' && rhos[j] > 0) ? rhos[j] : 0);
+            }
+            return K.buildProfileFromPolyline(sectionPoints, edgeFilletRadii);
+        }
     }
 
     /**
@@ -194,7 +200,6 @@ var BottleMaths = (function () {
     return {
         getSectionRadiusAtAngle: getSectionRadiusAtAngle,
         getSectionRingPoints: getSectionRingPoints,
-        getMeridianSectionPoints: getMeridianSectionPoints,
         buildExteriorProfile: buildExteriorProfile,
         buildPuntProfile: buildPuntProfile,
         buildInteriorProfile: buildInteriorProfile,

@@ -218,8 +218,8 @@ main {
     border-radius: inherit;
 }
 #viewport-3d { background-color: #FFFFFF; } 
-#viewport-2d { background-color: #FFFFFF; } 
-#canvas-2d { background: transparent; box-shadow: 0 0 20px rgba(0,0,0,0.04); cursor: move; }
+#viewport-2d { background-color: #FFFFFF; }
+#canvas-2d { background: transparent; box-shadow: 0 0 20px rgba(0,0,0,0.04); cursor: grab; }
 #viewport-outillage { background-color: #FFFFFF; } 
 
 /* ==========================================

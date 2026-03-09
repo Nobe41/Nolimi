@@ -12,6 +12,7 @@ const paperFormats = {
     'A3_P': { w: 297, h: 420 },
     'A3_L': { w: 420, h: 297 }
 };
+window.paperFormats = paperFormats;
 
 function resizeCanvas2D() {
     if (view2DContainer.clientWidth === 0 || view2DContainer.clientHeight === 0) return;
@@ -412,11 +413,17 @@ function draw2D() {
     ctx2d.restore(); 
 }
 
+function setup2DControlsListeners() {
+    const ids = ['paper-format-select', 'drawing-scale-select', 'cb-vue-dessous', 'cartouche-title', 'cartouche-drafter', 'cartouche-checker', 'cartouche-capacity'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const ev = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+        el.addEventListener(ev, () => { if (typeof draw2D === 'function') draw2D(); });
+    });
+}
+
 window.addEventListener('load', () => {
     setTimeout(resizeCanvas2D, 100);
-    
-    const cbVueDessous = document.getElementById('cb-vue-dessous');
-    if (cbVueDessous) {
-        cbVueDessous.addEventListener('change', draw2D);
-    }
+    setup2DControlsListeners();
 });
