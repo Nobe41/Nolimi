@@ -170,6 +170,8 @@
             var sessionInput = document.getElementById('login-session-link');
             var btnSessionJoin = document.getElementById('btn-session-join');
             var invalidBtnTimer = null;
+            var autoJoinTimer = null;
+            var joinInProgress = false;
 
             function parseSessionId(input) {
                 if (typeof NolimiAuth === 'undefined' || !NolimiAuth.parseSessionLink) return '';
@@ -219,11 +221,13 @@
             }
 
             function tryJoinSession() {
+                if (joinInProgress) return;
                 if (!sessionInput || !isValidSessionLink(sessionInput.value)) {
                     showInvalidSessionBtn();
                     return;
                 }
 
+                joinInProgress = true;
                 var sessionId = parseSessionId(sessionInput.value);
                 persistSession(sessionId);
                 errEl.textContent = '';
@@ -248,13 +252,28 @@
                     if (authResult.error) {
                         errEl.textContent = authResult.error.message || 'Impossible de rejoindre la session.';
                         setJoinBtnLoading(false);
+                        joinInProgress = false;
                         return;
                     }
                     goToSession(sessionId);
                 }).catch(function () {
                     errEl.textContent = 'Erreur réseau. Réessayez.';
                     setJoinBtnLoading(false);
+                    joinInProgress = false;
                 });
+            }
+
+            function scheduleAutoJoin() {
+                if (autoJoinTimer) clearTimeout(autoJoinTimer);
+                autoJoinTimer = setTimeout(function () {
+                    if (!sessionInput || !isValidSessionLink(sessionInput.value)) return;
+                    tryJoinSession();
+                }, 400);
+            }
+
+            function autoJoinFromValidLink() {
+                if (!sessionInput || !isValidSessionLink(sessionInput.value)) return;
+                tryJoinSession();
             }
 
             function getSessionForRedirect() {
@@ -280,12 +299,20 @@
                     var sessionId = parseSessionId(sessionInput.value);
                     if (isValidSessionLink(sessionInput.value)) {
                         persistSession(sessionId);
+                        scheduleAutoJoin();
                     }
+                });
+                sessionInput.addEventListener('paste', function () {
+                    setTimeout(scheduleAutoJoin, 50);
                 });
             }
 
             if (typeof NolimiAuth !== 'undefined' && NolimiAuth.redirectIfAlreadyLoggedIn) {
-                NolimiAuth.redirectIfAlreadyLoggedIn(getSessionForRedirect());
+                NolimiAuth.redirectIfAlreadyLoggedIn(getSessionForRedirect()).then(function () {
+                    autoJoinFromValidLink();
+                });
+            } else {
+                autoJoinFromValidLink();
             }
 
             if (btnSessionJoin) {

@@ -198,10 +198,16 @@ var NolimiAuth = (function () {
     function redirectIfAlreadyLoggedIn(sessionId) {
         var sb = getClient();
         if (!sb) return Promise.resolve();
+        var parsedSession = sessionId ? parseSessionLink(sessionId) : '';
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            if (session && !isAnonymousSession(session)) {
-                window.location.replace(getAppUrl(sessionId || ''));
+            if (!session) return;
+            if (!isAnonymousSession(session)) {
+                window.location.replace(getAppUrl(parsedSession || ''));
+                return;
+            }
+            if (parsedSession && isValidSessionId(parsedSession)) {
+                window.location.replace(getAppUrl(parsedSession));
             }
         });
     }
