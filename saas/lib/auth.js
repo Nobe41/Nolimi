@@ -31,9 +31,12 @@ var NolimiAuth = (function () {
 
     function getAppUrl(sessionId) {
         var url = resolveUrl('../saas/app.html?start=1');
+        if (!sessionId) {
+            sessionId = getPendingSession();
+        }
         if (!sessionId) return url;
         var parsed = parseSessionLink(sessionId);
-        if (!parsed) return url;
+        if (!parsed || !isValidSessionId(parsed)) return url;
         var u = new URL(url);
         u.searchParams.set('session', parsed);
         return u.href;
@@ -50,6 +53,40 @@ var NolimiAuth = (function () {
             }
         } catch (e) { /* ignore */ }
         return raw;
+    }
+
+    function isValidSessionId(sessionId) {
+        return !!(sessionId && /^[a-zA-Z0-9_-]{6,}$/.test(sessionId));
+    }
+
+    function persistPendingSession(sessionId) {
+        if (!sessionId) return;
+        try {
+            sessionStorage.setItem('nolimi-pending-session', sessionId);
+        } catch (e) { /* ignore */ }
+        try {
+            var loginUrl = new URL(window.location.href);
+            loginUrl.searchParams.set('session', sessionId);
+            window.history.replaceState({}, '', loginUrl.href);
+        } catch (e2) { /* ignore */ }
+    }
+
+    function getPendingSession() {
+        try {
+            var fromUrl = new URLSearchParams(window.location.search).get('session');
+            if (fromUrl && isValidSessionId(fromUrl.trim())) return fromUrl.trim();
+        } catch (e) { /* ignore */ }
+        try {
+            var fromStorage = sessionStorage.getItem('nolimi-pending-session');
+            if (fromStorage && isValidSessionId(fromStorage.trim())) return fromStorage.trim();
+        } catch (e2) { /* ignore */ }
+        return '';
+    }
+
+    function clearPendingSession() {
+        try {
+            sessionStorage.removeItem('nolimi-pending-session');
+        } catch (e) { /* ignore */ }
     }
 
     function redirectToLogin(sessionId) {
@@ -134,6 +171,10 @@ var NolimiAuth = (function () {
         bindLogoutButton: bindLogoutButton,
         getLoginUrl: getLoginUrl,
         getAppUrl: getAppUrl,
-        parseSessionLink: parseSessionLink
+        parseSessionLink: parseSessionLink,
+        isValidSessionId: isValidSessionId,
+        persistPendingSession: persistPendingSession,
+        getPendingSession: getPendingSession,
+        clearPendingSession: clearPendingSession
     };
 })();

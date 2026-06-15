@@ -66,8 +66,15 @@ var RealtimeEvents = (function () {
         }
 
         if (peersText) {
-            var n = RealtimeState.getPeerCount() || 1;
-            peersText.textContent = n === 1 ? '1 participant connecté' : n + ' participants connectés';
+            if (!connected) {
+                peersText.textContent = '';
+            } else {
+                var n = RealtimeState.getPeerCount();
+                if (typeof n !== 'number' || n < 0) n = 0;
+                peersText.textContent = n === 1
+                    ? '1 participant connecté'
+                    : n + ' participants connectés';
+            }
         }
     }
 

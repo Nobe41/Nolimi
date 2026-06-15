@@ -91,11 +91,25 @@ var RealtimeFeature = (function () {
         return false;
     }
 
+    function countConnectedPeers(activeChannel) {
+        if (!activeChannel || !activeChannel.presenceState) return 0;
+        var state = activeChannel.presenceState();
+        var total = 0;
+        for (var key in state) {
+            if (!Object.prototype.hasOwnProperty.call(state, key)) continue;
+            var entries = state[key];
+            total += (entries && entries.length) ? entries.length : 1;
+        }
+        return total;
+    }
+
     function updatePresenceCount() {
-        if (!channel || !channel.presenceState) return;
-        var state = channel.presenceState();
-        var count = Object.keys(state).length;
-        RealtimeState.setPeerCount(count);
+        if (!channel || !RealtimeState.isConnected()) {
+            RealtimeState.setPeerCount(0);
+        } else {
+            var total = countConnectedPeers(channel);
+            RealtimeState.setPeerCount(Math.max(0, total - 1));
+        }
         if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
             RealtimeEvents.refreshUI();
         }
@@ -114,6 +128,9 @@ var RealtimeFeature = (function () {
         }
         RealtimeState.reset();
         updateUrlSession(null);
+        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
+            RealtimeEvents.refreshUI();
+        }
     }
 
     function completeSessionJoin(sessionId, displayName, role) {

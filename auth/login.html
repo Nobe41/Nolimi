@@ -178,10 +178,33 @@
 
             function isValidSessionLink(input) {
                 var sessionId = parseSessionId(input);
-                return !!(sessionId && /^[a-zA-Z0-9_-]{6,}$/.test(sessionId));
+                return typeof NolimiAuth !== 'undefined'
+                    && NolimiAuth.isValidSessionId
+                    && NolimiAuth.isValidSessionId(sessionId);
+            }
+
+            function persistSession(sessionId) {
+                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.persistPendingSession) {
+                    NolimiAuth.persistPendingSession(sessionId);
+                }
+            }
+
+            function resetJoinBtn() {
+                if (!btnSessionJoin) return;
+                btnSessionJoin.disabled = false;
+                btnSessionJoin.textContent = 'Rejoindre';
+            }
+
+            function setJoinBtnLoading(loading) {
+                if (!btnSessionJoin) return;
+                btnSessionJoin.disabled = !!loading;
+                btnSessionJoin.textContent = loading ? '...' : 'Rejoindre';
             }
 
             function goToSession(sessionId) {
+                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.clearPendingSession) {
+                    NolimiAuth.clearPendingSession();
+                }
                 window.location.replace(NolimiAuth.getAppUrl(sessionId));
             }
 
@@ -202,13 +225,21 @@
                 }
 
                 var sessionId = parseSessionId(sessionInput.value);
-                var sb = (typeof NolimiAuth !== 'undefined' && NolimiAuth.getClient) ? NolimiAuth.getClient() : null;
-                if (!sb) return;
+                persistSession(sessionId);
+                errEl.textContent = '';
 
-                if (btnSessionJoin) {
-                    btnSessionJoin.disabled = true;
-                    btnSessionJoin.textContent = '...';
+                if (typeof NolimiAuth === 'undefined' || !NolimiAuth.getClient) {
+                    errEl.textContent = 'Service de connexion indisponible.';
+                    return;
                 }
+
+                var sb = NolimiAuth.getClient();
+                if (!sb) {
+                    errEl.textContent = 'Configuration Supabase manquante.';
+                    return;
+                }
+
+                setJoinBtnLoading(true);
 
                 sb.auth.getSession().then(function (result) {
                     var authSession = result && result.data ? result.data.session : null;
@@ -219,44 +250,56 @@
 
                     var email = document.getElementById('email').value.trim();
                     var password = document.getElementById('password').value;
+
                     if (!email || !password) {
-                        if (btnSessionJoin) {
-                            btnSessionJoin.disabled = false;
-                            btnSessionJoin.textContent = 'Rejoindre';
-                        }
+                        errEl.textContent = 'Entrez votre email et mot de passe pour rejoindre la session.';
+                        setJoinBtnLoading(false);
+                        document.getElementById('email').focus();
                         return;
                     }
 
                     NolimiAuth.signInWithPassword(email, password).then(function (signInResult) {
                         if (signInResult.error) {
-                            if (btnSessionJoin) {
-                                btnSessionJoin.disabled = false;
-                                btnSessionJoin.textContent = 'Rejoindre';
-                            }
+                            errEl.textContent = signInResult.error.message;
+                            setJoinBtnLoading(false);
                             return;
                         }
                         goToSession(sessionId);
                     }).catch(function () {
-                        if (btnSessionJoin) {
-                            btnSessionJoin.disabled = false;
-                            btnSessionJoin.textContent = 'Rejoindre';
-                        }
+                        errEl.textContent = 'Erreur réseau. Réessayez.';
+                        setJoinBtnLoading(false);
                     });
+                }).catch(function () {
+                    errEl.textContent = 'Erreur réseau. Réessayez.';
+                    setJoinBtnLoading(false);
                 });
             }
 
             function getSessionForRedirect() {
                 var fromUrl = new URLSearchParams(window.location.search).get('session');
-                if (fromUrl) return fromUrl;
-                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.parseSessionLink && sessionInput) {
-                    return NolimiAuth.parseSessionLink(sessionInput.value);
+                if (fromUrl && isValidSessionLink(fromUrl)) return parseSessionId(fromUrl);
+                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.getPendingSession) {
+                    var pending = NolimiAuth.getPendingSession();
+                    if (pending) return pending;
+                }
+                if (sessionInput && isValidSessionLink(sessionInput.value)) {
+                    return parseSessionId(sessionInput.value);
                 }
                 return '';
             }
 
             if (sessionInput) {
                 var sessionFromUrl = new URLSearchParams(window.location.search).get('session');
-                if (sessionFromUrl) sessionInput.value = sessionFromUrl;
+                if (sessionFromUrl) {
+                    sessionInput.value = sessionFromUrl;
+                    persistSession(sessionFromUrl);
+                }
+                sessionInput.addEventListener('input', function () {
+                    var sessionId = parseSessionId(sessionInput.value);
+                    if (isValidSessionLink(sessionInput.value)) {
+                        persistSession(sessionId);
+                    }
+                });
             }
 
             if (typeof NolimiAuth !== 'undefined' && NolimiAuth.redirectIfAlreadyLoggedIn) {
@@ -297,7 +340,12 @@
                         submitBtn.textContent = 'Connexion';
                         return;
                     }
-                    window.location.replace(NolimiAuth.getAppUrl(getSessionForRedirect()));
+                    var sessionId = getSessionForRedirect();
+                    if (sessionId) {
+                        goToSession(sessionId);
+                    } else {
+                        window.location.replace(NolimiAuth.getAppUrl());
+                    }
                 }).catch(function () {
                     errEl.textContent = 'Erreur réseau. Réessayez.';
                     submitBtn.disabled = false;
