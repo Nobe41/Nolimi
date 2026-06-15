@@ -131,6 +131,31 @@ var NolimiAuth = (function () {
         });
     }
 
+    function signInAnonymously() {
+        var sb = getClient();
+        if (!sb) {
+            return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
+        }
+        return sb.auth.signInAnonymously();
+    }
+
+    function ensureAuthForSessionJoin(email, password) {
+        var sb = getClient();
+        if (!sb) {
+            return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
+        }
+        return sb.auth.getSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            if (session) return { data: { session: session }, error: null };
+
+            var hasCredentials = String(email || '').trim() && String(password || '');
+            if (hasCredentials) {
+                return signInWithPassword(email, password);
+            }
+            return signInAnonymously();
+        });
+    }
+
     function signOut() {
         var sb = getClient();
         if (!sb) {
@@ -166,6 +191,8 @@ var NolimiAuth = (function () {
         getClient: getClient,
         requireSession: requireSession,
         signInWithPassword: signInWithPassword,
+        signInAnonymously: signInAnonymously,
+        ensureAuthForSessionJoin: ensureAuthForSessionJoin,
         signOut: signOut,
         redirectIfAlreadyLoggedIn: redirectIfAlreadyLoggedIn,
         bindLogoutButton: bindLogoutButton,

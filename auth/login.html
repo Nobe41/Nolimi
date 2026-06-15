@@ -241,34 +241,16 @@
 
                 setJoinBtnLoading(true);
 
-                sb.auth.getSession().then(function (result) {
-                    var authSession = result && result.data ? result.data.session : null;
-                    if (authSession) {
-                        goToSession(sessionId);
+                var email = document.getElementById('email').value.trim();
+                var password = document.getElementById('password').value;
+
+                NolimiAuth.ensureAuthForSessionJoin(email, password).then(function (authResult) {
+                    if (authResult.error) {
+                        errEl.textContent = authResult.error.message || 'Impossible de rejoindre la session.';
+                        setJoinBtnLoading(false);
                         return;
                     }
-
-                    var email = document.getElementById('email').value.trim();
-                    var password = document.getElementById('password').value;
-
-                    if (!email || !password) {
-                        errEl.textContent = 'Entrez votre email et mot de passe pour rejoindre la session.';
-                        setJoinBtnLoading(false);
-                        document.getElementById('email').focus();
-                        return;
-                    }
-
-                    NolimiAuth.signInWithPassword(email, password).then(function (signInResult) {
-                        if (signInResult.error) {
-                            errEl.textContent = signInResult.error.message;
-                            setJoinBtnLoading(false);
-                            return;
-                        }
-                        goToSession(sessionId);
-                    }).catch(function () {
-                        errEl.textContent = 'Erreur réseau. Réessayez.';
-                        setJoinBtnLoading(false);
-                    });
+                    goToSession(sessionId);
                 }).catch(function () {
                     errEl.textContent = 'Erreur réseau. Réessayez.';
                     setJoinBtnLoading(false);
