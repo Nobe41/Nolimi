@@ -322,12 +322,18 @@
                         submitBtn.textContent = 'Connexion';
                         return;
                     }
-                    var sessionId = getSessionForRedirect();
+                    var sessionId = '';
+                    if (sessionInput && isValidSessionLink(sessionInput.value)) {
+                        sessionId = parseSessionId(sessionInput.value);
+                    }
                     if (sessionId) {
                         goToSession(sessionId);
-                    } else {
-                        window.location.replace(NolimiAuth.getAppUrl());
+                        return;
                     }
+                    if (typeof NolimiAuth.clearPendingSession === 'function') {
+                        NolimiAuth.clearPendingSession();
+                    }
+                    window.location.replace(NolimiAuth.getAppUrl());
                 }).catch(function () {
                     errEl.textContent = 'Erreur réseau. Réessayez.';
                     submitBtn.disabled = false;

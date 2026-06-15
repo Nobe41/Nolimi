@@ -31,15 +31,19 @@ var NolimiAuth = (function () {
 
     function getAppUrl(sessionId) {
         var url = resolveUrl('../saas/app.html?start=1');
-        if (!sessionId) {
-            sessionId = getPendingSession();
-        }
         if (!sessionId) return url;
         var parsed = parseSessionLink(sessionId);
         if (!parsed || !isValidSessionId(parsed)) return url;
         var u = new URL(url);
         u.searchParams.set('session', parsed);
         return u.href;
+    }
+
+    function isAnonymousSession(session) {
+        if (!session || !session.user) return false;
+        if (session.user.is_anonymous === true) return true;
+        var provider = session.user.app_metadata && session.user.app_metadata.provider;
+        return provider === 'anonymous';
     }
 
     function parseSessionLink(input) {
@@ -87,6 +91,13 @@ var NolimiAuth = (function () {
         try {
             sessionStorage.removeItem('nolimi-pending-session');
         } catch (e) { /* ignore */ }
+        try {
+            var u = new URL(window.location.href);
+            if (u.searchParams.has('session')) {
+                u.searchParams.delete('session');
+                window.history.replaceState({}, '', u.href);
+            }
+        } catch (e2) { /* ignore */ }
     }
 
     function redirectToLogin(sessionId) {
@@ -125,9 +136,18 @@ var NolimiAuth = (function () {
         if (!sb) {
             return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
         }
-        return sb.auth.signInWithPassword({
+        var credentials = {
             email: String(email || '').trim(),
             password: String(password || '')
+        };
+        return sb.auth.getSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            if (session && isAnonymousSession(session)) {
+                return sb.auth.signOut().then(function () {
+                    return sb.auth.signInWithPassword(credentials);
+                });
+            }
+            return sb.auth.signInWithPassword(credentials);
         });
     }
 
@@ -146,11 +166,17 @@ var NolimiAuth = (function () {
         }
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            if (session) return { data: { session: session }, error: null };
-
             var hasCredentials = String(email || '').trim() && String(password || '');
+
             if (hasCredentials) {
+                if (session && !isAnonymousSession(session)) {
+                    return { data: { session: session }, error: null };
+                }
                 return signInWithPassword(email, password);
+            }
+
+            if (session) {
+                return { data: { session: session }, error: null };
             }
             return signInAnonymously();
         });
@@ -174,7 +200,9 @@ var NolimiAuth = (function () {
         if (!sb) return Promise.resolve();
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            if (session) window.location.replace(getAppUrl(sessionId));
+            if (session && !isAnonymousSession(session)) {
+                window.location.replace(getAppUrl(sessionId || ''));
+            }
         });
     }
 
