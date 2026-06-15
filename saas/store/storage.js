@@ -151,6 +151,9 @@ var WorkspaceAutosave = (function () {
         if (isApplyingRestore) return;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(saveNow, DEBOUNCE_MS);
+        if (typeof RealtimeFeature !== 'undefined' && RealtimeFeature.onLocalChange) {
+            RealtimeFeature.onLocalChange();
+        }
     }
 
     function clear() {

@@ -642,6 +642,7 @@ if (typeof UIControls !== 'undefined' && UIControls.syncAllRangeSliders) {
     UIControls.syncAllRangeSliders();
 }
 if (typeof TopbarShared !== 'undefined' && TopbarShared.init) TopbarShared.init();
+if (typeof RealtimeFeature !== 'undefined' && RealtimeFeature.init) RealtimeFeature.init();
 if (typeof DisplayShared !== 'undefined' && DisplayShared.init) DisplayShared.init();
 if (typeof HistoryShared !== 'undefined' && HistoryShared.init) HistoryShared.init();
 if (typeof UIEvents !== 'undefined' && UIEvents.init) UIEvents.init();

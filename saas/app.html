@@ -269,6 +269,32 @@
                             </label>
                         </div>
                     </div>
+                    <div class="dropdown realtime-dropdown">
+                        <button id="btn-realtime-menu" class="btn-realtime" type="button" title="Partager la session" aria-label="Partager la session">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                            </svg>
+                        </button>
+                        <div id="realtime-dropdown" class="dropdown-content dropdown-right hidden realtime-panel">
+                            <div id="realtime-idle">
+                                <button id="btn-realtime-create" type="button">Créer une session</button>
+                                <div class="realtime-join-row">
+                                    <input id="realtime-join-input" type="text" placeholder="Lien ou code session">
+                                    <button id="btn-realtime-join" type="button">Rejoindre</button>
+                                </div>
+                            </div>
+                            <div id="realtime-active" class="hidden">
+                                <p id="realtime-status-text" class="realtime-status"></p>
+                                <div class="realtime-link-row">
+                                    <input id="realtime-link-input" type="text" readonly>
+                                    <button id="btn-realtime-copy" type="button">Copier</button>
+                                </div>
+                                <p id="realtime-peers-text" class="realtime-peers"></p>
+                                <button id="btn-realtime-leave" type="button" class="realtime-leave-btn">Quitter la session</button>
+                            </div>
+                        </div>
+                    </div>
                     <button id="btn-undo" class="btn-fichier" type="button" title="Annuler">&lt;</button>
                     <button id="btn-redo" class="btn-fichier" type="button" title="Rétablir">&gt;</button>
                 </div>
@@ -348,6 +374,11 @@
     <script src="shared/navigation/events.js"></script>
     <script src="shared/navigation/function.js"></script>
     <script src="shared/topbar/function.js"></script>
+    <script src="features/realtime/rules.js"></script>
+    <script src="features/realtime/state.js"></script>
+    <script src="features/realtime/cursor.js"></script>
+    <script src="features/realtime/function.js"></script>
+    <script src="features/realtime/events.js"></script>
     <script src="shared/display/function.js"></script>
     <script src="shared/history/function.js"></script>
     <script src="layout/ui-controls.js"></script>

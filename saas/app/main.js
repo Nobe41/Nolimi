@@ -8,6 +8,10 @@ function bootAtelier() {
         NolimiAuth.bindLogoutButton('btn-logout');
     }
 
+    if (typeof RealtimeFeature !== 'undefined' && RealtimeFeature.tryAutoJoinFromUrl) {
+        RealtimeFeature.tryAutoJoinFromUrl();
+    }
+
     setTimeout(function () {
         if (typeof initLogiciel === 'function' && !isLogicielInit) {
             initLogiciel();

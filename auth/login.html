@@ -86,6 +86,55 @@
         .login-legal a:hover {
             text-decoration: underline;
         }
+        .login-session-bar {
+            position: fixed;
+            bottom: 1.25rem;
+            left: 1.5rem;
+            right: 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+        .login-session-row {
+            display: flex;
+            gap: 0.5rem;
+            width: 100%;
+            max-width: 320px;
+        }
+        .login-session-row input {
+            flex: 1;
+            min-width: 0;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.85rem;
+            border: 1px solid var(--nolimi-border);
+            border-radius: 6px;
+            background: transparent;
+        }
+        .login-session-row input:focus {
+            outline: none;
+            border-color: var(--nolimi-accent);
+        }
+        .login-session-row button {
+            flex-shrink: 0;
+            padding: 0.6rem 0.85rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            background: var(--nolimi-accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .login-session-row button:hover { background: var(--nolimi-accent-hover); }
+        .login-session-row button:disabled { opacity: 0.6; cursor: wait; }
+        .login-session-row button.invalid {
+            background: var(--nolimi-danger) !important;
+        }
+        .login-session-row button.invalid:hover {
+            background: var(--nolimi-danger) !important;
+        }
+        .centre {
+            padding-bottom: 4rem;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../saas/config/supabase.config.js"></script>
@@ -107,14 +156,123 @@
             <button type="submit" id="btn-submit">Connexion</button>
         </form>
     </main>
+    <div class="login-session-bar">
+        <div class="login-session-row">
+            <input type="text" id="login-session-link" placeholder="Collez le lien de session ici" autocomplete="off">
+            <button type="button" id="btn-session-join">Rejoindre</button>
+        </div>
+    </div>
     <script>
         (function () {
             var form = document.getElementById('form-login');
             var errEl = document.getElementById('error-msg');
             var submitBtn = document.getElementById('btn-submit');
+            var sessionInput = document.getElementById('login-session-link');
+            var btnSessionJoin = document.getElementById('btn-session-join');
+            var invalidBtnTimer = null;
+
+            function parseSessionId(input) {
+                if (typeof NolimiAuth === 'undefined' || !NolimiAuth.parseSessionLink) return '';
+                return NolimiAuth.parseSessionLink(input);
+            }
+
+            function isValidSessionLink(input) {
+                var sessionId = parseSessionId(input);
+                return !!(sessionId && /^[a-zA-Z0-9_-]{6,}$/.test(sessionId));
+            }
+
+            function goToSession(sessionId) {
+                window.location.replace(NolimiAuth.getAppUrl(sessionId));
+            }
+
+            function showInvalidSessionBtn() {
+                if (!btnSessionJoin) return;
+                if (invalidBtnTimer) clearTimeout(invalidBtnTimer);
+                btnSessionJoin.classList.add('invalid');
+                invalidBtnTimer = setTimeout(function () {
+                    btnSessionJoin.classList.remove('invalid');
+                    invalidBtnTimer = null;
+                }, 2000);
+            }
+
+            function tryJoinSession() {
+                if (!sessionInput || !isValidSessionLink(sessionInput.value)) {
+                    showInvalidSessionBtn();
+                    return;
+                }
+
+                var sessionId = parseSessionId(sessionInput.value);
+                var sb = (typeof NolimiAuth !== 'undefined' && NolimiAuth.getClient) ? NolimiAuth.getClient() : null;
+                if (!sb) return;
+
+                if (btnSessionJoin) {
+                    btnSessionJoin.disabled = true;
+                    btnSessionJoin.textContent = '...';
+                }
+
+                sb.auth.getSession().then(function (result) {
+                    var authSession = result && result.data ? result.data.session : null;
+                    if (authSession) {
+                        goToSession(sessionId);
+                        return;
+                    }
+
+                    var email = document.getElementById('email').value.trim();
+                    var password = document.getElementById('password').value;
+                    if (!email || !password) {
+                        if (btnSessionJoin) {
+                            btnSessionJoin.disabled = false;
+                            btnSessionJoin.textContent = 'Rejoindre';
+                        }
+                        return;
+                    }
+
+                    NolimiAuth.signInWithPassword(email, password).then(function (signInResult) {
+                        if (signInResult.error) {
+                            if (btnSessionJoin) {
+                                btnSessionJoin.disabled = false;
+                                btnSessionJoin.textContent = 'Rejoindre';
+                            }
+                            return;
+                        }
+                        goToSession(sessionId);
+                    }).catch(function () {
+                        if (btnSessionJoin) {
+                            btnSessionJoin.disabled = false;
+                            btnSessionJoin.textContent = 'Rejoindre';
+                        }
+                    });
+                });
+            }
+
+            function getSessionForRedirect() {
+                var fromUrl = new URLSearchParams(window.location.search).get('session');
+                if (fromUrl) return fromUrl;
+                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.parseSessionLink && sessionInput) {
+                    return NolimiAuth.parseSessionLink(sessionInput.value);
+                }
+                return '';
+            }
+
+            if (sessionInput) {
+                var sessionFromUrl = new URLSearchParams(window.location.search).get('session');
+                if (sessionFromUrl) sessionInput.value = sessionFromUrl;
+            }
 
             if (typeof NolimiAuth !== 'undefined' && NolimiAuth.redirectIfAlreadyLoggedIn) {
-                NolimiAuth.redirectIfAlreadyLoggedIn();
+                NolimiAuth.redirectIfAlreadyLoggedIn(getSessionForRedirect());
+            }
+
+            if (btnSessionJoin) {
+                btnSessionJoin.addEventListener('click', tryJoinSession);
+            }
+            if (sessionInput) {
+                sessionInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        tryJoinSession();
+                    }
+                });
             }
 
             form.addEventListener('submit', function (e) {
@@ -139,7 +297,7 @@
                         submitBtn.textContent = 'Connexion';
                         return;
                     }
-                    window.location.replace(NolimiAuth.getAppUrl());
+                    window.location.replace(NolimiAuth.getAppUrl(getSessionForRedirect()));
                 }).catch(function () {
                     errEl.textContent = 'Erreur réseau. Réessayez.';
                     submitBtn.disabled = false;

@@ -29,12 +29,40 @@ var NolimiAuth = (function () {
         return resolveUrl('../auth/login.html');
     }
 
-    function getAppUrl() {
-        return resolveUrl('../saas/app.html?start=1');
+    function getAppUrl(sessionId) {
+        var url = resolveUrl('../saas/app.html?start=1');
+        if (!sessionId) return url;
+        var parsed = parseSessionLink(sessionId);
+        if (!parsed) return url;
+        var u = new URL(url);
+        u.searchParams.set('session', parsed);
+        return u.href;
     }
 
-    function redirectToLogin() {
-        window.location.replace(getLoginUrl());
+    function parseSessionLink(input) {
+        var raw = String(input || '').trim();
+        if (!raw) return '';
+        try {
+            if (raw.indexOf('http') === 0 || raw.indexOf('?') !== -1 || raw.indexOf('=') !== -1) {
+                var url = new URL(raw, window.location.href);
+                var fromParam = url.searchParams.get('session');
+                if (fromParam) return fromParam.trim();
+            }
+        } catch (e) { /* ignore */ }
+        return raw;
+    }
+
+    function redirectToLogin(sessionId) {
+        var url = getLoginUrl();
+        if (sessionId) {
+            var parsed = parseSessionLink(sessionId);
+            if (parsed) {
+                var u = new URL(url);
+                u.searchParams.set('session', parsed);
+                url = u.href;
+            }
+        }
+        window.location.replace(url);
     }
 
     function requireSession() {
@@ -43,10 +71,14 @@ var NolimiAuth = (function () {
             redirectToLogin();
             return Promise.reject(new Error('supabase_not_configured'));
         }
+        var sessionFromUrl = null;
+        try {
+            sessionFromUrl = new URLSearchParams(window.location.search).get('session');
+        } catch (e) { /* ignore */ }
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
             if (session) return session;
-            redirectToLogin();
+            redirectToLogin(sessionFromUrl);
             return Promise.reject(new Error('no_session'));
         });
     }
@@ -75,12 +107,12 @@ var NolimiAuth = (function () {
         });
     }
 
-    function redirectIfAlreadyLoggedIn() {
+    function redirectIfAlreadyLoggedIn(sessionId) {
         var sb = getClient();
         if (!sb) return Promise.resolve();
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            if (session) window.location.replace(getAppUrl());
+            if (session) window.location.replace(getAppUrl(sessionId));
         });
     }
 
@@ -101,6 +133,7 @@ var NolimiAuth = (function () {
         redirectIfAlreadyLoggedIn: redirectIfAlreadyLoggedIn,
         bindLogoutButton: bindLogoutButton,
         getLoginUrl: getLoginUrl,
-        getAppUrl: getAppUrl
+        getAppUrl: getAppUrl,
+        parseSessionLink: parseSessionLink
     };
 })();
