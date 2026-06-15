@@ -1,5 +1,6 @@
 var UIEvents = (function () {
     var IDS = (typeof NavigationRules !== 'undefined' && NavigationRules.IDS) ? NavigationRules.IDS : {};
+    var applyingRemoteNav = false;
 
     function get(id) { return document.getElementById(id); }
     function setAddSectionBarVisibility(show) {
@@ -42,24 +43,75 @@ var UIEvents = (function () {
         }
     }
 
+    function notifyViewSync() {
+        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.scheduleBroadcast) {
+            RealtimeViewSync.scheduleBroadcast();
+        }
+    }
+
+    function switchView(activeBtn, activeView) {
+        var btn3D = get(IDS.btn3D), btn2D = get(IDS.btn2D);
+        var view3D = get(IDS.view3D), view2D = get(IDS.view2D);
+        if (!btn3D || !btn2D || !view3D || !view2D) return;
+        btn3D.classList.remove('active');
+        btn2D.classList.remove('active');
+        view3D.classList.add('hidden');
+        view2D.classList.add('hidden');
+        activeBtn.classList.add('active');
+        activeView.classList.remove('hidden');
+        NavigationState.patch({ activeView: activeBtn === btn2D ? '2d' : '3d' });
+        if (activeBtn === btn2D) {
+            if (typeof resizeCanvas2D === 'function') resizeCanvas2D();
+            if (typeof draw2D === 'function') draw2D();
+        } else if (typeof Canvas3DLifecycle !== 'undefined' && Canvas3DLifecycle.resize) {
+            Canvas3DLifecycle.resize();
+        }
+        if (!applyingRemoteNav) notifyViewSync();
+    }
+
+    function applyFromState(state) {
+        if (!state) return;
+        applyingRemoteNav = true;
+        try {
+            var btn3D = get(IDS.btn3D), btn2D = get(IDS.btn2D);
+            var view3D = get(IDS.view3D), view2D = get(IDS.view2D);
+            if (btn3D && btn2D && view3D && view2D && state.activeView === '2d') {
+                switchView(btn2D, view2D);
+            } else if (btn3D && btn2D && view3D && view2D) {
+                switchView(btn3D, view3D);
+            }
+
+            var leftTabMap = {
+                sections: IDS.tabSections,
+                calcule: IDS.tabCalcule,
+                gravure: IDS.tabGravure,
+                information: IDS.tabInformation,
+                rendu: IDS.tabRendu
+            };
+            var barTabMap = {
+                sections: IDS.barTabSections,
+                piqure: IDS.barTabPiqure,
+                bague: IDS.barTabBague,
+                interieur: IDS.barTabInterieur
+            };
+
+            if (state.activeLeftTab && leftTabMap[state.activeLeftTab]) {
+                var leftTab = get(leftTabMap[state.activeLeftTab]);
+                if (leftTab && !leftTab.classList.contains('active')) leftTab.click();
+            }
+            if (state.activeBarTab && barTabMap[state.activeBarTab]) {
+                var barTab = get(barTabMap[state.activeBarTab]);
+                if (barTab && !barTab.classList.contains('active')) barTab.click();
+            }
+        } finally {
+            applyingRemoteNav = false;
+        }
+    }
+
     function initViewSwitch() {
         var btn3D = get(IDS.btn3D), btn2D = get(IDS.btn2D);
         var view3D = get(IDS.view3D), view2D = get(IDS.view2D);
         if (!btn3D || !btn2D || !view3D || !view2D) return;
-
-        function switchView(activeBtn, activeView) {
-            btn3D.classList.remove('active');
-            btn2D.classList.remove('active');
-            view3D.classList.add('hidden');
-            view2D.classList.add('hidden');
-            activeBtn.classList.add('active');
-            activeView.classList.remove('hidden');
-            NavigationState.patch({ activeView: activeBtn === btn2D ? '2d' : '3d' });
-            if (activeBtn === btn2D) {
-                if (typeof resizeCanvas2D === 'function') resizeCanvas2D();
-                if (typeof draw2D === 'function') draw2D();
-            }
-        }
 
         if (!btn3D.dataset.navBound) {
             btn3D.dataset.navBound = '1';
@@ -118,15 +170,22 @@ var UIEvents = (function () {
         function showBarBague() { contentSections.classList.add('hidden'); contentPiqure.classList.add('hidden'); contentBague.classList.remove('hidden'); contentInterieur.classList.add('hidden'); if (barTabSections) barTabSections.classList.remove('active'); if (barTabPiqure) barTabPiqure.classList.remove('active'); if (barTabBague) barTabBague.classList.add('active'); if (barTabInterieur) barTabInterieur.classList.remove('active'); NavigationState.patch({ activeBarTab: 'bague' }); setAddSectionBarVisibility(true); refreshAfterTabChange(); }
         function showBarInterieur() { contentSections.classList.add('hidden'); contentPiqure.classList.add('hidden'); contentBague.classList.add('hidden'); contentInterieur.classList.remove('hidden'); if (barTabSections) barTabSections.classList.remove('active'); if (barTabPiqure) barTabPiqure.classList.remove('active'); if (barTabBague) barTabBague.classList.remove('active'); if (barTabInterieur) barTabInterieur.classList.add('active'); NavigationState.patch({ activeBarTab: 'interieur' }); setAddSectionBarVisibility(false); if (typeof InterieurFeature !== 'undefined' && InterieurFeature.render) InterieurFeature.render(); refreshAfterTabChange(); }
 
-        NavigationEvents.bind(tabSections, showLeftSections);
-        NavigationEvents.bind(tabCalcule, showLeftCalcule);
-        NavigationEvents.bind(tabGravure, showLeftGravure);
-        NavigationEvents.bind(tabInformation, showLeftInformation);
-        NavigationEvents.bind(tabRendu, showLeftRendu);
-        NavigationEvents.bind(barTabSections, showBarSections);
-        NavigationEvents.bind(barTabPiqure, showBarPiqure);
-        NavigationEvents.bind(barTabBague, showBarBague);
-        NavigationEvents.bind(barTabInterieur, showBarInterieur);
+        function wrapNavHandler(handler) {
+            return function () {
+                handler();
+                if (!applyingRemoteNav) notifyViewSync();
+            };
+        }
+
+        NavigationEvents.bind(tabSections, wrapNavHandler(showLeftSections));
+        NavigationEvents.bind(tabCalcule, wrapNavHandler(showLeftCalcule));
+        NavigationEvents.bind(tabGravure, wrapNavHandler(showLeftGravure));
+        NavigationEvents.bind(tabInformation, wrapNavHandler(showLeftInformation));
+        NavigationEvents.bind(tabRendu, wrapNavHandler(showLeftRendu));
+        NavigationEvents.bind(barTabSections, wrapNavHandler(showBarSections));
+        NavigationEvents.bind(barTabPiqure, wrapNavHandler(showBarPiqure));
+        NavigationEvents.bind(barTabBague, wrapNavHandler(showBarBague));
+        NavigationEvents.bind(barTabInterieur, wrapNavHandler(showBarInterieur));
         showLeftSections();
         showBarSections();
     }
@@ -138,6 +197,7 @@ var UIEvents = (function () {
     }
 
     return {
-        init: init
+        init: init,
+        applyFromState: applyFromState
     };
 })();

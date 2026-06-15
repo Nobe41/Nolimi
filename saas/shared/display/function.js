@@ -23,6 +23,8 @@ var DisplayShared = (function () {
             }
             if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) SceneSetup3D.applyDisplayOptions();
             if (typeof updateBouteille === 'function') updateBouteille();
+            if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.scheduleSave) WorkspaceAutosave.scheduleSave();
+            if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.scheduleBroadcast) RealtimeViewSync.scheduleBroadcast();
         }
 
         if (!axesToggle.dataset.bound) {

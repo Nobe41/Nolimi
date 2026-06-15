@@ -458,7 +458,12 @@ window.addEventListener('load', () => {
                 if (typeof Plans2DState !== 'undefined' && Plans2DState.setCamera) Plans2DState.setCamera(cam2D);
             },
             draw: draw2D,
-            resize: resizeCanvas2D
+            resize: resizeCanvas2D,
+            onCameraChange: function () {
+                if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.scheduleBroadcast) {
+                    RealtimeViewSync.scheduleBroadcast();
+                }
+            }
         });
     }
     setTimeout(resizeCanvas2D, 100);

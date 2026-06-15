@@ -7,6 +7,7 @@ var Canvas2DInteractions = (function () {
         var setCamera = config.setCamera;
         var draw = config.draw;
         var resize = config.resize;
+        var onCameraChange = config.onCameraChange;
         var dragging = false;
         var lastMouse = { x: 0, y: 0 };
 
@@ -26,6 +27,10 @@ var Canvas2DInteractions = (function () {
         });
         observer.observe(container, { attributes: true, attributeFilter: ['class'] });
 
+        function notifyCameraChange() {
+            if (onCameraChange) onCameraChange();
+        }
+
         canvas.addEventListener('mousedown', function (e) {
             dragging = true;
             lastMouse = { x: e.clientX, y: e.clientY };
@@ -39,8 +44,10 @@ var Canvas2DInteractions = (function () {
             setCamera(cam);
             lastMouse = { x: e.clientX, y: e.clientY };
             draw();
+            notifyCameraChange();
         });
         window.addEventListener('mouseup', function () {
+            if (dragging) notifyCameraChange();
             dragging = false;
             canvas.style.cursor = 'grab';
         });
@@ -57,6 +64,7 @@ var Canvas2DInteractions = (function () {
             cam.zoom = newZoom;
             setCamera(cam);
             draw();
+            notifyCameraChange();
         });
     }
 

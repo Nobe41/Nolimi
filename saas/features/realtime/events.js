@@ -105,7 +105,10 @@ var RealtimeEvents = (function () {
                 RealtimeFeature.joinSession(code)
                     .then(function () { refreshUI(); })
                     .catch(function (err) {
-                        alert('Impossible de rejoindre cette session. Vérifiez le lien ou le code.');
+                        var msg = (typeof RealtimeFeature.getJoinErrorMessage === 'function')
+                            ? RealtimeFeature.getJoinErrorMessage(err)
+                            : 'Impossible de rejoindre cette session. Vérifiez le lien ou le code.';
+                        alert(msg);
                         console.error(err);
                     })
                     .finally(function () { btnJoin.disabled = false; });

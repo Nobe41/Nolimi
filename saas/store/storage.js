@@ -59,6 +59,9 @@ var WorkspaceAutosave = (function () {
                 glassThicknessMm: window.interiorState.glassThicknessMm
             };
         }
+        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.collectViewState) {
+            payload.viewState = RealtimeViewSync.collectViewState();
+        }
         return payload;
     }
 
@@ -106,6 +109,11 @@ var WorkspaceAutosave = (function () {
             applyInputValues(normalized.inputs);
             if (normalized.navigationState && typeof NavigationState !== 'undefined' && NavigationState.patch) {
                 NavigationState.patch(normalized.navigationState);
+            }
+            if (normalized.viewState && typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.applyViewState) {
+                RealtimeViewSync.applyViewState(normalized.viewState, { force: true });
+            } else if (normalized.navigationState && typeof UIEvents !== 'undefined' && UIEvents.applyFromState) {
+                UIEvents.applyFromState(normalized.navigationState);
             }
             if (typeof setupListeners === 'function') setupListeners();
             if (typeof UIControls !== 'undefined' && UIControls.syncAllRangeSliders) UIControls.syncAllRangeSliders();

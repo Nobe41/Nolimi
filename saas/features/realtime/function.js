@@ -5,6 +5,7 @@ var RealtimeFeature = (function () {
     var broadcastTimer = null;
     var isApplyingRemote = false;
     var syncListenersBound = false;
+    var hostLeftHandled = false;
 
     function generateSessionId() {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -77,6 +78,19 @@ var RealtimeFeature = (function () {
         }
     }
 
+    function hasHostInPresence(activeChannel) {
+        if (!activeChannel || !activeChannel.presenceState) return false;
+        var state = activeChannel.presenceState();
+        for (var key in state) {
+            if (!Object.prototype.hasOwnProperty.call(state, key)) continue;
+            var presences = state[key];
+            for (var i = 0; i < presences.length; i++) {
+                if (presences[i] && presences[i].role === 'host') return true;
+            }
+        }
+        return false;
+    }
+
     function updatePresenceCount() {
         if (!channel || !channel.presenceState) return;
         var state = channel.presenceState();
@@ -87,11 +101,81 @@ var RealtimeFeature = (function () {
         }
     }
 
+    function abortJoinAttempt() {
+        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
+            RealtimeViewSync.stop();
+        }
+        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
+            RealtimeCursors.stop();
+        }
+        if (channel) {
+            channel.unsubscribe();
+            channel = null;
+        }
+        RealtimeState.reset();
+        updateUrlSession(null);
+    }
+
+    function completeSessionJoin(sessionId, displayName, role) {
+        channel.track({
+            user_id: userId,
+            role: role,
+            online_at: new Date().toISOString(),
+            name: displayName
+        });
+
+        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.start) {
+            RealtimeCursors.start(channel, userId, displayName);
+        }
+        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.start) {
+            RealtimeViewSync.start(channel);
+        }
+
+        RealtimeState.setSessionId(sessionId);
+        RealtimeState.setConnected(true);
+        updateUrlSession(sessionId);
+        bindSyncListeners();
+
+        if (RealtimeState.isHost()) {
+            sendFullPayload();
+            if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.scheduleBroadcast) {
+                RealtimeViewSync.scheduleBroadcast();
+            }
+        } else {
+            channel.send({ type: 'broadcast', event: 'request-state', payload: {} });
+        }
+
+        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
+            RealtimeEvents.refreshUI();
+        }
+    }
+
+    function handleHostLeft() {
+        if (hostLeftHandled || RealtimeState.isHost() || !RealtimeState.isConnected()) return;
+        hostLeftHandled = true;
+        alert('Le créateur de la session a quitté. La session est fermée.');
+        leaveSession();
+        hostLeftHandled = false;
+    }
+
+    function presenceLeftIncludesHost(payload) {
+        if (!payload || !payload.leftPresences) return false;
+        for (var i = 0; i < payload.leftPresences.length; i++) {
+            if (payload.leftPresences[i] && payload.leftPresences[i].role === 'host') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function subscribe(sessionId) {
         var sb = (typeof NolimiAuth !== 'undefined' && NolimiAuth.getClient) ? NolimiAuth.getClient() : null;
         if (!sb) return Promise.reject(new Error('supabase_not_configured'));
 
         if (channel) {
+            if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
+                RealtimeViewSync.stop();
+            }
             if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
                 RealtimeCursors.stop();
             }
@@ -107,63 +191,96 @@ var RealtimeFeature = (function () {
 
             userId = session.user.id;
             var displayName = (session.user.email || session.user.id || '').toString();
-            channel = sb.channel(getChannelName(sessionId), {
-                config: {
-                    broadcast: { self: false },
-                    presence: { key: userId }
+            var joiningAsHost = RealtimeState.isHost();
+
+            return new Promise(function (resolve, reject) {
+                var hostWaitTimer = null;
+                var joinCompleted = false;
+
+                function failJoin(errorCode) {
+                    if (joinCompleted) return;
+                    joinCompleted = true;
+                    if (hostWaitTimer) clearTimeout(hostWaitTimer);
+                    abortJoinAttempt();
+                    reject(new Error(errorCode || 'join_failed'));
                 }
-            });
 
-            channel
-                .on('broadcast', { event: 'payload' }, function (msg) {
-                    handleRemotePayload(msg.payload);
-                })
-                .on('broadcast', { event: 'request-state' }, function () {
-                    sendFullPayload();
-                })
-                .on('broadcast', { event: 'cursor' }, function (msg) {
-                    if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.handleBroadcast) {
-                        RealtimeCursors.handleBroadcast(msg.payload);
+                function succeedJoin(role) {
+                    if (joinCompleted) return;
+                    joinCompleted = true;
+                    if (hostWaitTimer) clearTimeout(hostWaitTimer);
+                    completeSessionJoin(sessionId, displayName, role);
+                    resolve(sessionId);
+                }
+
+                function tryGuestJoin() {
+                    if (joinCompleted || joiningAsHost) return;
+                    if (hasHostInPresence(channel)) {
+                        succeedJoin('guest');
                     }
-                })
-                .on('presence', { event: 'sync' }, updatePresenceCount)
-                .on('presence', { event: 'join' }, updatePresenceCount)
-                .on('presence', { event: 'leave' }, function (payload) {
-                    if (payload && payload.key && typeof RealtimeCursors !== 'undefined' && RealtimeCursors.removeUser) {
-                        RealtimeCursors.removeUser(payload.key);
-                    }
-                    updatePresenceCount();
-                })
-                .subscribe(function (status) {
-                    if (status !== 'SUBSCRIBED') return;
+                }
 
-                    channel.track({
-                        user_id: userId,
-                        online_at: new Date().toISOString(),
-                        name: displayName
-                    });
-
-                    if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.start) {
-                        RealtimeCursors.start(channel, userId, displayName);
-                    }
-
-                    RealtimeState.setSessionId(sessionId);
-                    RealtimeState.setConnected(true);
-                    updateUrlSession(sessionId);
-                    bindSyncListeners();
-
-                    if (RealtimeState.isHost()) {
-                        sendFullPayload();
-                    } else {
-                        channel.send({ type: 'broadcast', event: 'request-state', payload: {} });
-                    }
-
-                    if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
-                        RealtimeEvents.refreshUI();
+                channel = sb.channel(getChannelName(sessionId), {
+                    config: {
+                        broadcast: { self: false },
+                        presence: { key: userId }
                     }
                 });
 
-            return sessionId;
+                channel
+                    .on('broadcast', { event: 'payload' }, function (msg) {
+                        handleRemotePayload(msg.payload);
+                    })
+                    .on('broadcast', { event: 'request-state' }, function () {
+                        if (RealtimeState.isHost()) sendFullPayload();
+                    })
+                    .on('broadcast', { event: 'cursor' }, function (msg) {
+                        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.handleBroadcast) {
+                            RealtimeCursors.handleBroadcast(msg.payload);
+                        }
+                    })
+                    .on('broadcast', { event: 'view' }, function (msg) {
+                        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.handleRemote) {
+                            RealtimeViewSync.handleRemote(msg.payload);
+                        }
+                    })
+                    .on('broadcast', { event: 'session-closed' }, function () {
+                        handleHostLeft();
+                    })
+                    .on('presence', { event: 'sync' }, function () {
+                        updatePresenceCount();
+                        tryGuestJoin();
+                    })
+                    .on('presence', { event: 'join' }, updatePresenceCount)
+                    .on('presence', { event: 'leave' }, function (payload) {
+                        if (payload && payload.key && typeof RealtimeCursors !== 'undefined' && RealtimeCursors.removeUser) {
+                            RealtimeCursors.removeUser(payload.key);
+                        }
+                        if (presenceLeftIncludesHost(payload)) {
+                            handleHostLeft();
+                        }
+                        updatePresenceCount();
+                    })
+                    .subscribe(function (status) {
+                        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                            if (!joinCompleted) failJoin('channel_error');
+                            return;
+                        }
+                        if (status !== 'SUBSCRIBED') return;
+
+                        if (joiningAsHost) {
+                            succeedJoin('host');
+                            return;
+                        }
+
+                        tryGuestJoin();
+                        if (!joinCompleted) {
+                            hostWaitTimer = setTimeout(function () {
+                                if (!joinCompleted) failJoin('session_unavailable');
+                            }, RealtimeRules.HOST_WAIT_MS);
+                        }
+                    });
+            });
         });
     }
 
@@ -180,7 +297,20 @@ var RealtimeFeature = (function () {
         return subscribe(sessionId);
     }
 
+    function getJoinErrorMessage(err) {
+        if (err && err.message === 'session_unavailable') {
+            return 'Cette session n\'existe pas ou le créateur n\'est plus connecté.';
+        }
+        return 'Impossible de rejoindre cette session. Vérifiez le lien ou le code.';
+    }
+
     function leaveSession() {
+        if (RealtimeState.isHost() && channel) {
+            channel.send({ type: 'broadcast', event: 'session-closed', payload: {} });
+        }
+        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
+            RealtimeViewSync.stop();
+        }
         if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
             RealtimeCursors.stop();
         }
@@ -224,6 +354,7 @@ var RealtimeFeature = (function () {
         if (!sessionId || RealtimeState.isConnected()) return;
         joinSession(sessionId).catch(function (err) {
             console.warn('Rejoindre la session depuis l’URL impossible', err);
+            alert(getJoinErrorMessage(err));
         });
     }
 
@@ -243,6 +374,7 @@ var RealtimeFeature = (function () {
         onLocalChange: onLocalChange,
         getSessionUrl: getSessionUrl,
         parseSessionInput: parseSessionInput,
+        getJoinErrorMessage: getJoinErrorMessage,
         isApplyingRemote: function () { return isApplyingRemote; }
     };
 })();
