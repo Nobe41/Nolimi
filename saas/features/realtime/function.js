@@ -150,6 +150,12 @@ var RealtimeFeature = (function () {
 
         RealtimeState.setSessionId(sessionId);
         RealtimeState.setConnected(true);
+        RealtimeState.setSessionGuest(role === 'guest');
+        if (role === 'guest' && typeof NolimiAuth !== 'undefined' && NolimiAuth.isSessionGuestAccess && NolimiAuth.isSessionGuestAccess()) {
+            NolimiAuth.markSessionGuestAccess();
+        } else if (role !== 'guest' && typeof NolimiAuth !== 'undefined' && NolimiAuth.clearSessionGuestAccess) {
+            NolimiAuth.clearSessionGuestAccess();
+        }
         updateUrlSession(sessionId);
         bindSyncListeners();
 
@@ -167,12 +173,56 @@ var RealtimeFeature = (function () {
         }
     }
 
-    function handleHostLeft() {
+    function isActiveSessionGuest() {
+        if (RealtimeState.isSessionGuest()) return true;
+        if (typeof NolimiAuth !== 'undefined' && NolimiAuth.isSessionGuestAccess) {
+            return NolimiAuth.isSessionGuestAccess();
+        }
+        return false;
+    }
+
+    function kickSessionGuestToLogin(message) {
+        teardownSessionLocal();
+        if (typeof NolimiAuth !== 'undefined' && NolimiAuth.exitGuestAccess) {
+            NolimiAuth.exitGuestAccess(message);
+        }
+    }
+
+    function handleSessionEnded(message) {
         if (hostLeftHandled || RealtimeState.isHost() || !RealtimeState.isConnected()) return;
         hostLeftHandled = true;
-        alert('Le créateur de la session a quitté. La session est fermée.');
-        leaveSession();
+        if (isActiveSessionGuest()) {
+            kickSessionGuestToLogin(message);
+        } else {
+            teardownSessionLocal();
+        }
         hostLeftHandled = false;
+    }
+
+    function teardownSessionLocal() {
+        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
+            RealtimeViewSync.stop();
+        }
+        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
+            RealtimeCursors.stop();
+        }
+        if (channel) {
+            channel.unsubscribe();
+            channel = null;
+        }
+        if (broadcastTimer) {
+            clearTimeout(broadcastTimer);
+            broadcastTimer = null;
+        }
+        RealtimeState.reset();
+        updateUrlSession(null);
+        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
+            RealtimeEvents.refreshUI();
+        }
+    }
+
+    function handleHostLeft() {
+        handleSessionEnded('Le créateur de la session a quitté. La session est fermée.');
     }
 
     function presenceLeftIncludesHost(payload) {
@@ -218,8 +268,25 @@ var RealtimeFeature = (function () {
                     if (joinCompleted) return;
                     joinCompleted = true;
                     if (hostWaitTimer) clearTimeout(hostWaitTimer);
+                    var err = new Error(errorCode || 'join_failed');
                     abortJoinAttempt();
-                    reject(new Error(errorCode || 'join_failed'));
+                    if (typeof NolimiAuth !== 'undefined' && NolimiAuth.exitGuestAccess) {
+                        if (NolimiAuth.isSessionGuestAccess && NolimiAuth.isSessionGuestAccess()) {
+                            NolimiAuth.exitGuestAccess(getJoinErrorMessage(err));
+                            return;
+                        }
+                        if (NolimiAuth.isAnonymousUser) {
+                            NolimiAuth.isAnonymousUser().then(function (isAnon) {
+                                if (isAnon) {
+                                    NolimiAuth.exitGuestAccess(getJoinErrorMessage(err));
+                                    return;
+                                }
+                                reject(err);
+                            });
+                            return;
+                        }
+                    }
+                    reject(err);
                 }
 
                 function succeedJoin(role) {
@@ -267,6 +334,9 @@ var RealtimeFeature = (function () {
                     .on('presence', { event: 'sync' }, function () {
                         updatePresenceCount();
                         tryGuestJoin();
+                        if (RealtimeState.isConnected() && !RealtimeState.isHost() && channel && !hasHostInPresence(channel)) {
+                            handleSessionEnded('Le créateur de la session a quitté. La session est fermée.');
+                        }
                     })
                     .on('presence', { event: 'join' }, updatePresenceCount)
                     .on('presence', { event: 'leave' }, function (payload) {
@@ -280,7 +350,13 @@ var RealtimeFeature = (function () {
                     })
                     .subscribe(function (status) {
                         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                            if (!joinCompleted) failJoin('channel_error');
+                            if (!joinCompleted) {
+                                failJoin('channel_error');
+                            } else if (!RealtimeState.isHost() && RealtimeState.isConnected() && isActiveSessionGuest()) {
+                                kickSessionGuestToLogin('La session partagée a été interrompue.');
+                            } else if (!RealtimeState.isHost() && RealtimeState.isConnected()) {
+                                teardownSessionLocal();
+                            }
                             return;
                         }
                         if (status !== 'SUBSCRIBED') return;
@@ -302,15 +378,21 @@ var RealtimeFeature = (function () {
     }
 
     function createSession() {
+        if (typeof NolimiAuth !== 'undefined' && NolimiAuth.clearSessionGuestAccess) {
+            NolimiAuth.clearSessionGuestAccess();
+        }
         var sessionId = generateSessionId();
         RealtimeState.setHost(true);
         return subscribe(sessionId);
     }
 
-    function joinSession(rawInput) {
+    function joinSession(rawInput, viaInviteLink) {
         var sessionId = parseSessionInput(rawInput);
         if (!sessionId) return Promise.reject(new Error('empty_session'));
         RealtimeState.setHost(false);
+        if (viaInviteLink && typeof NolimiAuth !== 'undefined' && NolimiAuth.markSessionGuestAccess) {
+            NolimiAuth.markSessionGuestAccess();
+        }
         return subscribe(sessionId);
     }
 
@@ -322,28 +404,30 @@ var RealtimeFeature = (function () {
     }
 
     function leaveSession() {
+        var wasGuest = RealtimeState.isConnected() && !RealtimeState.isHost();
+
         if (RealtimeState.isHost() && channel) {
             channel.send({ type: 'broadcast', event: 'session-closed', payload: {} });
+            var activeChannel = channel;
+            var finishHostLeave = function () {
+                setTimeout(function () {
+                    if (channel === activeChannel) teardownSessionLocal();
+                }, 250);
+            };
+            if (typeof activeChannel.untrack === 'function') {
+                activeChannel.untrack().then(finishHostLeave).catch(finishHostLeave);
+            } else {
+                finishHostLeave();
+            }
+            return;
         }
-        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
-            RealtimeViewSync.stop();
+
+        if (wasGuest || isActiveSessionGuest()) {
+            kickSessionGuestToLogin('Vous avez quitté la session partagée.');
+            return;
         }
-        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
-            RealtimeCursors.stop();
-        }
-        if (channel) {
-            channel.unsubscribe();
-            channel = null;
-        }
-        if (broadcastTimer) {
-            clearTimeout(broadcastTimer);
-            broadcastTimer = null;
-        }
-        RealtimeState.reset();
-        updateUrlSession(null);
-        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
-            RealtimeEvents.refreshUI();
-        }
+
+        teardownSessionLocal();
     }
 
     function scheduleBroadcast() {
@@ -369,8 +453,24 @@ var RealtimeFeature = (function () {
     function tryAutoJoinFromUrl() {
         var sessionId = parseSessionFromUrl();
         if (!sessionId || RealtimeState.isConnected()) return;
-        joinSession(sessionId).catch(function (err) {
+        joinSession(sessionId, true).catch(function (err) {
             console.warn('Rejoindre la session depuis l’URL impossible', err);
+            if (typeof NolimiAuth !== 'undefined' && NolimiAuth.exitGuestAccess) {
+                if (NolimiAuth.isSessionGuestAccess && NolimiAuth.isSessionGuestAccess()) {
+                    NolimiAuth.exitGuestAccess(getJoinErrorMessage(err));
+                    return;
+                }
+                if (NolimiAuth.isAnonymousUser) {
+                    NolimiAuth.isAnonymousUser().then(function (isAnon) {
+                        if (isAnon) {
+                            NolimiAuth.exitGuestAccess(getJoinErrorMessage(err));
+                            return;
+                        }
+                        alert(getJoinErrorMessage(err));
+                    });
+                    return;
+                }
+            }
             alert(getJoinErrorMessage(err));
         });
     }

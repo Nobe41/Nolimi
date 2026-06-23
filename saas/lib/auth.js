@@ -43,7 +43,34 @@ var NolimiAuth = (function () {
         if (!session || !session.user) return false;
         if (session.user.is_anonymous === true) return true;
         var provider = session.user.app_metadata && session.user.app_metadata.provider;
-        return provider === 'anonymous';
+        if (provider === 'anonymous') return true;
+        var identities = session.user.identities;
+        if (Array.isArray(identities)) {
+            for (var i = 0; i < identities.length; i++) {
+                if (identities[i] && identities[i].provider === 'anonymous') return true;
+            }
+        }
+        return false;
+    }
+
+    function markSessionGuestAccess() {
+        try {
+            sessionStorage.setItem('nolimi-session-guest', '1');
+        } catch (e) { /* ignore */ }
+    }
+
+    function clearSessionGuestAccess() {
+        try {
+            sessionStorage.removeItem('nolimi-session-guest');
+        } catch (e) { /* ignore */ }
+    }
+
+    function isSessionGuestAccess() {
+        try {
+            return sessionStorage.getItem('nolimi-session-guest') === '1';
+        } catch (e) {
+            return false;
+        }
     }
 
     function parseSessionLink(input) {
@@ -113,20 +140,71 @@ var NolimiAuth = (function () {
         window.location.replace(url);
     }
 
+    function exitGuestAccess(message) {
+        clearSessionGuestAccess();
+        clearPendingSession();
+        try {
+            if (message) sessionStorage.setItem('nolimi-guest-exit-msg', message);
+        } catch (e) { /* ignore */ }
+        var sb = getClient();
+        if (!sb) {
+            redirectToLogin();
+            return Promise.resolve();
+        }
+        return sb.auth.signOut().then(function () {
+            redirectToLogin();
+        }).catch(function () {
+            redirectToLogin();
+        });
+    }
+
+    function isAnonymousUser() {
+        var sb = getClient();
+        if (!sb) return Promise.resolve(false);
+        return sb.auth.getSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            return isAnonymousSession(session);
+        });
+    }
+
+    function consumeGuestExitMessage() {
+        try {
+            var msg = sessionStorage.getItem('nolimi-guest-exit-msg');
+            if (msg) sessionStorage.removeItem('nolimi-guest-exit-msg');
+            return msg || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
     function requireSession() {
         var sb = getClient();
         if (!sb) {
             redirectToLogin();
             return Promise.reject(new Error('supabase_not_configured'));
         }
-        var sessionFromUrl = null;
-        try {
-            sessionFromUrl = new URLSearchParams(window.location.search).get('session');
-        } catch (e) { /* ignore */ }
+        var sessionFromUrl = getSessionFromCurrentUrl();
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            if (session) return session;
-            redirectToLogin(sessionFromUrl);
+            if (session) {
+                if (isAnonymousSession(session) && !sessionFromUrl) {
+                    return exitGuestAccess('Accès réservé via un lien de session partagée active.');
+                }
+                return session;
+            }
+
+            if (sessionFromUrl) {
+                return ensureGuestAuthForSessionLink(sessionFromUrl).then(function (guestSession) {
+                    if (guestSession) return guestSession;
+                    redirectToLogin(sessionFromUrl);
+                    return Promise.reject(new Error('guest_auth_failed'));
+                }).catch(function (err) {
+                    redirectToLogin(sessionFromUrl);
+                    return Promise.reject(err);
+                });
+            }
+
+            redirectToLogin(null);
             return Promise.reject(new Error('no_session'));
         });
     }
@@ -151,12 +229,38 @@ var NolimiAuth = (function () {
         });
     }
 
+    function mapGuestAuthError(error) {
+        if (!error) return 'Impossible de rejoindre la session.';
+        var msg = String(error.message || '');
+        var code = String(error.code || error.error_code || '');
+        if (/signups not allowed|signup.*disabled|new users.*sign up/i.test(msg + ' ' + code)) {
+            return 'Les inscriptions sont désactivées sur Supabase. Pour rejoindre via lien invité : Authentication → Providers → Email → activez « Allow new users to sign up » (les invités utilisent une connexion anonyme, pas l’email).';
+        }
+        if (/anonymous|sign-ins are disabled|provider.*disabled/i.test(msg + ' ' + code)) {
+            return 'Connexion invité désactivée sur Supabase. Ouvrez votre projet → Authentication → Providers → Anonymous → activez « Enable Anonymous sign-ins », puis réessayez.';
+        }
+        return msg || 'Impossible de rejoindre la session.';
+    }
+
     function signInAnonymously() {
         var sb = getClient();
         if (!sb) {
             return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
         }
-        return sb.auth.signInAnonymously();
+        return sb.auth.signInAnonymously().then(function (result) {
+            if (result.error) {
+                return { data: result.data, error: { message: mapGuestAuthError(result.error) } };
+            }
+            return result;
+        });
+    }
+
+    function getSessionFromCurrentUrl() {
+        try {
+            var fromUrl = new URLSearchParams(window.location.search).get('session');
+            if (fromUrl && isValidSessionId(fromUrl.trim())) return fromUrl.trim();
+        } catch (e) { /* ignore */ }
+        return '';
     }
 
     function ensureAuthForSessionJoin(email, password) {
@@ -179,6 +283,27 @@ var NolimiAuth = (function () {
                 return { data: { session: session }, error: null };
             }
             return signInAnonymously();
+        });
+    }
+
+    function ensureGuestAuthForSessionLink(sessionId) {
+        var sb = getClient();
+        if (!sb) {
+            return Promise.reject(new Error('supabase_not_configured'));
+        }
+        var parsed = parseSessionLink(sessionId);
+        if (!parsed || !isValidSessionId(parsed)) {
+            return Promise.reject(new Error('invalid_session'));
+        }
+        return sb.auth.getSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            if (session) return session;
+            return signInAnonymously().then(function (authResult) {
+                if (authResult.error) {
+                    return Promise.reject(authResult.error);
+                }
+                return authResult.data && authResult.data.session ? authResult.data.session : null;
+            });
         });
     }
 
@@ -222,12 +347,22 @@ var NolimiAuth = (function () {
     }
 
     return {
+        mapGuestAuthError: mapGuestAuthError,
         getClient: getClient,
         requireSession: requireSession,
         signInWithPassword: signInWithPassword,
         signInAnonymously: signInAnonymously,
         ensureAuthForSessionJoin: ensureAuthForSessionJoin,
+        ensureGuestAuthForSessionLink: ensureGuestAuthForSessionLink,
         signOut: signOut,
+        exitGuestAccess: exitGuestAccess,
+        isAnonymousUser: isAnonymousUser,
+        isAnonymousSession: isAnonymousSession,
+        markSessionGuestAccess: markSessionGuestAccess,
+        clearSessionGuestAccess: clearSessionGuestAccess,
+        isSessionGuestAccess: isSessionGuestAccess,
+        getSessionFromCurrentUrl: getSessionFromCurrentUrl,
+        consumeGuestExitMessage: consumeGuestExitMessage,
         redirectIfAlreadyLoggedIn: redirectIfAlreadyLoggedIn,
         bindLogoutButton: bindLogoutButton,
         getLoginUrl: getLoginUrl,

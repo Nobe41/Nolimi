@@ -173,6 +173,11 @@
             var autoJoinTimer = null;
             var joinInProgress = false;
 
+            if (typeof NolimiAuth !== 'undefined' && NolimiAuth.consumeGuestExitMessage) {
+                var guestExitMsg = NolimiAuth.consumeGuestExitMessage();
+                if (guestExitMsg) errEl.textContent = guestExitMsg;
+            }
+
             function parseSessionId(input) {
                 if (typeof NolimiAuth === 'undefined' || !NolimiAuth.parseSessionLink) return '';
                 return NolimiAuth.parseSessionLink(input);
@@ -234,23 +239,29 @@
 
                 if (typeof NolimiAuth === 'undefined' || !NolimiAuth.getClient) {
                     errEl.textContent = 'Service de connexion indisponible.';
+                    joinInProgress = false;
                     return;
                 }
 
                 var sb = NolimiAuth.getClient();
                 if (!sb) {
                     errEl.textContent = 'Configuration Supabase manquante.';
+                    joinInProgress = false;
                     return;
                 }
 
                 setJoinBtnLoading(true);
+                errEl.textContent = 'Ouverture de la session…';
 
                 var email = document.getElementById('email').value.trim();
                 var password = document.getElementById('password').value;
 
                 NolimiAuth.ensureAuthForSessionJoin(email, password).then(function (authResult) {
                     if (authResult.error) {
-                        errEl.textContent = authResult.error.message || 'Impossible de rejoindre la session.';
+                        var guestMsg = typeof NolimiAuth.mapGuestAuthError === 'function'
+                            ? NolimiAuth.mapGuestAuthError(authResult.error)
+                            : (authResult.error.message || 'Impossible de rejoindre la session.');
+                        errEl.textContent = guestMsg;
                         setJoinBtnLoading(false);
                         joinInProgress = false;
                         return;
