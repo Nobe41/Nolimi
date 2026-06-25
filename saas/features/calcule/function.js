@@ -1,7 +1,12 @@
-// Affichage du volume total dans la vue 3D (coin bas-gauche).
+// Affichage du volume total dans la vue 3D (coin bas-gauche) ou panneau Calcule (mobile).
 var CalculeVolumeFeature = (function () {
     var OVERLAY_ID = 'volume-total-overlay';
+    var RESULTS_PANEL_ID = 'calcule-results-display';
+    var MOBILE_MQ = typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia('(max-width: 768px)')
+        : null;
     var lastResults = null;
+    var mobileLayoutListenerBound = false;
     var DEFAULT_CAPACITE_UTILE_CL = 75;
     var DEFAULT_BOUCHON_RENTRANT_ON = false;
     var DEFAULT_BOUCHON_RENTRANT_MM = 0;
@@ -48,6 +53,52 @@ var CalculeVolumeFeature = (function () {
     function clampDensiteVerre(v) {
         if (!isFinite(v)) return DEFAULT_DENSITE_VERRE;
         return Math.max(2.30, Math.min(2.60, v));
+    }
+
+    function isMobileLayout() {
+        return !!(MOBILE_MQ && MOBILE_MQ.matches);
+    }
+
+    function bindMobileLayoutListener() {
+        if (mobileLayoutListenerBound || !MOBILE_MQ) return;
+        mobileLayoutListenerBound = true;
+        var onLayoutChange = function () {
+            updateOverlayDisplay();
+            updateResultsPanel();
+        };
+        if (typeof MOBILE_MQ.addEventListener === 'function') {
+            MOBILE_MQ.addEventListener('change', onLayoutChange);
+        } else if (typeof MOBILE_MQ.addListener === 'function') {
+            MOBILE_MQ.addListener(onLayoutChange);
+        }
+    }
+
+    function getResultsText(results) {
+        if (!results || !results.available) {
+            return 'Volume total: calcul indisponible';
+        }
+        return 'Capacite ras bord: ' + formatVolume(results.volumeMm3) + ' cl'
+            + '\nDegarnie: ' + results.degarnieMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm'
+            + '\nChambre d expansion: ' + results.chamberPct.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'
+            + '\nØ brochage: ' + results.canuleMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm'
+            + '\nPoids verre: ' + results.poidsVerreG.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' g';
+    }
+
+    function updateResultsPanel() {
+        if (typeof document === 'undefined') return;
+        var panel = document.getElementById(RESULTS_PANEL_ID);
+        if (!panel) return;
+        panel.textContent = getResultsText(lastResults);
+    }
+
+    function updateOverlayDisplay() {
+        var el = ensureOverlay();
+        if (!el) return;
+        if (isMobileLayout()) {
+            el.textContent = '';
+            return;
+        }
+        el.textContent = getResultsText(lastResults);
     }
 
     function ensureOverlay() {
@@ -105,18 +156,9 @@ var CalculeVolumeFeature = (function () {
     }
 
     function updateFromSectionsData(sectionsData) {
-        var el = ensureOverlay();
         lastResults = computeFromSectionsData(sectionsData);
-        if (!el) return;
-        if (!lastResults.available) {
-            el.textContent = 'Volume total: calcul indisponible';
-            return;
-        }
-        el.textContent = 'Capacite ras bord: ' + formatVolume(lastResults.volumeMm3) + ' cl'
-            + '\nDegarnie: ' + lastResults.degarnieMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm'
-            + '\nChambre d expansion: ' + lastResults.chamberPct.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'
-            + '\nØ brochage: ' + lastResults.canuleMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm'
-            + '\nPoids verre: ' + lastResults.poidsVerreG.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' g';
+        updateOverlayDisplay();
+        if (isMobileLayout()) updateResultsPanel();
         if (typeof draw2D === 'function') draw2D();
     }
 
@@ -149,7 +191,8 @@ var CalculeVolumeFeature = (function () {
             + '      <input type="range" id="calcule-densite-verre-slider" min="2.30" max="2.60" step="0.01" value="' + clampDensiteVerre(st.densiteVerre).toFixed(2) + '">'
             + '    </div>'
             + '  </div>'
-            + '</div>';
+            + '</div>'
+            + '<div id="' + RESULTS_PANEL_ID + '" class="calcule-results-display" aria-live="polite"></div>';
 
         var num = document.getElementById('calcule-capacite-utile-cl');
         var rng = document.getElementById('calcule-capacite-utile-cl-slider');
@@ -202,6 +245,10 @@ var CalculeVolumeFeature = (function () {
             dNum.addEventListener('input', function () { applyDensite(parseFloat(dNum.value)); });
             dRng.addEventListener('input', function () { applyDensite(parseFloat(dRng.value)); });
         }
+
+        updateResultsPanel();
+        updateOverlayDisplay();
+        bindMobileLayoutListener();
     }
 
     return {

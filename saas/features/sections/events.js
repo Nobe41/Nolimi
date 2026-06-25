@@ -211,6 +211,40 @@ var SectionsEvents = (function () {
         });
     }
 
+    function closeAddSectionPanel() {
+        var panel = document.getElementById('inspector-add-section-panel');
+        var fab = document.getElementById('btn-add-section-fab');
+        if (!panel) return;
+        panel.classList.remove('is-open');
+        if (fab) fab.setAttribute('aria-expanded', 'false');
+    }
+
+    function wireAddSectionFab() {
+        var fab = document.getElementById('btn-add-section-fab');
+        var panel = document.getElementById('inspector-add-section-panel');
+        if (!fab || !panel || fab.dataset.fabBound) return;
+
+        fab.dataset.fabBound = '1';
+        fab.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (!window.matchMedia('(max-width: 768px)').matches) return;
+            var open = !panel.classList.contains('is-open');
+            panel.classList.toggle('is-open', open);
+            fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+
+        if (!document.documentElement.dataset.addSectionFabDismissBound) {
+            document.documentElement.dataset.addSectionFabDismissBound = '1';
+            document.addEventListener('click', function (e) {
+                var p = document.getElementById('inspector-add-section-panel');
+                var f = document.getElementById('btn-add-section-fab');
+                if (!p || !p.classList.contains('is-open')) return;
+                if (p.contains(e.target) || (f && f.contains(e.target))) return;
+                closeAddSectionPanel();
+            });
+        }
+    }
+
     function wireAddSectionButton(config) {
         var ids = config && config.containerIds ? config.containerIds : {};
         var onRefresh = config && config.onRefresh ? config.onRefresh : function () { };
@@ -393,6 +427,7 @@ var SectionsEvents = (function () {
             if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) Validator.applyAllUserConstraints();
             if (typeof updateBouteille === 'function') updateBouteille();
             if (typeof draw2D === 'function') draw2D();
+            closeAddSectionPanel();
         });
     }
 
@@ -406,6 +441,7 @@ var SectionsEvents = (function () {
 
     return {
         wireAddSectionButton: wireAddSectionButton,
+        wireAddSectionFab: wireAddSectionFab,
         wireRemoveSectionButtons: wireRemoveSectionButtons,
         syncAllFromDom: syncAllFromDom
     };

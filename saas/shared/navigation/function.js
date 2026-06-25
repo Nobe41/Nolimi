@@ -128,7 +128,96 @@ var UIEvents = (function () {
         var brandHeader = get(IDS.brandHeader), sectionsArea = get(IDS.sectionsArea), contentCalcule = get(IDS.contentCalcule), contentGravure = get(IDS.contentGravure), contentInformation = get(IDS.contentInformation), contentRendu = get(IDS.contentRendu);
         var contentSections = get(IDS.contentSections), contentPiqure = get(IDS.contentPiqure), contentBague = get(IDS.contentBague), contentInterieur = get(IDS.contentInterieur);
         var barTabSections = get(IDS.barTabSections), barTabPiqure = get(IDS.barTabPiqure), barTabBague = get(IDS.barTabBague), barTabInterieur = get(IDS.barTabInterieur);
+        var mobileMq = typeof window !== 'undefined' && window.matchMedia
+            ? window.matchMedia('(max-width: 768px)')
+            : null;
+        var brandHeaderAnchor = { inspectorParent: null, inspectorBefore: null };
+        var sectionsSlotId = 'sidebar-sections-slot';
         if (!sectionsArea || !contentCalcule || !contentGravure || !contentInformation || !contentRendu || !contentSections || !contentPiqure || !contentBague || !contentInterieur) return;
+
+        function isMobileNav() {
+            return !!(mobileMq && mobileMq.matches);
+        }
+
+        function getSectionsSlot(create) {
+            var sidebar = document.getElementById('sidebar');
+            if (!sidebar || !tabSections) return null;
+            var slot = document.getElementById(sectionsSlotId);
+            if (!slot && create) {
+                slot = document.createElement('div');
+                slot.id = sectionsSlotId;
+                slot.className = 'sidebar-sections-slot';
+                sidebar.insertBefore(slot, tabSections);
+                slot.appendChild(tabSections);
+            }
+            return slot;
+        }
+
+        function unwrapSectionsSlot() {
+            var slot = document.getElementById(sectionsSlotId);
+            var sidebar = document.getElementById('sidebar');
+            if (!slot || !sidebar || !tabSections) return;
+            sidebar.insertBefore(tabSections, slot);
+            slot.remove();
+        }
+
+        function restoreBrandHeaderToInspector() {
+            if (!brandHeader || !brandHeaderAnchor.inspectorParent) return;
+            var before = brandHeaderAnchor.inspectorBefore;
+            if (before && before.parentElement === brandHeaderAnchor.inspectorParent) {
+                brandHeaderAnchor.inspectorParent.insertBefore(brandHeader, before);
+            } else {
+                brandHeaderAnchor.inspectorParent.insertBefore(brandHeader, brandHeaderAnchor.inspectorParent.firstChild);
+            }
+            brandHeader.classList.remove('brand-header--sidebar');
+            brandHeader.classList.remove('brand-header--vertical');
+        }
+
+        function syncBrandHeaderPlacement() {
+            if (!brandHeader) return;
+            if (!brandHeaderAnchor.inspectorParent) {
+                brandHeaderAnchor.inspectorParent = brandHeader.parentElement;
+                brandHeaderAnchor.inspectorBefore = document.getElementById('inspector-scroll');
+            }
+            if (isMobileNav()) {
+                var slot = getSectionsSlot(true);
+                if (!slot) return;
+                if (brandHeader.parentElement !== slot) {
+                    slot.insertBefore(brandHeader, tabSections);
+                }
+                brandHeader.classList.add('brand-header--sidebar');
+            } else {
+                unwrapSectionsSlot();
+                restoreBrandHeaderToInspector();
+                if (brandHeader && tabSections && tabSections.classList.contains('active')) {
+                    brandHeader.classList.remove('hidden');
+                }
+            }
+        }
+
+        function hideBrandHeaderMobile() {
+            if (!brandHeader || !isMobileNav()) return;
+            brandHeader.classList.add('hidden');
+            brandHeader.classList.remove('brand-header--vertical');
+        }
+
+        function toggleBrandHeaderVertical() {
+            if (!brandHeader || !isMobileNav()) return;
+            if (brandHeader.classList.contains('hidden')) {
+                brandHeader.classList.remove('hidden');
+                brandHeader.classList.add('brand-header--vertical');
+            } else {
+                hideBrandHeaderMobile();
+            }
+        }
+
+        function handleSectionsTabClick() {
+            if (isMobileNav() && tabSections && tabSections.classList.contains('active')) {
+                toggleBrandHeaderVertical();
+                return;
+            }
+            showLeftSections();
+        }
 
         function refreshAfterTabChange() {
             if (typeof updateBouteille === 'function') updateBouteille();
@@ -136,32 +225,36 @@ var UIEvents = (function () {
         }
         function showLeftSections() {
             sectionsArea.classList.remove('hidden'); contentCalcule.classList.add('hidden'); contentGravure.classList.add('hidden'); contentInformation.classList.add('hidden'); contentRendu.classList.add('hidden');
-            if (brandHeader) brandHeader.classList.remove('hidden');
+            if (brandHeader && !isMobileNav()) brandHeader.classList.remove('hidden');
             if (tabSections) tabSections.classList.add('active'); if (tabCalcule) tabCalcule.classList.remove('active'); if (tabGravure) tabGravure.classList.remove('active'); if (tabInformation) tabInformation.classList.remove('active'); if (tabRendu) tabRendu.classList.remove('active');
             NavigationState.patch({ activeLeftTab: 'sections' }); setAddSectionBarVisibility(true);
         }
         function showLeftCalcule() {
             sectionsArea.classList.add('hidden'); contentCalcule.classList.remove('hidden'); contentGravure.classList.add('hidden'); contentInformation.classList.add('hidden'); contentRendu.classList.add('hidden');
-            if (brandHeader) brandHeader.classList.add('hidden');
+            hideBrandHeaderMobile();
+            if (brandHeader && !isMobileNav()) brandHeader.classList.add('hidden');
             if (tabSections) tabSections.classList.remove('active'); if (tabCalcule) tabCalcule.classList.add('active'); if (tabGravure) tabGravure.classList.remove('active'); if (tabInformation) tabInformation.classList.remove('active'); if (tabRendu) tabRendu.classList.remove('active');
             NavigationState.patch({ activeLeftTab: 'calcule' }); setAddSectionBarVisibility(false);
             if (typeof CalculeVolumeFeature !== 'undefined' && CalculeVolumeFeature.renderPanel) CalculeVolumeFeature.renderPanel();
         }
         function showLeftGravure() {
             sectionsArea.classList.add('hidden'); contentCalcule.classList.add('hidden'); contentGravure.classList.remove('hidden'); contentInformation.classList.add('hidden'); contentRendu.classList.add('hidden');
-            if (brandHeader) brandHeader.classList.add('hidden');
+            hideBrandHeaderMobile();
+            if (brandHeader && !isMobileNav()) brandHeader.classList.add('hidden');
             if (tabSections) tabSections.classList.remove('active'); if (tabCalcule) tabCalcule.classList.remove('active'); if (tabGravure) tabGravure.classList.add('active'); if (tabInformation) tabInformation.classList.remove('active'); if (tabRendu) tabRendu.classList.remove('active');
             NavigationState.patch({ activeLeftTab: 'gravure' }); setAddSectionBarVisibility(false);
         }
         function showLeftInformation() {
             sectionsArea.classList.add('hidden'); contentCalcule.classList.add('hidden'); contentGravure.classList.add('hidden'); contentInformation.classList.remove('hidden'); contentRendu.classList.add('hidden');
-            if (brandHeader) brandHeader.classList.add('hidden');
+            hideBrandHeaderMobile();
+            if (brandHeader && !isMobileNav()) brandHeader.classList.add('hidden');
             if (tabSections) tabSections.classList.remove('active'); if (tabCalcule) tabCalcule.classList.remove('active'); if (tabGravure) tabGravure.classList.remove('active'); if (tabInformation) tabInformation.classList.add('active'); if (tabRendu) tabRendu.classList.remove('active');
             NavigationState.patch({ activeLeftTab: 'information' }); setAddSectionBarVisibility(false);
         }
         function showLeftRendu() {
             sectionsArea.classList.add('hidden'); contentCalcule.classList.add('hidden'); contentGravure.classList.add('hidden'); contentInformation.classList.add('hidden'); contentRendu.classList.remove('hidden');
-            if (brandHeader) brandHeader.classList.add('hidden');
+            hideBrandHeaderMobile();
+            if (brandHeader && !isMobileNav()) brandHeader.classList.add('hidden');
             if (tabSections) tabSections.classList.remove('active'); if (tabCalcule) tabCalcule.classList.remove('active'); if (tabGravure) tabGravure.classList.remove('active'); if (tabInformation) tabInformation.classList.remove('active'); if (tabRendu) tabRendu.classList.add('active');
             NavigationState.patch({ activeLeftTab: 'rendu' }); setAddSectionBarVisibility(false);
         }
@@ -177,7 +270,7 @@ var UIEvents = (function () {
             };
         }
 
-        NavigationEvents.bind(tabSections, wrapNavHandler(showLeftSections));
+        NavigationEvents.bind(tabSections, wrapNavHandler(handleSectionsTabClick));
         NavigationEvents.bind(tabCalcule, wrapNavHandler(showLeftCalcule));
         NavigationEvents.bind(tabGravure, wrapNavHandler(showLeftGravure));
         NavigationEvents.bind(tabInformation, wrapNavHandler(showLeftInformation));
@@ -186,8 +279,23 @@ var UIEvents = (function () {
         NavigationEvents.bind(barTabPiqure, wrapNavHandler(showBarPiqure));
         NavigationEvents.bind(barTabBague, wrapNavHandler(showBarBague));
         NavigationEvents.bind(barTabInterieur, wrapNavHandler(showBarInterieur));
+
+        syncBrandHeaderPlacement();
         showLeftSections();
         showBarSections();
+        hideBrandHeaderMobile();
+
+        if (mobileMq) {
+            var onMobileLayoutChange = function () {
+                syncBrandHeaderPlacement();
+                hideBrandHeaderMobile();
+            };
+            if (typeof mobileMq.addEventListener === 'function') {
+                mobileMq.addEventListener('change', onMobileLayoutChange);
+            } else if (typeof mobileMq.addListener === 'function') {
+                mobileMq.addListener(onMobileLayoutChange);
+            }
+        }
     }
 
     function init() {

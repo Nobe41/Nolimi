@@ -112,6 +112,7 @@ var UIInspector = (function () {
             onRefresh: renderSections
         };
         if (SectionsEvents.wireAddSectionButton) SectionsEvents.wireAddSectionButton(eventConfig);
+        if (SectionsEvents.wireAddSectionFab) SectionsEvents.wireAddSectionFab();
         if (SectionsEvents.wireRemoveSectionButtons) SectionsEvents.wireRemoveSectionButtons(eventConfig);
     }
 

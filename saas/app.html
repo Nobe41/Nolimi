@@ -235,6 +235,10 @@
             <!-- Topbar : Fichier, Affichage, choix de vue 3D/2D/Outillage -->
             <div id="topbar" class="panel-haut-container">
                 <div class="panel-haut-bar">
+                    <button type="button" id="btn-mobile-menu" class="mobile-menu-trigger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="mobile-menu-panel">
+                        <span class="mobile-menu-bar" aria-hidden="true"></span>
+                        <span class="mobile-menu-bar" aria-hidden="true"></span>
+                    </button>
                     <div class="dropdown">
                         <button id="btn-fichier-menu" class="btn-fichier" type="button">Fichier</button>
                         <div id="fichier-dropdown" class="dropdown-content dropdown-right hidden">
@@ -295,8 +299,10 @@
                             </div>
                         </div>
                     </div>
-                    <button id="btn-undo" class="btn-fichier" type="button" title="Annuler">&lt;</button>
-                    <button id="btn-redo" class="btn-fichier" type="button" title="Rétablir">&gt;</button>
+                    <div id="desktop-history-group" class="desktop-history-group">
+                        <button id="btn-undo" class="btn-fichier" type="button" title="Annuler">&lt;</button>
+                        <button id="btn-redo" class="btn-fichier" type="button" title="Rétablir">&gt;</button>
+                    </div>
                 </div>
                 <div class="panel-haut-bar panel-haut-vues">
                     <div class="view-switcher">
@@ -305,6 +311,49 @@
                     </div>
                 </div>
             </div>
+
+            <div id="mobile-menu-backdrop" class="mobile-menu-backdrop" aria-hidden="true"></div>
+            <aside id="mobile-menu-panel" class="mobile-menu-panel" aria-hidden="true">
+                <div class="mobile-menu-panel__header">
+                    <span class="mobile-menu-panel__title">Menu</span>
+                    <button type="button" id="btn-mobile-menu-close" class="mobile-menu-panel__close" aria-label="Fermer le menu">&times;</button>
+                </div>
+                <div class="mobile-menu-panel__scroll">
+                    <nav class="mobile-menu-nav" id="mobile-menu-nav">
+                        <div class="mobile-menu-group" data-mobile-section="fichier">
+                            <button type="button" class="mobile-menu-nav__trigger" data-mobile-section="fichier">
+                                <span>Fichier</span>
+                                <span class="mobile-menu-nav__chevron" aria-hidden="true">›</span>
+                            </button>
+                            <div id="mobile-slot-fichier" class="mobile-menu-subpanel"></div>
+                        </div>
+                        <div class="mobile-menu-group" data-mobile-section="affichage">
+                            <button type="button" class="mobile-menu-nav__trigger" data-mobile-section="affichage">
+                                <span>Affichage</span>
+                                <span class="mobile-menu-nav__chevron" aria-hidden="true">›</span>
+                            </button>
+                            <div id="mobile-slot-affichage" class="mobile-menu-subpanel"></div>
+                        </div>
+                        <div class="mobile-menu-group" data-mobile-section="realtime">
+                            <button type="button" class="mobile-menu-nav__trigger mobile-menu-nav__trigger--icon" data-mobile-section="realtime" aria-label="Partager la session">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                </svg>
+                                <span class="mobile-menu-nav__chevron" aria-hidden="true">›</span>
+                            </button>
+                            <div id="mobile-slot-realtime" class="mobile-menu-subpanel"></div>
+                        </div>
+                        <div class="mobile-menu-group" data-mobile-section="history">
+                            <button type="button" class="mobile-menu-nav__trigger mobile-menu-nav__trigger--history" data-mobile-section="history" aria-label="Historique">
+                                <span class="mobile-menu-nav__history-arrows" aria-hidden="true">&lt; &gt;</span>
+                                <span class="mobile-menu-nav__chevron" aria-hidden="true">›</span>
+                            </button>
+                            <div id="mobile-slot-history" class="mobile-menu-subpanel mobile-menu-history"></div>
+                        </div>
+                    </nav>
+                </div>
+            </aside>
 
             <!-- Viewport : zone principale 3D / 2D -->
             <div id="viewport" class="workspace-content">

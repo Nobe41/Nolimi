@@ -139,12 +139,15 @@ var SectionsBloc = (function () {
         return [
             '<div class="inspector-add-section-bar" id="inspector-add-section-bar">',
             '  <input type="hidden" id="add-section-mode" value="' + mode + '">',
-            '  <div class="control-group" style="width:100%; margin: 0;">',
-            '    <div class="input-wrapper" style="width:100%;">',
-            '      <select id="add-section-between" class="input-select" style="width:100%;">' + options + '</select>',
+            '  <button type="button" class="inspector-add-section-fab" id="btn-add-section-fab" aria-label="Ajouter une section" aria-expanded="false" aria-controls="inspector-add-section-panel">+</button>',
+            '  <div class="inspector-add-section-panel" id="inspector-add-section-panel">',
+            '    <div class="control-group" style="width:100%; margin: 0;">',
+            '      <div class="input-wrapper" style="width:100%;">',
+            '        <select id="add-section-between" class="input-select" style="width:100%;">' + options + '</select>',
+            '      </div>',
             '    </div>',
+            '    <button type="button" id="btn-add-section" class="btn-add-section">Ajouter une section</button>',
             '  </div>',
-            '  <button type="button" id="btn-add-section" class="btn-add-section">Ajouter une section</button>',
             '</div>'
         ].join('');
     }
