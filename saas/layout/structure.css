@@ -705,27 +705,47 @@ input[type="text"], .input-select, .input-select-disabled {
    Bas : sidebar horizontale (S, G, P, R, C)
 ========================================== */
 @media (max-width: 768px) {
+    :root {
+        --mobile-inspector-offset: 32px;
+    }
+
+    html {
+        height: 100%;
+        background-color: #F8F8F8;
+    }
+
     body {
         height: 100dvh;
+        height: 100svh;
+        min-height: 100dvh;
+        min-height: 100svh;
+        background-color: #F8F8F8;
+        overscroll-behavior: none;
     }
 
     #Page-Bouteille {
         display: grid;
-        grid-template-rows: 50dvh minmax(0, 1fr) var(--mobile-sidebar-height);
+        grid-template-rows: calc(50dvh + var(--mobile-inspector-offset)) minmax(0, 1fr) var(--mobile-sidebar-height);
         grid-template-columns: 1fr;
         height: 100dvh;
+        height: 100svh;
+        min-height: 100dvh;
+        min-height: 100svh;
         width: 100vw;
         overflow: hidden;
         /* Fond blanc sous l'inspector : rend les coins arrondis visibles */
         background: linear-gradient(
             to bottom,
             #F8F8F8 0,
-            #F8F8F8 50dvh,
-            #FFFFFF 50dvh,
+            #F8F8F8 calc(50dvh + var(--mobile-inspector-offset)),
+            #FFFFFF calc(50dvh + var(--mobile-inspector-offset)),
             #FFFFFF calc(100% - var(--mobile-sidebar-height)),
             #E6EBF2 calc(100% - var(--mobile-sidebar-height)),
             #E6EBF2 100%
         );
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        box-sizing: border-box;
     }
 
     /* Aplatit le panneau gauche : sidebar + inspector participent à la grille */
@@ -811,8 +831,8 @@ input[type="text"], .input-select, .input-select-disabled {
         position: relative;
         z-index: 1;
         background-color: #F8F8F8;
-        border-top-left-radius: 20px;
-        border-top-right-radius: 20px;
+        border-top-left-radius: 45px;
+        border-top-right-radius: 45px;
         overflow: hidden;
     }
 
@@ -895,18 +915,48 @@ input[type="text"], .input-select, .input-select-disabled {
     }
 
     .panel-content {
+        padding-left: 36px;
+        padding-right: 36px;
         padding-bottom: 72px;
+        align-items: stretch;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .panel-content .setting-card {
+        max-width: none;
+        width: 100%;
     }
 
     .setting-card--rattachement,
     .setting-card--liaison:not(.gravure-item) {
-        max-width: 180px;
+        max-width: 72%;
         width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .panel-gravure-content {
+        padding-left: 36px;
+        padding-right: 36px;
+        align-items: stretch;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .panel-gravure-content .btn-add-gravure {
         width: 100%;
-        max-width: 260px;
+        max-width: none;
+    }
+
+    .panel-gravure-content #engravings-container {
+        width: 100%;
+        max-width: none;
+    }
+
+    .panel-gravure-content .setting-card.gravure-item {
+        max-width: none;
+        width: 100%;
     }
 
     .inspector-add-section-bar {
@@ -986,7 +1036,6 @@ input[type="text"], .input-select, .input-select-disabled {
         justify-content: center;
         gap: 4px;
         padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
-        padding-bottom: env(safe-area-inset-bottom);
         border-top: 1px solid rgba(0, 0, 0, 0.08);
         overflow: visible;
         z-index: 20;
