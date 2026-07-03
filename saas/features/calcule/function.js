@@ -203,8 +203,21 @@ var CalculeVolumeFeature = (function () {
             if (rng) rng.value = s.capaciteUtileCl;
             if (typeof updateBouteille === 'function') updateBouteille();
         }
+        function bindCalculeNum(el, applyFn) {
+            if (!el) return;
+            if (typeof UIControls !== 'undefined' && UIControls.bindApplyOnEnter) {
+                UIControls.bindApplyOnEnter(el, function () { applyFn(parseFloat(el.value)); });
+            } else {
+                el.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    applyFn(parseFloat(el.value));
+                    el.blur();
+                });
+            }
+        }
         if (num && rng) {
-            num.addEventListener('input', function () { applyCapaciteUtile(parseFloat(num.value)); });
+            bindCalculeNum(num, applyCapaciteUtile);
             rng.addEventListener('input', function () { applyCapaciteUtile(parseFloat(rng.value)); });
         }
 
@@ -228,7 +241,7 @@ var CalculeVolumeFeature = (function () {
             if (typeof updateBouteille === 'function') updateBouteille();
         }
         if (brNum && brRng) {
-            brNum.addEventListener('input', function () { applyBouchon(parseFloat(brNum.value)); });
+            bindCalculeNum(brNum, applyBouchon);
             brRng.addEventListener('input', function () { applyBouchon(parseFloat(brRng.value)); });
         }
 
@@ -242,7 +255,7 @@ var CalculeVolumeFeature = (function () {
             if (typeof updateBouteille === 'function') updateBouteille();
         }
         if (dNum && dRng) {
-            dNum.addEventListener('input', function () { applyDensite(parseFloat(dNum.value)); });
+            bindCalculeNum(dNum, applyDensite);
             dRng.addEventListener('input', function () { applyDensite(parseFloat(dRng.value)); });
         }
 

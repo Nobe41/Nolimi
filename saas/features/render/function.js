@@ -2,24 +2,30 @@
 var RenderFeature = (function () {
     var RULES = (typeof RenderRules !== 'undefined') ? RenderRules : {};
     var IDS = RULES.IDS || {};
-    var labelRefreshTimer = null;
-    var LABEL_REFRESH_DELAY_MS = 90;
+    var labelRefreshRaf = 0;
+
+    function refreshLabelsInView() {
+        if (typeof BottleView3D !== 'undefined' && BottleView3D.refreshLabelsOnly && BottleView3D.refreshLabelsOnly()) {
+            return true;
+        }
+        if (typeof updateBouteille === 'function') updateBouteille();
+        return false;
+    }
 
     function requestLabelRefresh(immediate) {
-        if (typeof updateBouteille !== 'function') return;
         if (immediate) {
-            if (labelRefreshTimer) {
-                clearTimeout(labelRefreshTimer);
-                labelRefreshTimer = null;
+            if (labelRefreshRaf) {
+                cancelAnimationFrame(labelRefreshRaf);
+                labelRefreshRaf = 0;
             }
-            updateBouteille();
+            refreshLabelsInView();
             return;
         }
-        if (labelRefreshTimer) clearTimeout(labelRefreshTimer);
-        labelRefreshTimer = setTimeout(function () {
-            labelRefreshTimer = null;
-            updateBouteille();
-        }, LABEL_REFRESH_DELAY_MS);
+        if (labelRefreshRaf) return;
+        labelRefreshRaf = requestAnimationFrame(function () {
+            labelRefreshRaf = 0;
+            refreshLabelsInView();
+        });
     }
 
     function createLabel(id) {
@@ -109,6 +115,48 @@ var RenderFeature = (function () {
         if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.scheduleSave) {
             WorkspaceAutosave.scheduleSave();
         }
+    }
+
+    function clampToInputRange(inputEl, value, fallback) {
+        if (!inputEl) return (isNaN(value) ? fallback : value);
+        var v = isNaN(value) ? fallback : value;
+        var min = parseFloat(inputEl.min);
+        var max = parseFloat(inputEl.max);
+        if (!isNaN(min) && v < min) v = min;
+        if (!isNaN(max) && v > max) v = max;
+        return v;
+    }
+
+    function updateLabelHeightLimits(options) {
+        options = options || {};
+        var limits = { min: -120, max: 400 };
+        if (typeof Plans2DData !== 'undefined' && Plans2DData.getBottleVerticalExtents) {
+            limits = Plans2DData.getBottleVerticalExtents();
+        }
+        var labelHeight = document.getElementById(IDS.labelHeight || 'render-label-height');
+        var labelHeightNumber = document.getElementById('render-label-height-number');
+        if (labelHeight) {
+            labelHeight.min = String(limits.min);
+            labelHeight.max = String(limits.max);
+            if (!options.skipSliderResync && typeof UIControls !== 'undefined' && UIControls.syncRangeSlider) {
+                UIControls.syncRangeSlider(labelHeight);
+            }
+        }
+        if (labelHeightNumber) {
+            labelHeightNumber.min = String(limits.min);
+            labelHeightNumber.max = String(limits.max);
+        }
+        if (options.clampValues === false) return;
+        var state = ensureLabelState();
+        if (!state || !state.labels || !state.labels.length) return;
+        var changed = false;
+        for (var i = 0; i < state.labels.length; i++) {
+            var h = parseFloat(state.labels[i].height);
+            if (!isFinite(h)) h = limits.min;
+            if (h < limits.min) { state.labels[i].height = limits.min; changed = true; }
+            else if (h > limits.max) { state.labels[i].height = limits.max; changed = true; }
+        }
+        if (changed) syncActiveLabelInputsToDom();
     }
 
     function initModeRenduControls() {
@@ -296,97 +344,96 @@ var RenderFeature = (function () {
                 reader.readAsDataURL(file);
             });
         }
-        if (labelHeight && !labelHeight.dataset.bound) {
-            labelHeight.dataset.bound = '1';
-            labelHeight.addEventListener('input', function () {
-                var active = getActiveLabel(state);
-                if (!active) return;
-                active.height = parseFloat(labelHeight.value) || 0;
-                syncLabelInputsFromActive();
-                requestLabelRefresh(false);
-            });
-            labelHeight.addEventListener('change', function () {
+        function bindLabelNumberOnEnter(numberEl, rangeEl, fallback, applyToActive) {
+            if (!numberEl || !rangeEl) return;
+            var apply = function () {
+                var raw = parseFloat(numberEl.value);
+                var next = clampToInputRange(rangeEl, raw, parseFloat(rangeEl.value) || fallback);
+                rangeEl.value = String(next);
+                if (typeof UIControls !== 'undefined' && UIControls.syncRangeSlider) {
+                    UIControls.syncRangeSlider(rangeEl);
+                }
+                applyToActive(next);
                 syncLabelInputsFromActive();
                 requestLabelRefresh(true);
+            };
+            if (typeof UIControls !== 'undefined' && UIControls.bindApplyOnEnter) {
+                UIControls.bindApplyOnEnter(numberEl, apply);
+            } else {
+                numberEl.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    apply();
+                    numberEl.blur();
+                });
+            }
+        }
+
+        function bindLabelRangeSlider(rangeEl, numberEl, fallback, applyToActive) {
+            if (!rangeEl) return;
+            var finishDrag = function () {
+                if (typeof window !== 'undefined') window._renderLabelSliderDragging = false;
+                updateLabelHeightLimits();
+                requestLabelRefresh(true);
+                scheduleWorkspaceSave();
+            };
+            rangeEl.addEventListener('pointerdown', function () {
+                if (typeof window !== 'undefined') window._renderLabelSliderDragging = true;
+            });
+            rangeEl.addEventListener('pointerup', finishDrag);
+            rangeEl.addEventListener('pointercancel', finishDrag);
+            rangeEl.addEventListener('input', function () {
+                var active = getActiveLabel(state);
+                if (!active) return;
+                var next = parseFloat(rangeEl.value);
+                if (!isFinite(next)) next = fallback;
+                applyToActive(next);
+                if (numberEl) numberEl.value = String(next);
+                requestLabelRefresh(false);
+            });
+            rangeEl.addEventListener('change', finishDrag);
+        }
+
+        if (labelHeight && !labelHeight.dataset.bound) {
+            labelHeight.dataset.bound = '1';
+            bindLabelRangeSlider(labelHeight, labelHeightNumber, 0, function (v) {
+                var active = getActiveLabel(state);
+                if (active) active.height = v;
             });
         }
         if (labelHeightNumber && !labelHeightNumber.dataset.bound) {
             labelHeightNumber.dataset.bound = '1';
-            labelHeightNumber.addEventListener('input', function () {
-                if (!labelHeight) return;
-                var raw = parseFloat(labelHeightNumber.value);
-                var next = clampToInputRange(labelHeight, raw, parseFloat(labelHeight.value) || 0);
-                labelHeight.value = String(next);
+            bindLabelNumberOnEnter(labelHeightNumber, labelHeight, 0, function (v) {
                 var active = getActiveLabel(state);
-                if (active) active.height = next;
-                syncLabelInputsFromActive();
-                requestLabelRefresh(false);
-            });
-            labelHeightNumber.addEventListener('change', function () {
-                syncLabelInputsFromActive();
-                requestLabelRefresh(true);
+                if (active) active.height = v;
             });
         }
         if (labelSize && !labelSize.dataset.bound) {
             labelSize.dataset.bound = '1';
-            labelSize.addEventListener('input', function () {
+            bindLabelRangeSlider(labelSize, labelSizeNumber, 100, function (v) {
                 var active = getActiveLabel(state);
-                if (!active) return;
-                active.size = parseFloat(labelSize.value) || 100;
-                syncLabelInputsFromActive();
-                requestLabelRefresh(false);
-            });
-            labelSize.addEventListener('change', function () {
-                syncLabelInputsFromActive();
-                requestLabelRefresh(true);
+                if (active) active.size = v;
             });
         }
         if (labelSizeNumber && !labelSizeNumber.dataset.bound) {
             labelSizeNumber.dataset.bound = '1';
-            labelSizeNumber.addEventListener('input', function () {
-                if (!labelSize) return;
-                var raw = parseFloat(labelSizeNumber.value);
-                var next = clampToInputRange(labelSize, raw, parseFloat(labelSize.value) || 100);
-                labelSize.value = String(next);
+            bindLabelNumberOnEnter(labelSizeNumber, labelSize, 100, function (v) {
                 var active = getActiveLabel(state);
-                if (active) active.size = next;
-                syncLabelInputsFromActive();
-                requestLabelRefresh(false);
-            });
-            labelSizeNumber.addEventListener('change', function () {
-                syncLabelInputsFromActive();
-                requestLabelRefresh(true);
+                if (active) active.size = v;
             });
         }
         if (labelRotation && !labelRotation.dataset.bound) {
             labelRotation.dataset.bound = '1';
-            labelRotation.addEventListener('input', function () {
+            bindLabelRangeSlider(labelRotation, labelRotationNumber, 0, function (v) {
                 var active = getActiveLabel(state);
-                if (!active) return;
-                active.rotation = parseFloat(labelRotation.value) || 0;
-                syncLabelInputsFromActive();
-                requestLabelRefresh(false);
-            });
-            labelRotation.addEventListener('change', function () {
-                syncLabelInputsFromActive();
-                requestLabelRefresh(true);
+                if (active) active.rotation = v;
             });
         }
         if (labelRotationNumber && !labelRotationNumber.dataset.bound) {
             labelRotationNumber.dataset.bound = '1';
-            labelRotationNumber.addEventListener('input', function () {
-                if (!labelRotation) return;
-                var raw = parseFloat(labelRotationNumber.value);
-                var next = clampToInputRange(labelRotation, raw, parseFloat(labelRotation.value) || 0);
-                labelRotation.value = String(next);
+            bindLabelNumberOnEnter(labelRotationNumber, labelRotation, 0, function (v) {
                 var active = getActiveLabel(state);
-                if (active) active.rotation = next;
-                syncLabelInputsFromActive();
-                requestLabelRefresh(false);
-            });
-            labelRotationNumber.addEventListener('change', function () {
-                syncLabelInputsFromActive();
-                requestLabelRefresh(true);
+                if (active) active.rotation = v;
             });
         }
         if (labelFlipX && !labelFlipX.dataset.bound) {
@@ -445,6 +492,7 @@ var RenderFeature = (function () {
         renderLabelList();
         syncLabelInputsFromActive();
         refreshLabelAccordionHeight();
+        updateLabelHeightLimits();
         applyMaterialFromMode();
         syncSceneAvailability();
         applySceneFromChecks();
@@ -607,6 +655,7 @@ var RenderFeature = (function () {
 
     return {
         initModeRenduControls: initModeRenduControls,
+        updateLabelHeightLimits: updateLabelHeightLimits,
         collectSaveState: collectSaveState,
         restoreSaveState: restoreSaveState,
         applyControlsFromDom: applyControlsFromDom

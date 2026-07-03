@@ -144,8 +144,28 @@ var GravureEvents = (function () {
         var num = document.getElementById(numId);
         var slider = document.getElementById(sliderId);
         if (!num || !slider) return;
-        num.addEventListener('input', function () { slider.value = num.value; triggerUpdate(); });
-        slider.addEventListener('input', function () { num.value = slider.value; triggerUpdate(); });
+        function applyFromNum() {
+            slider.value = num.value;
+            if (typeof UIControls !== 'undefined' && UIControls.syncRangeSlider) {
+                UIControls.syncRangeSlider(slider);
+            }
+            triggerUpdate();
+        }
+        function applyFromSlider() {
+            num.value = slider.value;
+            triggerUpdate();
+        }
+        if (typeof UIControls !== 'undefined' && UIControls.bindApplyOnEnter) {
+            UIControls.bindApplyOnEnter(num, applyFromNum);
+        } else {
+            num.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                applyFromNum();
+                num.blur();
+            });
+        }
+        slider.addEventListener('input', applyFromSlider);
     }
 
     function bindFileCard(card, id) {

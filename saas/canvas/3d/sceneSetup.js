@@ -618,7 +618,7 @@ var SceneSetup3D = (function () {
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.target.set(0, CONTROLS_TARGET_Y, 0);
         controls.enableDamping = false;
-        controls.zoomSpeed = 0.8;
+        controls.zoomSpeed = 1.0;
 
         return { scene: scene, camera: camera, renderer: renderer, controls: controls };
     }

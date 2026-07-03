@@ -109,6 +109,8 @@ var Validator = (function () {
 
         for (id in HEIGHT_GRAPH) {
             if (!HEIGHT_GRAPH.hasOwnProperty(id)) continue;
+            // Bague dynamique (sb1..sbN) : entièrement gérée plus bas, évite sb4-h=sb3-h après renumérotation.
+            if (/^sb\d+-h$/.test(id)) continue;
             links = HEIGHT_GRAPH[id];
             input = document.getElementById(id);
             if (!input) continue;

@@ -69,7 +69,16 @@ var InterieurFeature = (function () {
 
         num.dataset.boundInterieur = '1';
         rng.dataset.boundInterieur = '1';
-        num.addEventListener('input', function () { apply(parseFloat(num.value)); });
+        if (typeof UIControls !== 'undefined' && UIControls.bindApplyOnEnter) {
+            UIControls.bindApplyOnEnter(num, function () { apply(parseFloat(num.value)); });
+        } else {
+            num.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                apply(parseFloat(num.value));
+                num.blur();
+            });
+        }
         rng.addEventListener('input', function () { apply(parseFloat(rng.value)); });
     }
 

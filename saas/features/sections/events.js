@@ -139,6 +139,24 @@ var SectionsEvents = (function () {
         state.bagueLiaisons = liaisons;
     }
 
+    function renumberPiqureKeys(state) {
+        for (var pi = 0; pi < state.piqureSections.length; pi++) {
+            state.piqureSections[pi].key = pi === 0 ? 'sp' : ('sp' + (pi + 1));
+        }
+        for (var pj = 0; pj < state.piqureLiaisons.length; pj++) {
+            state.piqureLiaisons[pj].id = 'rp' + (pj + 1);
+        }
+    }
+
+    function renumberBagueKeys(state) {
+        for (var bi = 0; bi < state.bagueSections.length; bi++) {
+            state.bagueSections[bi].key = 'sb' + (bi + 1);
+        }
+        for (var bj = 0; bj < state.bagueLiaisons.length; bj++) {
+            state.bagueLiaisons[bj].id = 'rb' + (bj + 1);
+        }
+    }
+
     function mergeLiaisonsAfterRemove(liaisons, index) {
         if (index > 0 && index < liaisons.length) {
             var left = liaisons[index - 1];
@@ -162,6 +180,7 @@ var SectionsEvents = (function () {
             if (!bSec || !bSec.userAdded) return false;
             state.bagueSections.splice(index, 1);
             mergeLiaisonsAfterRemove(state.bagueLiaisons, index);
+            renumberBagueKeys(state);
             return true;
         }
         if (mode === 'piqure') {
@@ -170,6 +189,7 @@ var SectionsEvents = (function () {
             if (!pSec || !pSec.userAdded) return false;
             state.piqureSections.splice(index, 1);
             mergeLiaisonsAfterRemove(state.piqureLiaisons, index);
+            renumberPiqureKeys(state);
             return true;
         }
         syncMainFromDom(state);
@@ -258,7 +278,10 @@ var SectionsEvents = (function () {
             var state = getState();
             if (!state) return;
 
-            syncMainFromDom(state);
+            var mode = getActiveMode(ids);
+            if (mode === 'bague') syncBagueFromDom(state);
+            else if (mode === 'piqure') syncPiqureFromDom(state);
+            else syncMainFromDom(state);
 
             var snapshot = {};
             var els = document.querySelectorAll('#Panel-gauche input, #Panel-gauche select');
@@ -269,7 +292,6 @@ var SectionsEvents = (function () {
                 else snapshot[el.id] = el.value;
             }
 
-            var mode = getActiveMode(ids);
             var between = parseInt(sel.value, 10);
             if (!isFinite(between) || between < 1) between = 1;
 
@@ -277,9 +299,8 @@ var SectionsEvents = (function () {
                 if (between > state.bagueSections.length - 1) between = state.bagueSections.length - 1;
                 var Ab = state.bagueSections[between - 1];
                 var Bb = state.bagueSections[between];
-                var newKey = 'sb' + (state.bagueSections.length + 1);
                 var newB = {
-                    key: newKey,
+                    key: '_new',
                     label: 'Bague',
                     h: Math.round(((Ab.h + Bb.h) * 0.5) * 10) / 10,
                     hMin: Math.min(Ab.hMin, Bb.hMin),
@@ -293,22 +314,17 @@ var SectionsEvents = (function () {
                     userAdded: true
                 };
                 state.bagueSections.splice(between, 0, newB);
-                var baseRb = state.bagueLiaisons[between - 1] || { id: 'rb' + between, rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
-                var rb1 = { id: 'rb' + (state.bagueLiaisons.length + 1), rho: baseRb.rho, rhoMin: baseRb.rhoMin, rhoMax: baseRb.rhoMax, rhoStep: baseRb.rhoStep };
-                var rb2 = { id: 'rb' + (state.bagueLiaisons.length + 2), rho: baseRb.rho, rhoMin: baseRb.rhoMin, rhoMax: baseRb.rhoMax, rhoStep: baseRb.rhoStep };
-                state.bagueLiaisons.splice(between - 1, 1, rb1, rb2);
+                var baseRb = state.bagueLiaisons[between - 1] || { rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+                var rbSplit1 = { id: '_new', rho: baseRb.rho, rhoMin: baseRb.rhoMin, rhoMax: baseRb.rhoMax, rhoStep: baseRb.rhoStep };
+                var rbSplit2 = { id: '_new', rho: baseRb.rho, rhoMin: baseRb.rhoMin, rhoMax: baseRb.rhoMax, rhoStep: baseRb.rhoStep };
+                state.bagueLiaisons.splice(between - 1, 1, rbSplit1, rbSplit2);
+                renumberBagueKeys(state);
             } else if (mode === 'piqure') {
                 if (between > state.piqureSections.length - 1) between = state.piqureSections.length - 1;
                 var Ap = state.piqureSections[between - 1];
                 var Bp = state.piqureSections[between];
-                var nextIdx = 2;
-                for (var pi = 0; pi < state.piqureSections.length; pi++) {
-                    var mk = (state.piqureSections[pi].key || '').match(/^sp(\d+)$/);
-                    if (mk) nextIdx = Math.max(nextIdx, parseInt(mk[1], 10) + 1);
-                }
-                var newKeyP = 'sp' + nextIdx;
                 var newP = {
-                    key: newKeyP,
+                    key: '_new',
                     label: 'Piqûre',
                     hasHeight: true,
                     h: Math.round((((Ap.h || 0) + (Bp.h || 0)) * 0.5) * 10) / 10,
@@ -323,11 +339,11 @@ var SectionsEvents = (function () {
                     userAdded: true
                 };
                 state.piqureSections.splice(between, 0, newP);
-                function newPiqureLiaisonId(n) { return n <= 2 ? ('rp' + n) : ('rpp' + n); }
-                var baseRp = state.piqureLiaisons[between - 1] || { id: newPiqureLiaisonId(between), rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
-                var seg1 = { id: newPiqureLiaisonId(state.piqureLiaisons.length + 1), rho: baseRp.rho, rhoMin: baseRp.rhoMin, rhoMax: baseRp.rhoMax, rhoStep: baseRp.rhoStep };
-                var seg2 = { id: newPiqureLiaisonId(state.piqureLiaisons.length + 2), rho: baseRp.rho, rhoMin: baseRp.rhoMin, rhoMax: baseRp.rhoMax, rhoStep: baseRp.rhoStep };
-                state.piqureLiaisons.splice(between - 1, 1, seg1, seg2);
+                var baseRp = state.piqureLiaisons[between - 1] || { rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+                var rpSplit1 = { id: '_new', rho: baseRp.rho, rhoMin: baseRp.rhoMin, rhoMax: baseRp.rhoMax, rhoStep: baseRp.rhoStep };
+                var rpSplit2 = { id: '_new', rho: baseRp.rho, rhoMin: baseRp.rhoMin, rhoMax: baseRp.rhoMax, rhoStep: baseRp.rhoStep };
+                state.piqureLiaisons.splice(between - 1, 1, rpSplit1, rpSplit2);
+                renumberPiqureKeys(state);
             } else {
                 if (between > state.sectionsMain.length - 1) between = state.sectionsMain.length - 1;
                 var A = state.sectionsMain[between - 1];
@@ -368,6 +384,9 @@ var SectionsEvents = (function () {
                     if (mrb) {
                         var irb = parseInt(mrb[1], 10);
                         var tailRb = '-' + mrb[2] + (mrb[3] || '');
+                        if (irb === between) {
+                            return ['rb' + between + tailRb, 'rb' + (between + 1) + tailRb];
+                        }
                         if (irb > between) irb = irb + 1;
                         return 'rb' + irb + tailRb;
                     }
@@ -379,11 +398,19 @@ var SectionsEvents = (function () {
                     if (msp) {
                         var ksp = parseInt(msp[1], 10);
                         var tailSp = '-' + msp[2] + (msp[3] || '');
-                        if (ksp > between + 1) ksp = ksp + 1;
+                        if (ksp > between) ksp = ksp + 1;
                         return 'sp' + ksp + tailSp;
                     }
-                    var mrp = oldId.match(/^(rp\d+|rpp\d+)-(type|rho)(-slider)?$/);
-                    if (mrp) return oldId;
+                    var mrp = oldId.match(/^rp(\d+)-(type|rho)(-slider)?$/);
+                    if (mrp) {
+                        var irp = parseInt(mrp[1], 10);
+                        var tailRp = '-' + mrp[2] + (mrp[3] || '');
+                        if (irp === between) {
+                            return ['rp' + between + tailRp, 'rp' + (between + 1) + tailRp];
+                        }
+                        if (irp > between) irp = irp + 1;
+                        return 'rp' + irp + tailRp;
+                    }
                     return oldId;
                 }
                 var ms = oldId.match(/^s(\d+)-(h|L|P|forme|carre-niveau)(-slider)?$/);

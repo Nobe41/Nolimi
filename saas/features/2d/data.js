@@ -50,6 +50,10 @@ var Plans2DData = (function () {
     }
 
     function getPiqureProfile2D() {
+        if (typeof BottleView3D !== 'undefined' && BottleView3D.getPiqureProfilePointsFor2D) {
+            var profile = BottleView3D.getPiqureProfilePointsFor2D();
+            if (profile && profile.length) return profile;
+        }
         var points = [];
         var s1h = getNumericValue('s1-h', 0);
         var spL = getNumericValue('sp-L', 55);
@@ -70,6 +74,10 @@ var Plans2DData = (function () {
     }
 
     function getBagueProfile2D() {
+        if (typeof BottleView3D !== 'undefined' && BottleView3D.getBagueProfilePointsFor2D) {
+            var profile = BottleView3D.getBagueProfilePointsFor2D();
+            if (profile && profile.length) return profile;
+        }
         var points = [];
         var sbIdxs = getIndexedHeights('sb');
         sbIdxs.forEach(function (k) {
@@ -95,6 +103,34 @@ var Plans2DData = (function () {
         });
         sections.sort(function (a, b) { return a.y - b.y; });
         return sections;
+    }
+
+    function scanProfileYExtents(points, state) {
+        if (!points || !points.length) return;
+        for (var i = 0; i < points.length; i++) {
+            var y = points[i].y;
+            if (!Number.isFinite(y)) continue;
+            if (!state.hasPoint) {
+                state.minY = y;
+                state.maxY = y;
+                state.hasPoint = true;
+            } else {
+                if (y < state.minY) state.minY = y;
+                if (y > state.maxY) state.maxY = y;
+            }
+        }
+    }
+
+    function getBottleVerticalExtents() {
+        var state = { hasPoint: false, minY: 0, maxY: 0 };
+        scanProfileYExtents(getMainSections2D().map(function (s) { return { y: s.y }; }), state);
+        scanProfileYExtents(getPiqureProfile2D(), state);
+        scanProfileYExtents(getBagueProfile2D(), state);
+        if (!state.hasPoint) return { min: -120, max: 400 };
+        return {
+            min: Math.min(-120, Math.floor(state.minY) - 10),
+            max: Math.ceil(state.maxY) + 10
+        };
     }
 
     function getProfileHalfWidthAtY(profilePoints, yTarget) {
@@ -125,6 +161,7 @@ var Plans2DData = (function () {
         getPiqureProfile2D: getPiqureProfile2D,
         getBagueProfile2D: getBagueProfile2D,
         getMainSections2D: getMainSections2D,
+        getBottleVerticalExtents: getBottleVerticalExtents,
         getProfileHalfWidthAtY: getProfileHalfWidthAtY
     };
 })();

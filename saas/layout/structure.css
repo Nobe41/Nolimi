@@ -334,6 +334,19 @@ body {
     box-sizing: border-box;
 }
 
+.desktop-history-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.desktop-history-group .btn-fichier {
+    min-width: 1.25rem;
+    justify-content: center;
+}
+
 .panel-haut-vues .view-switcher {
     gap: 4px;
 }

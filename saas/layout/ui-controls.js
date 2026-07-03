@@ -54,6 +54,17 @@
         });
     }
 
+    function bindApplyOnEnter(el, onApply) {
+        if (!el || el.dataset.nolimiEnterApplyBound === '1') return;
+        el.dataset.nolimiEnterApplyBound = '1';
+        el.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (typeof onApply === 'function') onApply();
+            el.blur();
+        });
+    }
+
     function init() {
         syncAllRangeSliders(document);
         observeRanges();
@@ -62,6 +73,7 @@
     global.UIControls = {
         syncRangeSlider: syncRangeSlider,
         syncAllRangeSliders: syncAllRangeSliders,
+        bindApplyOnEnter: bindApplyOnEnter,
         init: init
     };
 

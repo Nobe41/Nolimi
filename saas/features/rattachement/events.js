@@ -16,8 +16,16 @@ var RattachementEvents = (function () {
 
         if (!input.dataset.bound) {
             input.dataset.bound = '1';
-            input.addEventListener('input', syncFromInput);
-            input.addEventListener('change', syncFromInput);
+            if (typeof UIControls !== 'undefined' && UIControls.bindApplyOnEnter) {
+                UIControls.bindApplyOnEnter(input, syncFromInput);
+            } else {
+                input.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    syncFromInput();
+                    input.blur();
+                });
+            }
         }
         if (!slider.dataset.bound) {
             slider.dataset.bound = '1';

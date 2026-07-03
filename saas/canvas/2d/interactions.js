@@ -54,7 +54,7 @@ var Canvas2DInteractions = (function () {
         canvas.addEventListener('wheel', function (e) {
             e.preventDefault();
             var cam = getCamera();
-            var newZoom = cam.zoom * (1 - e.deltaY * 0.001);
+            var newZoom = cam.zoom * (1 - e.deltaY * 0.00125);
             if (!(newZoom > 0.1 && newZoom < 20)) return;
             var rect = canvas.getBoundingClientRect();
             var mouseX = e.clientX - rect.left;

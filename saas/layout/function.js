@@ -112,6 +112,10 @@ function setupListeners() {
     
     inputs.forEach(input => {
         if (input.classList.contains('gravure-y') || input.classList.contains('gravure-angle') || input.classList.contains('gravure-largeur') || input.classList.contains('gravure-profondeur')) return;
+        var inputId = input.id || '';
+        if (inputId.indexOf('calcule-') === 0) return;
+        if (inputId.indexOf('interieur-epaisseur') === 0) return;
+        if (inputId.indexOf('render-label-') === 0) return;
         if (input.dataset.nolimiInputBound === '1') return;
         input.dataset.nolimiInputBound = '1';
 
@@ -126,7 +130,12 @@ function setupListeners() {
                     if (valSpan) valSpan.textContent = input.value + ' %';
                 } else if (input.type === 'number') {
                     const rng = controlGroup.querySelector('input[type=range]');
-                    if (rng && rng !== input) rng.value = input.value;
+                    if (rng && rng !== input) {
+                        rng.value = input.value;
+                        if (typeof UIControls !== 'undefined' && UIControls.syncRangeSlider) {
+                            UIControls.syncRangeSlider(rng);
+                        }
+                    }
                 }
             }
 
@@ -207,7 +216,7 @@ function setupListeners() {
                 updateCourbeSRhosFromDistance();
             }
             // Utilisateur a changé le ρ d'un rattachement en Courbe S -> enregistrer le rapport ρ/d.
-            var rhoMatch = id.match(/^(r\d+)-rho(?:-slider)?$/);
+            var rhoMatch = id.match(/^(r\d+|rp\d+|rb\d+)-rho(?:-slider)?$/);
             if (rhoMatch) {
                 var rattId = rhoMatch[1];
                 var typeSelect = document.getElementById(rattId + '-type');
@@ -230,7 +239,22 @@ function setupListeners() {
                 if (typeof draw2D === 'function' && view2D && !view2D.classList.contains('hidden')) draw2D();
             }, 20);
         };
-        input.addEventListener('input', onUpdate);
+        if (input.type === 'number') {
+            var applyOnEnter = function () { onUpdate(); };
+            if (typeof UIControls !== 'undefined' && UIControls.bindApplyOnEnter) {
+                UIControls.bindApplyOnEnter(input, applyOnEnter);
+            } else {
+                input.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    applyOnEnter();
+                    input.blur();
+                });
+            }
+        } else {
+            input.addEventListener('input', onUpdate);
+            if (input.type === 'range') input.addEventListener('change', onUpdate);
+        }
         if (input.tagName === 'SELECT') input.addEventListener('change', onUpdate);
     });
 
