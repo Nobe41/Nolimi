@@ -11,7 +11,17 @@ var BottleView3D = (function () {
     /** Méridien du profil 2D (vue de face) = joint de moule en 3D (axe X rouge, 0°). */
     var MOLD_JOINT_PROFILE_THETA = 0;
     var RING_COLOR_NORMAL = ringRules.COLOR_NORMAL || 0x000000;
-    var RING_COLOR_HIGHLIGHT = ringRules.COLOR_HIGHLIGHT || 0x0066cc;
+    var RING_COLOR_HIGHLIGHT = ringRules.COLOR_HIGHLIGHT || 0xff0040;
+    var RING_HIGHLIGHT_TUBE_RADIUS = ringRules.HIGHLIGHT_TUBE_RADIUS || 0.5;
+    var liaisonHighlightRules = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.LIAISON_HIGHLIGHT) ? Canvas3DRules.LIAISON_HIGHLIGHT : {};
+    var LIAISON_HIGHLIGHT_COLOR = liaisonHighlightRules.COLOR || 0xff0040;
+    var LIAISON_HIGHLIGHT_OPACITY = typeof liaisonHighlightRules.OPACITY === 'number' ? liaisonHighlightRules.OPACITY : 0.28;
+    var LIAISON_OUTWARD_OFFSET = typeof liaisonHighlightRules.OUTWARD_OFFSET === 'number' ? liaisonHighlightRules.OUTWARD_OFFSET : 0.45;
+    var LIAISON_PANEL_PREFIX = {
+        'panel-content-sections': 'r',
+        'panel-content-piqure': 'rp',
+        'panel-content-bague': 'rb'
+    };
 
     var sectionRingGroup = null;
     var bottleInnerGlassMesh = null;
@@ -364,7 +374,7 @@ var BottleView3D = (function () {
     }
 
     function buildSectionRingLine(H, points, isHighlight) {
-        var RING_SURFACE_OFFSET = 0.015; // micro-offset pour eviter le z-fighting
+        var RING_SURFACE_OFFSET = isHighlight ? 0.35 : 0.015;
         var pts = points.map(function (p) {
             var x = p[0], z = p[1];
             var r = Math.sqrt(x * x + z * z);
@@ -375,8 +385,29 @@ var BottleView3D = (function () {
             }
             return new THREE.Vector3(x, H, z);
         });
-        var geom = new THREE.BufferGeometry().setFromPoints(pts);
         var color = isHighlight ? RING_COLOR_HIGHLIGHT : RING_COLOR_NORMAL;
+
+        if (isHighlight) {
+            var curve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
+            var tubeGeom = new THREE.TubeGeometry(
+                curve,
+                Math.max(64, pts.length),
+                RING_HIGHLIGHT_TUBE_RADIUS,
+                8,
+                true
+            );
+            var tubeMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.95,
+                depthTest: true
+            });
+            var ring = new THREE.Mesh(tubeGeom, tubeMat);
+            ring.renderOrder = 21;
+            return ring;
+        }
+
+        var geom = new THREE.BufferGeometry().setFromPoints(pts);
         var mat = new THREE.LineBasicMaterial({
             color: color,
             transparent: true,
@@ -868,12 +899,161 @@ var BottleView3D = (function () {
     }
 
 
+    function isSectionRingHighlighted(panelId, index) {
+        if (typeof window === 'undefined') return false;
+        var active = window.sectionHighlightActive;
+        var hover = window.sectionHighlightHover;
+        if (active && active.panelId === panelId && active.index === index) return true;
+        if (hover && hover.panelId === panelId && hover.index === index) return true;
+        if (panelId === 'panel-content-sections') {
+            var activeSection = typeof window.activeSectionIndex !== 'undefined' ? window.activeSectionIndex : 0;
+            var hoveredSection = typeof window.hoveredSectionIndex !== 'undefined' ? window.hoveredSectionIndex : 0;
+            return activeSection === index || hoveredSection === index;
+        }
+        return false;
+    }
+
+    function isLiaisonHighlighted(panelId, index) {
+        if (typeof window === 'undefined' || !index) return false;
+        var active = window.liaisonHighlightActive;
+        var hover = window.liaisonHighlightHover;
+        return (active && active.panelId === panelId && active.index === index)
+            || (hover && hover.panelId === panelId && hover.index === index);
+    }
+
+    function getLiaisonDomId(prefix, liaisonIndex) {
+        if (prefix === 'r') return 'r' + liaisonIndex + (liaisonIndex + 1);
+        return prefix + liaisonIndex;
+    }
+
+    function offsetSectionOutward(section, delta) {
+        delta = delta || LIAISON_OUTWARD_OFFSET;
+        return {
+            H: section.H,
+            a: Math.max(0.1, (section.a || 0) + delta),
+            b: Math.max(0.1, (section.b || 0) + delta),
+            shape: section.shape,
+            carreNiveau: section.carreNiveau
+        };
+    }
+
+    function buildLiaisonHighlightData(sections, liaisonIndex, prefix) {
+        var i = liaisonIndex - 1;
+        if (!sections || i < 0 || i >= sections.length - 1) return null;
+        // Sections voisines pour calculer correctement courbe S, rayon, spline.
+        var start = Math.max(0, i - 1);
+        var end = Math.min(sections.length - 1, i + 2);
+        var sliceSections = sections.slice(start, end + 1);
+        var edgeTypes = [];
+        var rhos = [];
+        for (var e = start; e < end; e++) {
+            var id = getLiaisonDomId(prefix, e + 1);
+            edgeTypes.push(getPanelSelectValue(id + '-type', 'ligne'));
+            rhos.push(getPanelValueSigned(id + '-rho', 5));
+        }
+        return {
+            sections: sliceSections,
+            edgeTypes: edgeTypes,
+            rhos: rhos,
+            yMin: sections[i].H,
+            yMax: sections[i + 1].H
+        };
+    }
+
+    function clipMeshByYRange(mesh, yMin, yMax) {
+        if (!mesh || !mesh.geometry || !mesh.geometry.attributes || !mesh.geometry.attributes.position) return null;
+        var geom = mesh.geometry;
+        var pos = geom.attributes.position;
+        var index = geom.index;
+        if (!index) return mesh;
+        var src = index.array;
+        var kept = [];
+        var span = Math.abs(yMax - yMin);
+        var inset = span > 2 ? Math.min(0.35, span * 0.006) : 0;
+        var lo = Math.min(yMin, yMax) + inset;
+        var hi = Math.max(yMin, yMax) - inset;
+        if (hi <= lo) {
+            lo = Math.min(yMin, yMax);
+            hi = Math.max(yMin, yMax);
+        }
+        for (var f = 0; f < src.length; f += 3) {
+            var i0 = src[f];
+            var i1 = src[f + 1];
+            var i2 = src[f + 2];
+            var y0 = pos.getY(i0);
+            var y1 = pos.getY(i1);
+            var y2 = pos.getY(i2);
+            if (y0 >= lo && y0 <= hi && y1 >= lo && y1 <= hi && y2 >= lo && y2 <= hi) {
+                kept.push(i0, i1, i2);
+            }
+        }
+        if (!kept.length) {
+            geom.dispose();
+            return null;
+        }
+        var clipped = geom.clone();
+        clipped.setIndex(kept);
+        clipped.computeVertexNormals();
+        geom.dispose();
+        mesh.geometry = clipped;
+        return mesh;
+    }
+
+    function buildLiaisonHighlightMesh(sectionsData, yMin, yMax) {
+        if (!sectionsData || typeof BottleMesh3D === 'undefined' || !BottleMesh3D.createBottleMesh) return null;
+        var mat = new THREE.MeshBasicMaterial({
+            color: LIAISON_HIGHLIGHT_COLOR,
+            transparent: true,
+            opacity: LIAISON_HIGHLIGHT_OPACITY,
+            depthTest: true,
+            side: THREE.DoubleSide,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+        });
+        var tessOverride = {
+            meridianRes: Math.max(160, MERIDIAN_RESOLUTION * 2),
+            nTheta: Math.max(N_SEGMENTS, 160)
+        };
+        var mesh = BottleMesh3D.createBottleMesh(sectionsData, mat, tessOverride);
+        if (!mesh) return null;
+        if (typeof yMin === 'number' && typeof yMax === 'number') {
+            mesh = clipMeshByYRange(mesh, yMin, yMax);
+            if (!mesh) return null;
+        }
+        mesh.renderOrder = 25;
+        mesh.userData.isLiaisonHighlight = true;
+        mesh.userData.isPiqure = false;
+        return mesh;
+    }
+
+    function addLiaisonHighlightMeshes(group, sections, panelId) {
+        if (!group || !sections || sections.length < 2) return;
+        var prefix = LIAISON_PANEL_PREFIX[panelId];
+        if (!prefix) return;
+        for (var li = 1; li < sections.length; li++) {
+            if (!isLiaisonHighlighted(panelId, li)) continue;
+            var data = buildLiaisonHighlightData(sections, li, prefix);
+            if (!data) continue;
+            var inflatedSections = [];
+            for (var si = 0; si < data.sections.length; si++) {
+                inflatedSections.push(offsetSectionOutward(data.sections[si]));
+            }
+            var inflated = {
+                sections: inflatedSections,
+                edgeTypes: data.edgeTypes,
+                rhos: data.rhos
+            };
+            var mesh = buildLiaisonHighlightMesh(inflated, data.yMin, data.yMax);
+            if (mesh) group.add(mesh);
+        }
+    }
+
     function updateView() {
         if (!scene || typeof BottleMesh3D === 'undefined') return;
         if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) Validator.applyAllUserConstraints();
         var sectionsData = getSectionsDataFromPanel();
         var sections = sectionsData.sections;
-        var activeSection = typeof window.activeSectionIndex !== 'undefined' ? window.activeSectionIndex : 0;
 
         replaceSectionRingGroup();
 
@@ -962,7 +1142,7 @@ var BottleView3D = (function () {
         }
 
         for (var i = 0; i < sections.length; i++) {
-            addSectionRing(sectionRingGroup, sections[i], activeSection === i + 1, false);
+            addSectionRing(sectionRingGroup, sections[i], isSectionRingHighlighted('panel-content-sections', i + 1), false);
         }
 
         // Joint de moule visuel sur l'axe rouge X (deux demi-joints opposes, 0° et 180°).
@@ -977,9 +1157,9 @@ var BottleView3D = (function () {
         // ---------- PIQÛRE (dynamique : sp + sp2..spN) ----------
         var piqSections = collectPiqureSectionsFromPanel();
         var s1 = sections[0];
-        addSectionRing(sectionRingGroup, piqSections[0], false, true);
+        addSectionRing(sectionRingGroup, piqSections[0], isSectionRingHighlighted('panel-content-piqure', 1), true);
         for (var pri = 1; pri < piqSections.length; pri++) {
-            addSectionRing(sectionRingGroup, piqSections[pri], false, true);
+            addSectionRing(sectionRingGroup, piqSections[pri], isSectionRingHighlighted('panel-content-piqure', pri + 1), true);
         }
         var feuille = buildPiqurePiedFeuille(s1, piqSections[0], piqSections[0].H);
         feuille.userData.isPiqure = true;
@@ -1051,7 +1231,7 @@ var BottleView3D = (function () {
 
         var bagueSections = collectBagueSectionsFromPanel();
         for (var bri = 0; bri < bagueSections.length; bri++) {
-            addSectionRing(sectionRingGroup, bagueSections[bri], false, false);
+            addSectionRing(sectionRingGroup, bagueSections[bri], isSectionRingHighlighted('panel-content-bague', bri + 1), false);
         }
         var bague1 = bagueSections[0];
         var sTop = sections && sections.length ? sections[sections.length - 1] : null;
@@ -1123,6 +1303,10 @@ var BottleView3D = (function () {
                 skipSliderResync: typeof window !== 'undefined' && !!window._renderLabelSliderDragging
             });
         }
+
+        addLiaisonHighlightMeshes(sectionRingGroup, sections, 'panel-content-sections');
+        addLiaisonHighlightMeshes(sectionRingGroup, piqSections, 'panel-content-piqure');
+        addLiaisonHighlightMeshes(sectionRingGroup, bagueSections, 'panel-content-bague');
 
         applyViewOpacity(sectionRingGroup);
         scene.add(sectionRingGroup);

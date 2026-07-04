@@ -8,7 +8,13 @@ var Canvas3DRules = (function () {
         },
         SECTION_RING: {
             COLOR_NORMAL: 0x000000,
-            COLOR_HIGHLIGHT: 0x0066cc
+            COLOR_HIGHLIGHT: 0xff0040,
+            HIGHLIGHT_TUBE_RADIUS: 0.5
+        },
+        LIAISON_HIGHLIGHT: {
+            COLOR: 0xff0040,
+            OPACITY: 0.28,
+            OUTWARD_OFFSET: 0.45
         },
         SCENE: {
             VIEWPORT_FIT_RATIO: 0.92,

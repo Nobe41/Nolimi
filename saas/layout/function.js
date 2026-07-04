@@ -732,12 +732,73 @@ function setupListeners() {
         });
     }
 
-    function getMainAccordionIndex(btn) {
-        if (!btn.classList.contains("main-accordion")) return 0;
-        for (let i = 0; i < mainAccordions.length; i++) {
-            if (mainAccordions[i] === btn) return i + 1;
+    function getSectionPanelId(btn) {
+        var panel = btn && btn.closest ? btn.closest('.panel-content') : null;
+        return panel && panel.id ? panel.id : '';
+    }
+
+    function getSectionIndexInPanel(btn) {
+        if (!btn || !btn.classList.contains('main-accordion')) return 0;
+        var panel = btn.closest('.panel-content');
+        if (!panel) return 0;
+        var mains = panel.querySelectorAll('.accordion.main-accordion');
+        for (var mi = 0; mi < mains.length; mi++) {
+            if (mains[mi] === btn) return mi + 1;
         }
         return 0;
+    }
+
+    function setActiveSectionHighlight(panelId, index) {
+        window.sectionHighlightActive = { panelId: panelId || '', index: index || 0 };
+        window.activeSectionIndex = (panelId === 'panel-content-sections') ? (index || 0) : 0;
+        if (index) {
+            window.liaisonHighlightActive = { panelId: '', index: 0 };
+        }
+    }
+
+    function setActiveLiaisonHighlight(panelId, index) {
+        window.liaisonHighlightActive = { panelId: panelId || '', index: index || 0 };
+        if (index) {
+            window.sectionHighlightActive = { panelId: '', index: 0 };
+            window.activeSectionIndex = 0;
+        }
+    }
+
+    function setHoverSectionHighlight(panelId, index) {
+        window.sectionHighlightHover = { panelId: panelId || '', index: index || 0 };
+        window.hoveredSectionIndex = (panelId === 'panel-content-sections') ? (index || 0) : 0;
+        clearHoverLiaisonHighlight();
+    }
+
+    function clearHoverSectionHighlight() {
+        window.sectionHighlightHover = { panelId: '', index: 0 };
+        window.hoveredSectionIndex = 0;
+    }
+
+    function setHoverLiaisonHighlight(panelId, index) {
+        window.liaisonHighlightHover = { panelId: panelId || '', index: index || 0 };
+        clearHoverSectionHighlight();
+    }
+
+    function clearHoverLiaisonHighlight() {
+        window.liaisonHighlightHover = { panelId: '', index: 0 };
+    }
+
+    function getLiaisonIndexInPanel(card) {
+        if (!card || !card.classList.contains('setting-card--liaison')) return 0;
+        var panel = card.closest('.panel-content');
+        if (!panel) return 0;
+        var liaisons = panel.querySelectorAll('.setting-card--liaison');
+        for (var i = 0; i < liaisons.length; i++) {
+            if (liaisons[i] === card) return i + 1;
+        }
+        return 0;
+    }
+
+    var SECTION_HIGHLIGHT_PANELS = ['panel-content-sections', 'panel-content-piqure', 'panel-content-bague'];
+
+    function getMainAccordionIndex(btn) {
+        return getSectionIndexInPanel(btn);
     }
 
     for (let i = 0; i < allAccordions.length; i++) {
@@ -755,24 +816,31 @@ function setupListeners() {
             if (isMain) {
                 // Fermer uniquement les autres sections principales.
                 closeMainAccordions();
+                var panelId = getSectionPanelId(this);
                 if (!isOpen) {
                     this.classList.add("active");
                     if (panel && panel.classList.contains("panel-controls")) {
                         panel.style.maxHeight = panel.scrollHeight + "px";
                     }
-                    const sectionIndex = getMainAccordionIndex(this);
-                    window.activeSectionIndex = sectionIndex;
+                    setActiveSectionHighlight(panelId, getSectionIndexInPanel(this));
                 } else {
-                    window.activeSectionIndex = 0;
+                    setActiveSectionHighlight(panelId, 0);
                 }
             } else if (isSub) {
                 // Fermer uniquement les autres rattachements.
                 closeSubAccordions();
+                var liaisonCard = card && card.classList.contains('setting-card--liaison') ? card : null;
+                var subPanelId = getSectionPanelId(this);
                 if (!isOpen) {
                     this.classList.add("active");
                     if (panel && panel.classList.contains("panel-controls")) {
                         panel.style.maxHeight = panel.scrollHeight + "px";
                     }
+                    if (liaisonCard) {
+                        setActiveLiaisonHighlight(subPanelId, getLiaisonIndexInPanel(liaisonCard));
+                    }
+                } else if (liaisonCard) {
+                    setActiveLiaisonHighlight(subPanelId, 0);
                 }
             }
 
@@ -782,6 +850,59 @@ function setupListeners() {
             }
         };
     }
+
+    function bindSectionHoverHighlight() {
+        for (var pi = 0; pi < SECTION_HIGHLIGHT_PANELS.length; pi++) {
+            var panel = document.getElementById(SECTION_HIGHLIGHT_PANELS[pi]);
+            if (!panel) continue;
+            var cards = panel.querySelectorAll('.setting-card');
+            for (var ci = 0; ci < cards.length; ci++) {
+                var card = cards[ci];
+                if (card.classList.contains('setting-card--liaison')) continue;
+                if (card.dataset.nolimiSectionHoverBound === '1') continue;
+                var btn = card.querySelector('.accordion.main-accordion');
+                if (!btn) continue;
+                card.dataset.nolimiSectionHoverBound = '1';
+                card.addEventListener('mouseenter', function () {
+                    var accordion = this.querySelector('.accordion.main-accordion');
+                    if (!accordion) return;
+                    setHoverSectionHighlight(getSectionPanelId(accordion), getSectionIndexInPanel(accordion));
+                    scheduleViewRefresh();
+                });
+                card.addEventListener('mouseleave', function () {
+                    clearHoverSectionHighlight();
+                    scheduleViewRefresh();
+                });
+            }
+        }
+    }
+
+    bindSectionHoverHighlight();
+
+    function bindLiaisonHoverHighlight() {
+        for (var pi = 0; pi < SECTION_HIGHLIGHT_PANELS.length; pi++) {
+            var panel = document.getElementById(SECTION_HIGHLIGHT_PANELS[pi]);
+            if (!panel) continue;
+            var cards = panel.querySelectorAll('.setting-card--liaison');
+            for (var ci = 0; ci < cards.length; ci++) {
+                var card = cards[ci];
+                if (card.dataset.nolimiLiaisonHoverBound === '1') continue;
+                card.dataset.nolimiLiaisonHoverBound = '1';
+                card.addEventListener('mouseenter', function () {
+                    var accordion = this.querySelector('.accordion.sub-accordion');
+                    if (!accordion) return;
+                    setHoverLiaisonHighlight(getSectionPanelId(accordion), getLiaisonIndexInPanel(this));
+                    scheduleViewRefresh();
+                });
+                card.addEventListener('mouseleave', function () {
+                    clearHoverLiaisonHighlight();
+                    scheduleViewRefresh();
+                });
+            }
+        }
+    }
+
+    bindLiaisonHoverHighlight();
 }
 
 bindInspectorWheelScroll();
