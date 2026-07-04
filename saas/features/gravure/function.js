@@ -5,6 +5,7 @@
 
 var Gravure3D = (function () {
     var engravingGroup = null;
+    var lastEngravingSignature = '';
 
     function disposeGroup(group) {
         if (!group) return;
@@ -406,8 +407,63 @@ var Gravure3D = (function () {
         return group.children.length ? group : null;
     }
 
+    function buildEngravingSceneSignature(surfaceInput) {
+        var extended = extendSurfaceWithBague(surfaceInput);
+        var secParts = [];
+        if (extended && extended.sections) {
+            for (var si = 0; si < extended.sections.length; si++) {
+                var s = extended.sections[si];
+                secParts.push([
+                    Math.round((s.H || 0) * 100) / 100,
+                    Math.round((s.a || 0) * 100) / 100,
+                    Math.round((s.b || 0) * 100) / 100,
+                    s.shape || '',
+                    Math.round((s.carreNiveau || 0) * 100) / 100
+                ].join(','));
+            }
+        }
+        if (extended && extended.edgeTypes) secParts.push('e:' + extended.edgeTypes.join(','));
+        if (extended && extended.rhos) {
+            var rr = [];
+            for (var ri = 0; ri < extended.rhos.length; ri++) rr.push(Math.round((extended.rhos[ri] || 0) * 100) / 100);
+            secParts.push('r:' + rr.join(','));
+        }
+        var engravings = (typeof window !== 'undefined' && window.getEngravingsData) ? window.getEngravingsData() : [];
+        var images = (typeof window !== 'undefined' && window.engravingImages) ? window.engravingImages : {};
+        var gParts = [];
+        for (var gi = 0; gi < engravings.length; gi++) {
+            var g = engravings[gi];
+            var img = images[g.id];
+            gParts.push([
+                g.id || '',
+                img ? (img.width + 'x' + img.height) : '0',
+                Math.round((g.y || 0) * 100) / 100,
+                Math.round((g.angle || 0) * 10000) / 10000,
+                Math.round((g.width || 0) * 100) / 100,
+                Math.round((g.depth || 0) * 100) / 100,
+                g.flip ? 1 : 0,
+                g.invert ? 1 : 0
+            ].join(':'));
+        }
+        var renderMode = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getRenderMaterialMode)
+            ? BottleMaterials.getRenderMaterialMode()
+            : 'base';
+        return secParts.join('|') + '##' + gParts.join('|') + '##rm:' + renderMode;
+    }
+
+    function refreshEngravingOpacity() {
+        if (!engravingGroup || typeof BottleView3D === 'undefined' || !BottleView3D.applyViewOpacity) return;
+        BottleView3D.applyViewOpacity(engravingGroup);
+    }
+
     function updateScene(scene, surfaceInput) {
         if (!scene || !surfaceInput) return;
+        var sig = buildEngravingSceneSignature(surfaceInput);
+        if (sig === lastEngravingSignature && engravingGroup) {
+            if (engravingGroup.parent !== scene) scene.add(engravingGroup);
+            return;
+        }
+        lastEngravingSignature = sig;
         if (engravingGroup) {
             scene.remove(engravingGroup);
             disposeGroup(engravingGroup);
@@ -425,6 +481,7 @@ var Gravure3D = (function () {
 
     return {
         updateScene: updateScene,
+        refreshEngravingOpacity: refreshEngravingOpacity,
         applyInvertedEngravingsToBottleMesh: applyInvertedEngravingsToBottleMesh,
         applyInvertedDisplacementsToMesh: applyInvertedEngravingsToBottleMesh,
         punchHolesForInvertedEngravings: punchHolesForInvertedEngravings,

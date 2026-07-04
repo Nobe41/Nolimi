@@ -27,6 +27,9 @@ var BottleView3D = (function () {
     var bottleInnerGlassMesh = null;
     var bottleLabelMeshes = {};
     var bottleLabelCacheKeys = {};
+    var lastGeometrySignature = '';
+    var lastHighlightSignature = '';
+    var lastOpacitySignature = '';
 
     function disposeLabelMeshById(labelId) {
         var mesh = bottleLabelMeshes[labelId];
@@ -100,6 +103,106 @@ var BottleView3D = (function () {
             parts.push('r:' + rr.join(','));
         }
         return parts.join('|');
+    }
+
+    function buildSectionsSliceSignature(sections) {
+        if (!sections || !sections.length) return '';
+        var parts = [];
+        for (var i = 0; i < sections.length; i++) {
+            var s = sections[i];
+            parts.push([
+                Math.round((s.H || 0) * 100) / 100,
+                Math.round((s.a || 0) * 100) / 100,
+                Math.round((s.b || 0) * 100) / 100,
+                s.shape || '',
+                Math.round((s.carreNiveau || 0) * 100) / 100
+            ].join(','));
+        }
+        return parts.join('|');
+    }
+
+    function buildGeometrySignature(sectionsData, piqSections, bagueSections, thicknessNow, bottleTessOverride) {
+        var piqData = buildSectionsDataBundle(piqSections.slice(), 'rp');
+        var bagueData = buildSectionsDataBundle(bagueSections.slice(), 'rb');
+        return [
+            buildBottleBodySignature(sectionsData),
+            'piq:' + buildSectionsSliceSignature(piqSections),
+            'bag:' + buildSectionsSliceSignature(bagueSections),
+            'rpd:' + buildBottleBodySignature(piqData),
+            'rbd:' + buildBottleBodySignature(bagueData),
+            'rp3:' + Math.round(getPanelValue('rp3-h', 30) * 100) / 100,
+            'th:' + Math.round(thicknessNow * 100) / 100,
+            'rm:' + ((typeof BottleMaterials !== 'undefined' && BottleMaterials.getRenderMaterialMode) ? BottleMaterials.getRenderMaterialMode() : 'base'),
+            'tess:' + (bottleTessOverride ? (bottleTessOverride.nTheta + 'x' + bottleTessOverride.meridianRes) : 'def')
+        ].join('||');
+    }
+
+    function buildHighlightSignature() {
+        var w = typeof window !== 'undefined' ? window : {};
+        var sh = w.sectionHighlightActive || {};
+        var sa = w.sectionHighlightHover || {};
+        var la = w.liaisonHighlightActive || {};
+        var lh = w.liaisonHighlightHover || {};
+        var d = w.displayOptions || {};
+        return [
+            'sa:', sh.panelId || '', '|', sh.index || 0,
+            'sh:', sa.panelId || '', '|', sa.index || 0,
+            'la:', la.panelId || '', '|', la.index || 0,
+            'lh:', lh.panelId || '', '|', lh.index || 0,
+            'asi:', typeof w.activeSectionIndex !== 'undefined' ? w.activeSectionIndex : 0,
+            'hsi:', typeof w.hoveredSectionIndex !== 'undefined' ? w.hoveredSectionIndex : 0,
+            'rings:', d.showSectionRings !== false,
+            'mold:', d.showMoldJoint !== false
+        ].join('');
+    }
+
+    function buildVisualOpacitySignature() {
+        return (typeof Bottle3DData !== 'undefined' && Bottle3DData.isPiqureViewActive && Bottle3DData.isPiqureViewActive())
+            ? 'piq'
+            : 'main';
+    }
+
+    function removeOverlayChildren() {
+        if (!sectionRingGroup) return;
+        for (var i = sectionRingGroup.children.length - 1; i >= 0; i--) {
+            var child = sectionRingGroup.children[i];
+            if (child.userData && child.userData.isOverlay) {
+                sectionRingGroup.remove(child);
+                disposeThreeHierarchy(child);
+            }
+        }
+    }
+
+    function buildOverlayContent(group, sectionsData, sections, piqSections, bagueSections) {
+        if (!group) return;
+        for (var i = 0; i < sections.length; i++) {
+            addSectionRing(group, sections[i], isSectionRingHighlighted('panel-content-sections', i + 1), false);
+        }
+        var showMoldJoint = !(typeof window !== 'undefined' && window.displayOptions && window.displayOptions.showMoldJoint === false);
+        if (showMoldJoint) {
+            var moldLineA = buildMoldJointLine(MOLD_JOINT_PROFILE_THETA, sectionsData);
+            var moldLineB = buildMoldJointLine(MOLD_JOINT_PROFILE_THETA + Math.PI, sectionsData);
+            if (moldLineA) {
+                moldLineA.userData.isOverlay = true;
+                group.add(moldLineA);
+            }
+            if (moldLineB) {
+                moldLineB.userData.isOverlay = true;
+                group.add(moldLineB);
+            }
+        }
+        if (piqSections.length) {
+            addSectionRing(group, piqSections[0], isSectionRingHighlighted('panel-content-piqure', 1), true);
+            for (var pri = 1; pri < piqSections.length; pri++) {
+                addSectionRing(group, piqSections[pri], isSectionRingHighlighted('panel-content-piqure', pri + 1), true);
+            }
+        }
+        for (var bri = 0; bri < bagueSections.length; bri++) {
+            addSectionRing(group, bagueSections[bri], isSectionRingHighlighted('panel-content-bague', bri + 1), false);
+        }
+        addLiaisonHighlightMeshes(group, sections, 'panel-content-sections');
+        addLiaisonHighlightMeshes(group, piqSections, 'panel-content-piqure');
+        addLiaisonHighlightMeshes(group, bagueSections, 'panel-content-bague');
     }
 
     function isGlassRenderMode() {
@@ -445,6 +548,7 @@ var BottleView3D = (function () {
         var pts = BottleMaths.getSectionRingPoints(section.a, section.b, section.shape, section.carreNiveau, N_SEGMENTS);
         var ring = buildSectionRingLine(section.H, pts, isHighlight);
         ring.userData.isPiqure = isPiqure;
+        ring.userData.isOverlay = true;
         group.add(ring);
     }
 
@@ -1023,6 +1127,7 @@ var BottleView3D = (function () {
         }
         mesh.renderOrder = 25;
         mesh.userData.isLiaisonHighlight = true;
+        mesh.userData.isOverlay = true;
         mesh.userData.isPiqure = false;
         return mesh;
     }
@@ -1049,17 +1154,64 @@ var BottleView3D = (function () {
         }
     }
 
+    function refreshGravureScene(sectionsData) {
+        if (typeof Gravure3D !== 'undefined' && Gravure3D.updateScene && scene && sectionsData) {
+            Gravure3D.updateScene(scene, sectionsData);
+        }
+    }
+
     function updateView() {
         if (!scene || typeof BottleMesh3D === 'undefined') return;
-        if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) Validator.applyAllUserConstraints();
+
         var sectionsData = getSectionsDataFromPanel();
         var sections = sectionsData.sections;
-
-        replaceSectionRingGroup();
+        var piqSections = collectPiqureSectionsFromPanel();
+        var bagueSections = collectBagueSectionsFromPanel();
+        var thicknessNow = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
+            ? InterieurMath.getThicknessMm()
+            : 3.5;
 
         var bottleTessOverride = (typeof Gravure3D !== 'undefined' && Gravure3D.getBottleTessellationOverrides)
             ? Gravure3D.getBottleTessellationOverrides(sectionsData)
             : null;
+
+        var geomSig = buildGeometrySignature(sectionsData, piqSections, bagueSections, thicknessNow, bottleTessOverride);
+        var highlightSig = buildHighlightSignature();
+        var opacitySig = buildVisualOpacitySignature();
+
+        if (sectionRingGroup
+            && geomSig === lastGeometrySignature
+            && highlightSig === lastHighlightSignature
+            && opacitySig === lastOpacitySignature) {
+            refreshGravureScene(sectionsData);
+            return;
+        }
+
+        if (sectionRingGroup && geomSig === lastGeometrySignature && highlightSig !== lastHighlightSignature) {
+            removeOverlayChildren();
+            buildOverlayContent(sectionRingGroup, sectionsData, sections, piqSections, bagueSections);
+            applyViewOpacity(sectionRingGroup);
+            refreshGravureScene(sectionsData);
+            lastHighlightSignature = highlightSig;
+            lastOpacitySignature = opacitySig;
+            return;
+        }
+
+        if (sectionRingGroup && geomSig === lastGeometrySignature && opacitySig !== lastOpacitySignature) {
+            applyViewOpacity(sectionRingGroup);
+            if (typeof Gravure3D !== 'undefined' && Gravure3D.refreshEngravingOpacity) {
+                Gravure3D.refreshEngravingOpacity();
+            }
+            lastOpacitySignature = opacitySig;
+            return;
+        }
+
+        if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) Validator.applyAllUserConstraints();
+
+        replaceSectionRingGroup();
+        lastGeometrySignature = geomSig;
+        lastHighlightSignature = highlightSig;
+        lastOpacitySignature = opacitySig;
 
         if (!bottleGroup) {
             var baseMat = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getBottleBodyMaterial)
@@ -1100,9 +1252,7 @@ var BottleView3D = (function () {
             bottleInnerGlassMesh = null;
         }
         if (bottleGroup && bottleGroup.geometry && typeof THREE !== 'undefined') {
-            var thicknessMm = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
-                ? InterieurMath.getThicknessMm()
-                : 3.5;
+            var thicknessMm = thicknessNow;
             var innerSectionsData = (typeof InterieurMath !== 'undefined' && InterieurMath.buildInteriorSectionsDataFromThickness)
                 ? InterieurMath.buildInteriorSectionsDataFromThickness(sectionsData, thicknessMm, thicknessMm)
                 : sectionsData;
@@ -1141,34 +1291,13 @@ var BottleView3D = (function () {
             sectionRingGroup.add(bottleInnerGlassMesh);
         }
 
-        for (var i = 0; i < sections.length; i++) {
-            addSectionRing(sectionRingGroup, sections[i], isSectionRingHighlighted('panel-content-sections', i + 1), false);
-        }
-
-        // Joint de moule visuel sur l'axe rouge X (deux demi-joints opposes, 0° et 180°).
-        var showMoldJoint = !(typeof window !== 'undefined' && window.displayOptions && window.displayOptions.showMoldJoint === false);
-        if (showMoldJoint) {
-            var moldLineA = buildMoldJointLine(MOLD_JOINT_PROFILE_THETA, sectionsData);
-            var moldLineB = buildMoldJointLine(MOLD_JOINT_PROFILE_THETA + Math.PI, sectionsData);
-            if (moldLineA) sectionRingGroup.add(moldLineA);
-            if (moldLineB) sectionRingGroup.add(moldLineB);
-        }
-
         // ---------- PIQÛRE (dynamique : sp + sp2..spN) ----------
-        var piqSections = collectPiqureSectionsFromPanel();
         var s1 = sections[0];
-        addSectionRing(sectionRingGroup, piqSections[0], isSectionRingHighlighted('panel-content-piqure', 1), true);
-        for (var pri = 1; pri < piqSections.length; pri++) {
-            addSectionRing(sectionRingGroup, piqSections[pri], isSectionRingHighlighted('panel-content-piqure', pri + 1), true);
-        }
         var feuille = buildPiqurePiedFeuille(s1, piqSections[0], piqSections[0].H);
         feuille.userData.isPiqure = true;
         enhanceInnerPiqureVisibility(feuille);
         enableMeshShadows(feuille);
         sectionRingGroup.add(feuille);
-        var thicknessNow = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
-            ? InterieurMath.getThicknessMm()
-            : 3.5;
         var piqureInnerMat = getInnerShellMaterial();
         var s1Inner = InterieurMath.insetSection(s1, thicknessNow);
         s1Inner.H = s1.H + thicknessNow;
@@ -1229,14 +1358,9 @@ var BottleView3D = (function () {
             }
         }
 
-        var bagueSections = collectBagueSectionsFromPanel();
-        for (var bri = 0; bri < bagueSections.length; bri++) {
-            addSectionRing(sectionRingGroup, bagueSections[bri], isSectionRingHighlighted('panel-content-bague', bri + 1), false);
-        }
         var bague1 = bagueSections[0];
         var sTop = sections && sections.length ? sections[sections.length - 1] : null;
         var sPrev = sections && sections.length >= 2 ? sections[sections.length - 2] : null;
-        // bague1 ring déjà ajouté dans la boucle si présent
         if (sTop) {
             var feuilleColBague = buildNeckToBagueFeuille(sPrev, sTop, bague1, sectionsData, BottleMaterials.DEFAULT_GLASS_COLOR);
             feuilleColBague.userData.isPiqure = false;
@@ -1304,9 +1428,7 @@ var BottleView3D = (function () {
             });
         }
 
-        addLiaisonHighlightMeshes(sectionRingGroup, sections, 'panel-content-sections');
-        addLiaisonHighlightMeshes(sectionRingGroup, piqSections, 'panel-content-piqure');
-        addLiaisonHighlightMeshes(sectionRingGroup, bagueSections, 'panel-content-bague');
+        buildOverlayContent(sectionRingGroup, sectionsData, sections, piqSections, bagueSections);
 
         applyViewOpacity(sectionRingGroup);
         scene.add(sectionRingGroup);
@@ -1315,9 +1437,7 @@ var BottleView3D = (function () {
             CalculeVolumeFeature.updateFromSectionsData(sectionsData);
         }
 
-        if (typeof Gravure3D !== 'undefined' && Gravure3D && Gravure3D.updateScene) {
-            Gravure3D.updateScene(scene, sectionsData);
-        }
+        refreshGravureScene(sectionsData);
     }
 
     /**
@@ -1366,6 +1486,9 @@ var BottleView3D = (function () {
         }
         disposeAllLabelMeshes();
         sectionRingGroup = null;
+        lastGeometrySignature = '';
+        lastHighlightSignature = '';
+        lastOpacitySignature = '';
     }
 
     return {
