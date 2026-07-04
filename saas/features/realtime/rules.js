@@ -4,7 +4,7 @@ var RealtimeRules = {
     CURSOR_THROTTLE_MS: 40,
     CURSOR_STALE_MS: 5000,
     HOST_WAIT_MS: 4000,
-    VIEW_THROTTLE_MS: 40,
+    VIEW_THROTTLE_MS: 120,
     CHANNEL_PREFIX: 'nolimi-session:',
     URL_PARAM: 'session',
     IDS: {

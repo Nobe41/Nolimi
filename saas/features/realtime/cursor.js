@@ -1,9 +1,9 @@
-// Curseurs distants — position normalisée sur la fenêtre (0–1), même place relative quel que soit le format d'écran.
+// Curseurs distants — pleine page, coords normalisées fenêtre (0–1).
 var RealtimeCursors = (function () {
     var overlay = null;
     var remoteByUser = {};
     var channel = null;
-    var localUserId = null;
+    var localCursorId = null;
     var localDisplayName = 'Vous';
     var listenersBound = false;
     var throttleTimer = null;
@@ -11,7 +11,13 @@ var RealtimeCursors = (function () {
     var staleTimers = {};
 
     var COLORS = ['#e53935', '#8e24aa', '#1e88e5', '#43a047', '#fb8c00', '#00acc1'];
-    var COORD_SPACE = 'window';
+
+    function makeCursorId(authUserId) {
+        var suffix = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID().slice(0, 8)
+            : Math.random().toString(36).slice(2, 10);
+        return String(authUserId || 'guest') + ':' + suffix;
+    }
 
     function colorForUser(userId) {
         var hash = 0;
@@ -33,41 +39,35 @@ var RealtimeCursors = (function () {
         return 'Invité ' + String(userId || '').slice(0, 4);
     }
 
-    function getScreenMetrics() {
-        var el = document.documentElement;
+    function windowSize() {
+        var w = document.documentElement.clientWidth || window.innerWidth;
+        var h = document.documentElement.clientHeight || window.innerHeight;
+        return { w: w, h: h };
+    }
+
+    function toNormalized(clientX, clientY) {
+        var s = windowSize();
+        if (!s.w || !s.h) return null;
         return {
-            w: el.clientWidth || window.innerWidth,
-            h: el.clientHeight || window.innerHeight
+            x: Math.max(0, Math.min(1, clientX / s.w)),
+            y: Math.max(0, Math.min(1, clientY / s.h))
         };
     }
 
-    function clientToNormalized(clientX, clientY) {
-        var m = getScreenMetrics();
-        if (!m.w || !m.h) return null;
-        return {
-            x: Math.max(0, Math.min(1, clientX / m.w)),
-            y: Math.max(0, Math.min(1, clientY / m.h))
-        };
-    }
-
-    function removeLegacyViewportOverlay() {
-        var viewport = document.getElementById('viewport');
-        if (!viewport) return;
-        var legacy = viewport.querySelector('#realtime-cursors-overlay');
-        if (legacy && legacy.parentNode) legacy.parentNode.removeChild(legacy);
+    function fromNormalized(nx, ny) {
+        var s = windowSize();
+        return { x: nx * s.w, y: ny * s.h };
     }
 
     function ensureOverlay() {
-        var root = document.body;
-        if (!root) return null;
-        removeLegacyViewportOverlay();
+        if (!document.body) return null;
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.id = 'realtime-cursors-overlay';
             overlay.className = 'realtime-cursors-overlay';
             overlay.setAttribute('aria-hidden', 'true');
         }
-        root.appendChild(overlay);
+        document.body.appendChild(overlay);
         return overlay;
     }
 
@@ -84,9 +84,9 @@ var RealtimeCursors = (function () {
         return el;
     }
 
-    function placeCursorElement(el, nx, ny) {
-        var m = getScreenMetrics();
-        el.style.transform = 'translate(' + (nx * m.w) + 'px, ' + (ny * m.h) + 'px)';
+    function placeCursor(el, nx, ny) {
+        var p = fromNormalized(nx, ny);
+        el.style.transform = 'translate3d(' + p.x + 'px,' + p.y + 'px,0)';
     }
 
     function scheduleStaleHide(userId) {
@@ -115,27 +115,18 @@ var RealtimeCursors = (function () {
         delete remoteByUser[userId];
     }
 
-    function viewportPayloadToWindow(vx, vy) {
-        var viewport = document.getElementById('viewport');
-        if (!viewport) return { x: vx, y: vy };
-        var rect = viewport.getBoundingClientRect();
-        if (!rect.width || !rect.height) return { x: vx, y: vy };
-        return clientToNormalized(
-            rect.left + vx * rect.width,
-            rect.top + vy * rect.height
-        ) || { x: vx, y: vy };
-    }
-
-    function parseNormalizedPayload(payload) {
-        if (!payload || typeof payload.x !== 'number' || typeof payload.y !== 'number') return null;
-        if (payload.space === COORD_SPACE || payload.space === 'window') {
-            return { x: payload.x, y: payload.y };
+    function decodePayload(raw) {
+        if (!raw) return null;
+        if (raw.userId !== undefined || raw.visible !== undefined) return raw;
+        if (raw.payload && (raw.payload.userId !== undefined || raw.payload.visible !== undefined)) {
+            return raw.payload;
         }
-        return viewportPayloadToWindow(payload.x, payload.y);
+        return null;
     }
 
-    function updateRemoteCursor(payload) {
-        if (!payload || !payload.userId || payload.userId === localUserId) return;
+    function updateRemoteCursor(raw) {
+        var payload = decodePayload(raw);
+        if (!payload || !payload.userId || payload.userId === localCursorId) return;
 
         var layer = ensureOverlay();
         if (!layer) return;
@@ -143,12 +134,7 @@ var RealtimeCursors = (function () {
         var userId = payload.userId;
         var entry = remoteByUser[userId];
         if (!entry) {
-            entry = {
-                el: createCursorElement(userId, payload.name),
-                visible: false,
-                nx: 0,
-                ny: 0
-            };
+            entry = { el: createCursorElement(userId, payload.name), visible: false, nx: 0, ny: 0 };
             remoteByUser[userId] = entry;
             layer.appendChild(entry.el);
         }
@@ -158,12 +144,11 @@ var RealtimeCursors = (function () {
             return;
         }
 
-        var norm = parseNormalizedPayload(payload);
-        if (!norm) return;
+        if (typeof payload.x !== 'number' || typeof payload.y !== 'number') return;
 
-        entry.nx = norm.x;
-        entry.ny = norm.y;
-        placeCursorElement(entry.el, entry.nx, entry.ny);
+        entry.nx = payload.x;
+        entry.ny = payload.y;
+        placeCursor(entry.el, entry.nx, entry.ny);
         entry.el.classList.remove('is-hidden');
         entry.visible = true;
 
@@ -175,11 +160,11 @@ var RealtimeCursors = (function () {
         scheduleStaleHide(userId);
     }
 
-    function repositionAllRemote() {
+    function repositionAll() {
         Object.keys(remoteByUser).forEach(function (userId) {
             var entry = remoteByUser[userId];
             if (!entry || !entry.visible) return;
-            placeCursorElement(entry.el, entry.nx, entry.ny);
+            placeCursor(entry.el, entry.nx, entry.ny);
         });
     }
 
@@ -201,11 +186,11 @@ var RealtimeCursors = (function () {
     }
 
     function broadcastCursor(clientX, clientY, visible) {
-        if (!channel || !localUserId) return;
+        if (!channel || !localCursorId) return;
 
         if (!visible) {
             queueCursorBroadcast({
-                userId: localUserId,
+                userId: localCursorId,
                 name: localDisplayName,
                 visible: false,
                 t: Date.now()
@@ -213,32 +198,17 @@ var RealtimeCursors = (function () {
             return;
         }
 
-        var pos = clientToNormalized(clientX, clientY);
-        if (!pos) {
-            queueCursorBroadcast({
-                userId: localUserId,
-                name: localDisplayName,
-                visible: false,
-                t: Date.now()
-            });
-            return;
-        }
+        var pos = toNormalized(clientX, clientY);
+        if (!pos) return;
 
         queueCursorBroadcast({
-            userId: localUserId,
+            userId: localCursorId,
             name: localDisplayName,
             x: pos.x,
             y: pos.y,
-            space: COORD_SPACE,
             visible: true,
             t: Date.now()
         });
-    }
-
-    function onPointerMove(e) {
-        if (!RealtimeState.isConnected()) return;
-        if (e.pointerType === 'touch') return;
-        broadcastCursor(e.clientX, e.clientY, true);
     }
 
     function onMouseMove(e) {
@@ -246,43 +216,30 @@ var RealtimeCursors = (function () {
         broadcastCursor(e.clientX, e.clientY, true);
     }
 
-    function onMouseLeave() {
+    function onMouseLeave(e) {
         if (!RealtimeState.isConnected()) return;
+        if (e && e.relatedTarget) return;
         broadcastCursor(0, 0, false);
-    }
-
-    function onWindowMouseOut(e) {
-        if (!e.relatedTarget && !e.toElement) onMouseLeave();
-    }
-
-    function onViewportChange() {
-        repositionAllRemote();
     }
 
     function bindListeners() {
         if (listenersBound) return;
         listenersBound = true;
-        document.addEventListener('pointermove', onPointerMove, true);
-        document.addEventListener('mousemove', onMouseMove, true);
+        window.addEventListener('mousemove', onMouseMove, { passive: true });
         document.documentElement.addEventListener('mouseleave', onMouseLeave);
-        window.addEventListener('mouseout', onWindowMouseOut);
-        window.addEventListener('blur', onMouseLeave);
-        window.addEventListener('resize', onViewportChange);
+        window.addEventListener('resize', repositionAll);
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', onViewportChange);
+            window.visualViewport.addEventListener('resize', repositionAll);
         }
     }
 
     function unbindListeners() {
         if (!listenersBound) return;
-        document.removeEventListener('pointermove', onPointerMove, true);
-        document.removeEventListener('mousemove', onMouseMove, true);
+        window.removeEventListener('mousemove', onMouseMove);
         document.documentElement.removeEventListener('mouseleave', onMouseLeave);
-        window.removeEventListener('mouseout', onWindowMouseOut);
-        window.removeEventListener('blur', onMouseLeave);
-        window.removeEventListener('resize', onViewportChange);
+        window.removeEventListener('resize', repositionAll);
         if (window.visualViewport) {
-            window.visualViewport.removeEventListener('resize', onViewportChange);
+            window.visualViewport.removeEventListener('resize', repositionAll);
         }
         listenersBound = false;
     }
@@ -300,16 +257,16 @@ var RealtimeCursors = (function () {
         staleTimers = {};
     }
 
-    function start(activeChannel, userId, displayName) {
+    function start(activeChannel, authUserId, displayName) {
         channel = activeChannel;
-        localUserId = userId;
+        localCursorId = makeCursorId(authUserId);
         localDisplayName = displayName || localDisplayName;
         ensureOverlay();
         bindListeners();
     }
 
     function stop() {
-        if (channel && localUserId) {
+        if (channel && localCursorId) {
             broadcastCursor(0, 0, false);
             flushCursorBroadcast();
         }
@@ -320,15 +277,20 @@ var RealtimeCursors = (function () {
         }
         overlay = null;
         channel = null;
-        localUserId = null;
+        localCursorId = null;
     }
 
-    function handleBroadcast(payload) {
-        updateRemoteCursor(payload);
+    function handleBroadcast(msg) {
+        updateRemoteCursor(msg);
     }
 
     function removeUser(userId) {
-        removeRemote(userId);
+        if (!userId) return;
+        Object.keys(remoteByUser).forEach(function (key) {
+            if (key === userId || key.indexOf(userId + ':') === 0) {
+                removeRemote(key);
+            }
+        });
     }
 
     return {

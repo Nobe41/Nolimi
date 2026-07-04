@@ -2,6 +2,7 @@
 var InspectorUISync = (function () {
     var isApplying = false;
     var scrollRaf = 0;
+    var scrollDebounceTimer = null;
 
     function accordionPanelFor(btn) {
         var card = btn.closest ? btn.closest('.setting-card') : null;
@@ -204,7 +205,11 @@ var InspectorUISync = (function () {
         if (scrollRaf) return;
         scrollRaf = requestAnimationFrame(function () {
             scrollRaf = 0;
-            notifyChange();
+            if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer);
+            scrollDebounceTimer = setTimeout(function () {
+                scrollDebounceTimer = null;
+                notifyChange();
+            }, 200);
         });
     }
 
