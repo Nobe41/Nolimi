@@ -151,6 +151,7 @@ function setupListeners() {
             if (/-L(-slider)?$/.test(id)) {
                 syncCylindriqueDimensionsForCard(input.closest('.setting-card'));
             }
+            if (isSplineRhoSliderDrag(id)) return;
             scheduleInputHeavyUpdate(id);
         };
         if (input.type === 'number') {
@@ -282,10 +283,12 @@ function setupListeners() {
                 if (numberInput) {
                     numberInput.min = splineMin;
                     numberInput.max = splineMax;
+                    numberInput.step = 1;
                 }
                 if (rangeInput) {
                     rangeInput.min = splineMin;
                     rangeInput.max = splineMax;
+                    rangeInput.step = 1;
                 }
                 // Clamper la valeur si hors plage (ex. après changement de sections ou ancienne valeur courbeS).
                 var v = numberInput ? parseFloat(numberInput.value) : NaN;
@@ -442,7 +445,7 @@ function setupListeners() {
     }
 
     /** Met à jour le max du slider ρ pour les rattachements en mode spline (limite quand les surfaces se touchent). */
-    function updateSplineMaxLimits() {
+    function updateSplineMaxLimits(clampValues) {
         MAIN_RATTACHEMENTS.forEach(function (cfg) {
             var typeSelect = document.getElementById(cfg.id + '-type');
             if (!typeSelect || typeSelect.value !== 'spline') return;
@@ -455,10 +458,12 @@ function setupListeners() {
             if (numberInput) {
                 numberInput.min = -250;
                 numberInput.max = splineMax;
-                var v = parseFloat(numberInput.value);
-                if (isFinite(v) && v > splineMax) {
-                    numberInput.value = splineMax;
-                    if (rangeInput) rangeInput.value = splineMax;
+                if (clampValues !== false) {
+                    var v = parseFloat(numberInput.value);
+                    if (isFinite(v) && v > splineMax) {
+                        numberInput.value = splineMax;
+                        if (rangeInput) rangeInput.value = splineMax;
+                    }
                 }
             }
             if (rangeInput) {
@@ -555,6 +560,33 @@ function setupListeners() {
 
     var inputHeavyRaf = 0;
     var pendingHeavyInputId = '';
+    var activeRhoSliderDragId = '';
+
+    function isRhoSliderId(id) {
+        return /^(r\d+|rp\d+|rb\d+)-rho-slider$/.test(id || '');
+    }
+
+    function isSplineRhoSliderDrag(id) {
+        if (!isRhoSliderId(id) || activeRhoSliderDragId !== id) return false;
+        var typeSelect = document.getElementById(id.replace(/-rho-slider$/, '') + '-type');
+        return typeSelect && typeSelect.value === 'spline';
+    }
+
+    function bindRhoSliderDragTracking() {
+        if (window.nolimiRhoDragTrackingBound) return;
+        window.nolimiRhoDragTrackingBound = true;
+        document.addEventListener('pointerdown', function (e) {
+            var target = e.target;
+            if (!target || !target.matches || !target.matches('input[type=range][id$="-rho-slider"]')) return;
+            activeRhoSliderDragId = target.id;
+        }, true);
+        function clearRhoSliderDrag() {
+            activeRhoSliderDragId = '';
+        }
+        window.addEventListener('pointerup', clearRhoSliderDrag);
+        window.addEventListener('pointercancel', clearRhoSliderDrag);
+    }
+    bindRhoSliderDragTracking();
 
     function scheduleInputHeavyUpdate(id) {
         if (id) pendingHeavyInputId = id;
@@ -616,7 +648,8 @@ function setupListeners() {
             }
         }
 
-        if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) {
+        var isRhoOnlyEdit = /^(r\d+|rp\d+|rb\d+)-rho(?:-slider)?$/.test(id);
+        if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints && !isRhoOnlyEdit) {
             Validator.applyAllUserConstraints();
         }
         if (isTopMainHeightEdit) {
@@ -628,7 +661,7 @@ function setupListeners() {
             updateCourbeSRhosFromDistance();
             updateCourbeSAutoValues();
             updateRayonAutoValues();
-            updateSplineMaxLimits();
+            updateSplineMaxLimits(true);
         } else {
             var rhoMatch = id.match(/^(r\d+|rp\d+|rb\d+)-(?:type|rho)(?:-slider)?$/);
             if (rhoMatch) {
@@ -651,8 +684,10 @@ function setupListeners() {
                         }
                     }
                 }
-                updateRayonAutoValues();
-                updateSplineMaxLimits();
+                if (!isRhoOnlyEdit) {
+                    updateRayonAutoValues();
+                }
+                updateSplineMaxLimits(true);
             }
         }
 
