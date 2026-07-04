@@ -10,7 +10,23 @@ var SectionsRules = (function () {
         + '<option value="rayon">Rayon</option>'
         + '<option value="spline">Spline</option>';
 
-    var selectFormeOptions = '<option value="rond">Rond (actuel)</option><option value="carre">Carré</option>';
+    var selectFormeOptions = ''
+        + '<option value="cylindrique">Cylindrique</option>'
+        + '<option value="ovale">Ovale</option>'
+        + '<option value="carre">Carré</option>';
+
+    function normalizeForme(shape) {
+        if (!shape || shape === 'rond') return 'cylindrique';
+        return shape;
+    }
+
+    function resolveSectionDimensions(shape, L, P) {
+        shape = normalizeForme(shape);
+        if (shape === 'cylindrique') {
+            return { L: L, P: L, shape: shape };
+        }
+        return { L: L, P: P, shape: shape };
+    }
 
     var mainSections = [
         { label: 'Pied', h: 0, hMin: 0, hMax: 80, L: 70, P: 70, LMin: 40, LMax: 120, step: 0.5, hStep: 0.5 },
@@ -52,6 +68,8 @@ var SectionsRules = (function () {
     return {
         selectProfilOptions: selectProfilOptions,
         selectFormeOptions: selectFormeOptions,
+        normalizeForme: normalizeForme,
+        resolveSectionDimensions: resolveSectionDimensions,
         createInitialState: function () {
             return {
                 sectionsMain: clone(mainSections),

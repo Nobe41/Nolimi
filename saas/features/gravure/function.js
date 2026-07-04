@@ -58,11 +58,20 @@ var Gravure3D = (function () {
         var out = [];
         for (var u = 0; u < unique.length; u++) {
             var ksb = unique[u];
+            var shape = getPanelSelectValue('sb' + ksb + '-forme', 'cylindrique');
+            var L = getPanelValue('sb' + ksb + '-L', 35);
+            var P = getPanelValue('sb' + ksb + '-P', 35);
+            if (typeof SectionsRules !== 'undefined' && SectionsRules.resolveSectionDimensions) {
+                var resolved = SectionsRules.resolveSectionDimensions(shape, L, P);
+                shape = resolved.shape;
+                L = resolved.L;
+                P = resolved.P;
+            }
             out.push({
                 H: Math.max(0, getPanelValue('sb' + ksb + '-h', 0)),
-                a: Math.max(0, getPanelValue('sb' + ksb + '-L', 35) / 2),
-                b: Math.max(0, getPanelValue('sb' + ksb + '-P', 35) / 2),
-                shape: getPanelSelectValue('sb' + ksb + '-forme', 'rond'),
+                a: Math.max(0, L / 2),
+                b: Math.max(0, P / 2),
+                shape: shape,
                 carreNiveau: Math.max(0, Math.min(100, getPanelValue('sb' + ksb + '-carre-niveau', 0)))
             });
         }

@@ -148,6 +148,9 @@ function setupListeners() {
                     }
                 }
             }
+            if (/-L(-slider)?$/.test(id)) {
+                syncCylindriqueDimensionsForCard(input.closest('.setting-card'));
+            }
             scheduleInputHeavyUpdate(id);
         };
         if (input.type === 'number') {
@@ -173,6 +176,53 @@ function setupListeners() {
         }
     });
 
+    function getSectionFormeFromCard(card) {
+        if (!card) return 'cylindrique';
+        const formeSelect = card.querySelector('select[id$="-forme"]');
+        if (!formeSelect) return 'cylindrique';
+        const value = formeSelect.value;
+        return (value === 'rond' || !value) ? 'cylindrique' : value;
+    }
+
+    function syncCylindriqueDimensionsForCard(card) {
+        if (!card || getSectionFormeFromCard(card) !== 'cylindrique') return;
+        const lNum = card.querySelector('.js-section-L input[type="number"]');
+        const pNum = card.querySelector('.js-section-P input[type="number"]');
+        const pSlider = card.querySelector('.js-section-P input[type="range"]');
+        if (!lNum || !pNum) return;
+        pNum.value = lNum.value;
+        if (pSlider) {
+            pSlider.value = lNum.value;
+            if (typeof UIControls !== 'undefined' && UIControls.syncRangeSlider) {
+                UIControls.syncRangeSlider(pSlider);
+            }
+        }
+    }
+
+    function refreshOpenAccordionPanels() {
+        document.querySelectorAll('.panel-controls').forEach(panel => {
+            if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
+                panel.style.maxHeight = panel.scrollHeight + 'px';
+            }
+        });
+    }
+
+    function toggleFormeDimensionsVisibility() {
+        document.querySelectorAll('select[id$="-forme"]').forEach(sel => {
+            if (sel.value === 'rond') sel.value = 'cylindrique';
+            const card = sel.closest('.setting-card');
+            if (!card) return;
+            const forme = getSectionFormeFromCard(card);
+            const isCylindrique = forme === 'cylindrique';
+            const pGroup = card.querySelector('.js-section-P');
+            const lLabel = card.querySelector('.js-section-L label');
+            if (pGroup) pGroup.style.display = isCylindrique ? 'none' : 'block';
+            if (lLabel) lLabel.textContent = isCylindrique ? 'Diamètre (mm)' : 'Largeur (mm)';
+            if (isCylindrique) syncCylindriqueDimensionsForCard(card);
+        });
+        refreshOpenAccordionPanels();
+    }
+
     function toggleCarreNiveauVisibility() {
         document.querySelectorAll('.js-carre-niveau').forEach(cg => {
             const card = cg.closest('.setting-card');
@@ -183,12 +233,7 @@ function setupListeners() {
             const valSpan = cg.querySelector('.carre-niveau-value');
             if (rng && valSpan) valSpan.textContent = rng.value + ' %';
         });
-        // Réouvrir la hauteur du panneau dépliant pour afficher le slider si visible
-        document.querySelectorAll('.panel-controls').forEach(panel => {
-            if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
-                panel.style.maxHeight = panel.scrollHeight + 'px';
-            }
-        });
+        refreshOpenAccordionPanels();
     }
     function toggleRhoVisibility() {
         document.querySelectorAll('select[id$="-type"]').forEach(sel => {
@@ -614,6 +659,7 @@ function setupListeners() {
         scheduleViewRefresh();
     }
 
+    toggleFormeDimensionsVisibility();
     toggleCarreNiveauVisibility();
     toggleRhoVisibility();
     updateCourbeSAutoValues();
@@ -622,6 +668,7 @@ function setupListeners() {
         if (sel.dataset.nolimiFormeBound === '1') return;
         sel.dataset.nolimiFormeBound = '1';
         sel.addEventListener('change', () => {
+            toggleFormeDimensionsVisibility();
             toggleCarreNiveauVisibility();
             updateRayonAutoValues();
             scheduleViewRefresh();

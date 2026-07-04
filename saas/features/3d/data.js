@@ -46,11 +46,17 @@ var Bottle3DData = (function () {
             var k = idxs[ii];
             var defaultL = (k === 1) ? 71 : (k <= 3 ? 85 : 32);
             var Hraw = getPanelValue('s' + k + '-h', 0);
-            var a = Math.max(0, getPanelValue('s' + k + '-L', defaultL) / 2);
-            var b = Math.max(0, getPanelValue('s' + k + '-P', defaultL) / 2);
-            var shape = getPanelSelectValue('s' + k + '-forme', 'rond');
+            var shape = getPanelSelectValue('s' + k + '-forme', 'cylindrique');
+            var L = getPanelValue('s' + k + '-L', defaultL);
+            var P = getPanelValue('s' + k + '-P', defaultL);
+            if (typeof SectionsRules !== 'undefined' && SectionsRules.resolveSectionDimensions) {
+                var resolved = SectionsRules.resolveSectionDimensions(shape, L, P);
+                shape = resolved.shape;
+                L = resolved.L;
+                P = resolved.P;
+            }
             var carreNiveau = Math.max(0, Math.min(100, getPanelValue('s' + k + '-carre-niveau', 0)));
-            sections.push({ H: Hraw, a: a, b: b, shape: shape, carreNiveau: carreNiveau });
+            sections.push({ H: Hraw, a: Math.max(0, L / 2), b: Math.max(0, P / 2), shape: shape, carreNiveau: carreNiveau });
         }
         for (var m = 1; m < sections.length; m++) {
             if (sections[m].H < sections[m - 1].H) sections[m].H = sections[m - 1].H;
@@ -69,11 +75,20 @@ var Bottle3DData = (function () {
         var out = [];
         for (var i = 0; i < PIQURE_CONFIG.length; i++) {
             var cfg = PIQURE_CONFIG[i];
+            var shape = getPanelSelectValue(cfg.formKey, 'cylindrique');
+            var L = getPanelValue(cfg.L, cfg.defaultL);
+            var P = getPanelValue(cfg.P, cfg.defaultP);
+            if (typeof SectionsRules !== 'undefined' && SectionsRules.resolveSectionDimensions) {
+                var resolved = SectionsRules.resolveSectionDimensions(shape, L, P);
+                shape = resolved.shape;
+                L = resolved.L;
+                P = resolved.P;
+            }
             out.push({
                 H: getPanelValue(cfg.h, 0),
-                a: Math.max(0, getPanelValue(cfg.L, cfg.defaultL) / 2),
-                b: Math.max(0, getPanelValue(cfg.P, cfg.defaultP) / 2),
-                shape: getPanelSelectValue(cfg.formKey, 'rond'),
+                a: Math.max(0, L / 2),
+                b: Math.max(0, P / 2),
+                shape: shape,
                 carreNiveau: Math.max(0, Math.min(100, getPanelValue(cfg.carreKey, 0)))
             });
         }

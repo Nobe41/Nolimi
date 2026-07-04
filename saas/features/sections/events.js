@@ -373,7 +373,7 @@ var SectionsEvents = (function () {
 
             function remapId(oldId) {
                 if (mode === 'bague') {
-                    var msb = oldId.match(/^sb(\d+)-(h|L|P)(-slider)?$/);
+                    var msb = oldId.match(/^sb(\d+)-(h|L|P|forme|carre-niveau)(-slider)?$/);
                     if (msb) {
                         var ksb = parseInt(msb[1], 10);
                         var tailSb = '-' + msb[2] + (msb[3] || '');

@@ -18,6 +18,25 @@ var SectionsBloc = (function () {
             : '';
     }
 
+    function buildDimensionAndFormeControls(pre, s, dataSectionAttr) {
+        var dsAttr = dataSectionAttr ? ' data-section="' + dataSectionAttr + '"' : '';
+        return '<div class="control-group">' +
+            '<div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="' + pre + 'forme">' + formeOptions() + '</select></div></div>' +
+            '</div>' +
+            '<div class="control-group js-section-L">' +
+            '<div class="label-row"><label>Diamètre (mm)</label><div class="input-wrapper"><input type="number" id="' + pre + 'L" value="' + s.L + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div>' +
+            '<input type="range" id="' + pre + 'L-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.L + '">' +
+            '</div>' +
+            '<div class="control-group js-section-P" style="display: none;">' +
+            '<div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="' + pre + 'P" value="' + s.P + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div>' +
+            '<input type="range" id="' + pre + 'P-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.P + '">' +
+            '</div>' +
+            '<div class="control-group js-carre-niveau"' + dsAttr + ' style="display: none;">' +
+            '<div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>' +
+            '<input type="range" id="' + pre + 'carre-niveau" min="0" max="100" value="0">' +
+            '</div>';
+    }
+
     function buildSectionCardHeader(title, opts) {
         opts = opts || {};
         var removeBtn = opts.removable
@@ -44,21 +63,7 @@ var SectionsBloc = (function () {
             '<div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="' + pre + 'h" value="' + s.h + '" min="' + s.hMin + '" max="' + s.hMax + '"><span class="unit">mm</span></div></div>' +
             '<input type="range" id="' + pre + 'h-slider" min="' + s.hMin + '" max="' + s.hMax + '" step="' + s.hStep + '" value="' + s.h + '">' +
             '</div>' +
-            '<div class="control-group">' +
-            '<div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="' + pre + 'L" value="' + s.L + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div>' +
-            '<input type="range" id="' + pre + 'L-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.L + '">' +
-            '</div>' +
-            '<div class="control-group">' +
-            '<div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="' + pre + 'P" value="' + s.P + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div>' +
-            '<input type="range" id="' + pre + 'P-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.P + '">' +
-            '</div>' +
-            '<div class="control-group">' +
-            '<div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="' + pre + 'forme">' + formeOptions() + '</select></div></div>' +
-            '</div>' +
-            '<div class="control-group js-carre-niveau" data-section="' + i + '" style="display: none;">' +
-            '<div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div>' +
-            '<input type="range" id="' + pre + 'carre-niveau" min="0" max="100" value="0">' +
-            '</div>' +
+            buildDimensionAndFormeControls(pre, s, i) +
             '</div></div>';
     }
 
@@ -94,12 +99,7 @@ var SectionsBloc = (function () {
             html += '<div class="control-group"><div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="' + key + '-h" value="' + s.h + '" min="' + s.hMin + '" max="' + s.hMax + '"><span class="unit">mm</span></div></div>' +
                 '<input type="range" id="' + key + '-h-slider" min="' + s.hMin + '" max="' + s.hMax + '" step="' + s.hStep + '" value="' + s.h + '"></div>';
         }
-        html += '<div class="control-group"><div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="' + key + '-L" value="' + s.L + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div>' +
-            '<input type="range" id="' + key + '-L-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.L + '"></div>' +
-            '<div class="control-group"><div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="' + key + '-P" value="' + s.P + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div>' +
-            '<input type="range" id="' + key + '-P-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.P + '"></div>' +
-            '<div class="control-group"><div class="label-row"><label>Forme</label><div class="input-wrapper"><select id="' + key + '-forme">' + formeOptions() + '</select></div></div></div>' +
-            '<div class="control-group js-carre-niveau" data-section="' + key + '" style="display: none;"><div class="label-row"><label>Niveau de carré</label><span class="carre-niveau-value">0 %</span></div><input type="range" id="' + key + '-carre-niveau" min="0" max="100" value="0"></div>' +
+        html += buildDimensionAndFormeControls(key + '-', s, key) +
             '</div></div>';
         return html;
     }
@@ -125,8 +125,7 @@ var SectionsBloc = (function () {
             header +
             '<div class="panel-controls">' +
             '<div class="control-group"><div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="' + key + '-h" value="' + s.h + '" min="' + s.hMin + '" max="' + s.hMax + '"><span class="unit">mm</span></div></div><input type="range" id="' + key + '-h-slider" min="' + s.hMin + '" max="' + s.hMax + '" step="' + s.hStep + '" value="' + s.h + '"></div>' +
-            '<div class="control-group"><div class="label-row"><label>Largeur (mm)</label><div class="input-wrapper"><input type="number" id="' + key + '-L" value="' + s.L + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div><input type="range" id="' + key + '-L-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.L + '"></div>' +
-            '<div class="control-group"><div class="label-row"><label>Profondeur (mm)</label><div class="input-wrapper"><input type="number" id="' + key + '-P" value="' + s.P + '" min="' + s.LMin + '" max="' + s.LMax + '"><span class="unit">mm</span></div></div><input type="range" id="' + key + '-P-slider" min="' + s.LMin + '" max="' + s.LMax + '" step="' + s.step + '" value="' + s.P + '"></div>' +
+            buildDimensionAndFormeControls(key + '-', s, key) +
             '</div></div>';
     }
 

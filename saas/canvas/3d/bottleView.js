@@ -114,11 +114,11 @@ var BottleView3D = (function () {
         { h: 'sp3-h', L: 'sp3-L', P: 'sp3-P', formKey: 'sp3-forme', carreKey: 'sp3-carre-niveau', defaultL: 28, defaultP: 28 }
     ];
     var BAGUE_CONFIG = [
-        { h: 'sb1-h', L: 'sb1-L', P: 'sb1-P', defaultL: 29.5, defaultP: 29.5 },
-        { h: 'sb2-h', L: 'sb2-L', P: 'sb2-P', defaultL: 29.5, defaultP: 29.5 },
-        { h: 'sb3-h', L: 'sb3-L', P: 'sb3-P', defaultL: 25.5, defaultP: 25.5 },
-        { h: 'sb4-h', L: 'sb4-L', P: 'sb4-P', defaultL: 31, defaultP: 31 },
-        { h: 'sb5-h', L: 'sb5-L', P: 'sb5-P', defaultL: 29, defaultP: 29 }
+        { h: 'sb1-h', L: 'sb1-L', P: 'sb1-P', formKey: 'sb1-forme', carreKey: 'sb1-carre-niveau', defaultL: 29.5, defaultP: 29.5 },
+        { h: 'sb2-h', L: 'sb2-L', P: 'sb2-P', formKey: 'sb2-forme', carreKey: 'sb2-carre-niveau', defaultL: 29.5, defaultP: 29.5 },
+        { h: 'sb3-h', L: 'sb3-L', P: 'sb3-P', formKey: 'sb3-forme', carreKey: 'sb3-carre-niveau', defaultL: 25.5, defaultP: 25.5 },
+        { h: 'sb4-h', L: 'sb4-L', P: 'sb4-P', formKey: 'sb4-forme', carreKey: 'sb4-carre-niveau', defaultL: 31, defaultP: 31 },
+        { h: 'sb5-h', L: 'sb5-L', P: 'sb5-P', formKey: 'sb5-forme', carreKey: 'sb5-carre-niveau', defaultL: 29, defaultP: 29 }
     ];
 
     function getPanelValue(id, def) {
@@ -142,7 +142,7 @@ var BottleView3D = (function () {
     }
 
     function getSectionForme(k) {
-        return getPanelSelectValue('s' + k + '-forme', 'rond');
+        return getPanelSelectValue('s' + k + '-forme', 'cylindrique');
     }
     function getSectionCarreNiveau(k) {
         var v = getPanelValue('s' + k + '-carre-niveau', 0);
@@ -170,11 +170,17 @@ var BottleView3D = (function () {
 
     function getSectionFromPanel(cfg) {
         var H = getPanelValue(cfg.h, 0);
-        var a = Math.max(0, getPanelValue(cfg.L, cfg.defaultL) / 2);
-        var b = Math.max(0, getPanelValue(cfg.P, cfg.defaultP) / 2);
-        var shape = cfg.shape !== undefined ? cfg.shape : getPanelSelectValue(cfg.formKey, 'rond');
+        var shape = cfg.shape !== undefined ? cfg.shape : getPanelSelectValue(cfg.formKey, 'cylindrique');
+        var L = getPanelValue(cfg.L, cfg.defaultL);
+        var P = getPanelValue(cfg.P, cfg.defaultP);
+        if (typeof SectionsRules !== 'undefined' && SectionsRules.resolveSectionDimensions) {
+            var resolved = SectionsRules.resolveSectionDimensions(shape, L, P);
+            shape = resolved.shape;
+            L = resolved.L;
+            P = resolved.P;
+        }
         var carreNiveau = cfg.carreNiveau !== undefined ? cfg.carreNiveau : Math.max(0, Math.min(100, getPanelValue(cfg.carreKey, 0)));
-        return { H: H, a: a, b: b, shape: shape, carreNiveau: carreNiveau };
+        return { H: H, a: Math.max(0, L / 2), b: Math.max(0, P / 2), shape: shape, carreNiveau: carreNiveau };
     }
 
     function getPiqureSectionFromPanel() { return getSectionFromPanel(PIQURE_CONFIG[0]); }
@@ -313,6 +319,8 @@ var BottleView3D = (function () {
                 h: 'sb' + ksb2 + '-h',
                 L: 'sb' + ksb2 + '-L',
                 P: 'sb' + ksb2 + '-P',
+                formKey: 'sb' + ksb2 + '-forme',
+                carreKey: 'sb' + ksb2 + '-carre-niveau',
                 defaultL: 35,
                 defaultP: 35
             }));

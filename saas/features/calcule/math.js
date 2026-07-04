@@ -21,12 +21,34 @@ var CalculeVolumeMath = (function () {
         return el.value;
     }
 
+    function readSectionDimensions(formKey, LKey, PKey, defaults) {
+        var shape = getPanelSelectValue(formKey, 'cylindrique');
+        var L = getPanelValue(LKey, defaults.L);
+        var P = getPanelValue(PKey, defaults.P);
+        if (typeof SectionsRules !== 'undefined' && SectionsRules.resolveSectionDimensions) {
+            var resolved = SectionsRules.resolveSectionDimensions(shape, L, P);
+            shape = resolved.shape;
+            L = resolved.L;
+            P = resolved.P;
+        }
+        return {
+            a: Math.max(0, L / 2),
+            b: Math.max(0, P / 2),
+            shape: shape
+        };
+    }
+
+    function normalizeShape(shape) {
+        if (!shape || shape === 'rond') return 'cylindrique';
+        return shape;
+    }
+
     function getShapeArea(section) {
         if (!section) return 0;
         var a = Math.max(0, section.a || 0);
         var b = Math.max(0, section.b || 0);
         if (a <= EPS || b <= EPS) return 0;
-        if ((section.shape || 'rond') === 'carre') {
+        if ((normalizeShape(section.shape)) === 'carre') {
             var carreNiveau = Math.max(0, Math.min(100, section.carreNiveau || 0));
             var r = (1 - carreNiveau / 100) * Math.min(a, b);
             r = Math.max(0, Math.min(r, Math.min(a, b)));
@@ -42,7 +64,9 @@ var CalculeVolumeMath = (function () {
             a: (1 - t) * (s0.a || 0) + t * (s1.a || 0),
             b: (1 - t) * (s0.b || 0) + t * (s1.b || 0),
             // Blend "carreNiveau" and force square mode if one of the two is square.
-            shape: ((s0.shape === 'carre') || (s1.shape === 'carre')) ? 'carre' : 'rond',
+            shape: (normalizeShape(s0.shape) === 'carre' || normalizeShape(s1.shape) === 'carre')
+                ? 'carre'
+                : ((normalizeShape(s0.shape) === 'ovale' || normalizeShape(s1.shape) === 'ovale') ? 'ovale' : 'cylindrique'),
             carreNiveau: (1 - t) * (s0.carreNiveau || 0) + t * (s1.carreNiveau || 0)
         };
     }
@@ -149,11 +173,12 @@ var CalculeVolumeMath = (function () {
         }
         for (var u = 0; u < unique.length; u++) {
             var ksp = unique[u];
+            var dims = readSectionDimensions('sp' + ksp + '-forme', 'sp' + ksp + '-L', 'sp' + ksp + '-P', { L: 45, P: 45 });
             out.push({
                 H: Math.max(0, getPanelValue('sp' + ksp + '-h', 0)),
-                a: Math.max(0, getPanelValue('sp' + ksp + '-L', 45) / 2),
-                b: Math.max(0, getPanelValue('sp' + ksp + '-P', 45) / 2),
-                shape: getPanelSelectValue('sp' + ksp + '-forme', 'rond'),
+                a: dims.a,
+                b: dims.b,
+                shape: dims.shape,
                 carreNiveau: Math.max(0, Math.min(100, getPanelValue('sp' + ksp + '-carre-niveau', 0)))
             });
         }
@@ -178,11 +203,12 @@ var CalculeVolumeMath = (function () {
         }
         for (var u = 0; u < unique.length; u++) {
             var ksb = unique[u];
+            var dimsB = readSectionDimensions('sb' + ksb + '-forme', 'sb' + ksb + '-L', 'sb' + ksb + '-P', { L: 35, P: 35 });
             out.push({
                 H: Math.max(0, getPanelValue('sb' + ksb + '-h', 0)),
-                a: Math.max(0, getPanelValue('sb' + ksb + '-L', 35) / 2),
-                b: Math.max(0, getPanelValue('sb' + ksb + '-P', 35) / 2),
-                shape: getPanelSelectValue('sb' + ksb + '-forme', 'rond'),
+                a: dimsB.a,
+                b: dimsB.b,
+                shape: dimsB.shape,
                 carreNiveau: Math.max(0, Math.min(100, getPanelValue('sb' + ksb + '-carre-niveau', 0)))
             });
         }
@@ -192,11 +218,12 @@ var CalculeVolumeMath = (function () {
     function computePiqureSubtractedVolume(sectionsData) {
         if (!sectionsData || !sectionsData.sections || sectionsData.sections.length < 1) return 0;
         var s1H = sectionsData.sections[0].H || 0;
+        var piqDims = readSectionDimensions('sp-forme', 'sp-L', 'sp-P', { L: 55, P: 55 });
         var piq = [{
             H: s1H,
-            a: Math.max(0, getPanelValue('sp-L', 55) / 2),
-            b: Math.max(0, getPanelValue('sp-P', 55) / 2),
-            shape: getPanelSelectValue('sp-forme', 'rond'),
+            a: piqDims.a,
+            b: piqDims.b,
+            shape: piqDims.shape,
             carreNiveau: Math.max(0, Math.min(100, getPanelValue('sp-carre-niveau', 0)))
         }];
         var more = getDynamicPiqureSections();
@@ -227,10 +254,20 @@ var CalculeVolumeMath = (function () {
         var sTop = sectionsData.sections[sectionsData.sections.length - 1];
         var bague = getDynamicBagueSections();
         if (!bague.length) {
+            function fallbackBagueSection(prefix, defaultL, defaultP) {
+                var dims = readSectionDimensions(prefix + '-forme', prefix + '-L', prefix + '-P', { L: defaultL, P: defaultP });
+                return {
+                    H: Math.max(0, getPanelValue(prefix + '-h', sTop.H || 0)),
+                    a: dims.a,
+                    b: dims.b,
+                    shape: dims.shape,
+                    carreNiveau: Math.max(0, Math.min(100, getPanelValue(prefix + '-carre-niveau', 0)))
+                };
+            }
             bague = [
-                { H: Math.max(0, getPanelValue('sb1-h', sTop.H || 0)), a: Math.max(0, getPanelValue('sb1-L', 29.5) / 2), b: Math.max(0, getPanelValue('sb1-P', 29.5) / 2), shape: 'rond', carreNiveau: 0 },
-                { H: Math.max(0, getPanelValue('sb2-h', sTop.H || 0)), a: Math.max(0, getPanelValue('sb2-L', 29.5) / 2), b: Math.max(0, getPanelValue('sb2-P', 29.5) / 2), shape: 'rond', carreNiveau: 0 },
-                { H: Math.max(0, getPanelValue('sb3-h', sTop.H || 0)), a: Math.max(0, getPanelValue('sb3-L', 25.5) / 2), b: Math.max(0, getPanelValue('sb3-P', 25.5) / 2), shape: 'rond', carreNiveau: 0 }
+                fallbackBagueSection('sb1', 29.5, 29.5),
+                fallbackBagueSection('sb2', 29.5, 29.5),
+                fallbackBagueSection('sb3', 25.5, 25.5)
             ];
         }
 
@@ -279,11 +316,12 @@ var CalculeVolumeMath = (function () {
         var piq = [];
         if (sectionsData && sectionsData.sections && sectionsData.sections.length) {
             var s1H = (sectionsData.sections[0].H || 0) + thicknessMm;
+            var p0Dims = readSectionDimensions('sp-forme', 'sp-L', 'sp-P', { L: 55, P: 55 });
             var p0 = {
                 H: s1H,
-                a: Math.max(0, getPanelValue('sp-L', 55) / 2),
-                b: Math.max(0, getPanelValue('sp-P', 55) / 2),
-                shape: getPanelSelectValue('sp-forme', 'rond'),
+                a: p0Dims.a,
+                b: p0Dims.b,
+                shape: p0Dims.shape,
                 carreNiveau: Math.max(0, Math.min(100, getPanelValue('sp-carre-niveau', 0)))
             };
             p0 = (typeof InterieurMath !== 'undefined' && InterieurMath.outsetSection)

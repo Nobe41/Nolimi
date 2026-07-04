@@ -205,7 +205,7 @@ var GeomKernel = (function () {
 var ProfileMath = (function () {
     var K = typeof GeomKernel !== 'undefined' ? GeomKernel : null;
     var RULES = (typeof ProfileRules !== 'undefined') ? ProfileRules : {};
-    var DEFAULT_SHAPE = RULES.DEFAULT_SHAPE || 'rond';
+    var DEFAULT_SHAPE = RULES.DEFAULT_SHAPE || 'cylindrique';
     var DEFAULT_CARRE_NIVEAU = typeof RULES.DEFAULT_CARRE_NIVEAU === 'number' ? RULES.DEFAULT_CARRE_NIVEAU : 0;
     var MIN_PROFILE_RADIUS = typeof RULES.MIN_PROFILE_RADIUS === 'number' ? RULES.MIN_PROFILE_RADIUS : 0.1;
 
