@@ -15,12 +15,12 @@ var BottleMesh3D = (function () {
         return new THREE.MeshPhongMaterial({ color: color, side: THREE.DoubleSide });
     }
 
-    function buildRevolvedMeshInternal(sectionsData, material) {
+    function buildRevolvedMeshInternal(sectionsData, material, tessOverride) {
         if (typeof THREE === 'undefined' || typeof GeomKernel === 'undefined' || typeof BottleMaths === 'undefined') return null;
 
         var tess = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.TESSELLATION) ? Canvas3DRules.TESSELLATION : {};
-        var nTheta = tess.N_SEGMENTS || DEFAULT_N_SEGMENTS;
-        var meridianRes = tess.MERIDIAN_RESOLUTION || DEFAULT_MERIDIAN_RES;
+        var nTheta = (tessOverride && tessOverride.nTheta) || tess.N_SEGMENTS || DEFAULT_N_SEGMENTS;
+        var meridianRes = (tessOverride && tessOverride.meridianRes) || tess.MERIDIAN_RESOLUTION || DEFAULT_MERIDIAN_RES;
 
         var meridians = [];
         for (var t = 0; t < nTheta; t++) {
@@ -76,13 +76,13 @@ var BottleMesh3D = (function () {
         return new THREE.Mesh(geom, mat);
     }
 
-    function createBottleMesh(sectionsData, material) {
-        return buildRevolvedMeshInternal(sectionsData, material);
+    function createBottleMesh(sectionsData, material, tessOverride) {
+        return buildRevolvedMeshInternal(sectionsData, material, tessOverride);
     }
 
-    function updateBottleMesh(mesh, sectionsData) {
-        if (!mesh) return createBottleMesh(sectionsData);
-        var newMesh = buildRevolvedMeshInternal(sectionsData, mesh.material);
+    function updateBottleMesh(mesh, sectionsData, tessOverride) {
+        if (!mesh) return createBottleMesh(sectionsData, null, tessOverride);
+        var newMesh = buildRevolvedMeshInternal(sectionsData, mesh.material, tessOverride);
         if (mesh.geometry) mesh.geometry.dispose();
         mesh.geometry = newMesh.geometry;
         return mesh;

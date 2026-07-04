@@ -68,7 +68,7 @@ var UIInspector = (function () {
             }
         }
         html += '<div class="setting-card setting-card--liaison"><button class="accordion sub-accordion">Liaison ' + (state.piqureSections.length) + '</button><div class="panel-controls">' +
-            '<div class="control-group"><div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="rp3-h" value="35" min="0" max="100"><span class="unit">mm</span></div></div><input type="range" id="rp3-h-slider" min="0" max="100" step="0.5" value="35"></div>' +
+            '<div class="control-group"><div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="rp3-h" value="30" min="0" max="100"><span class="unit">mm</span></div></div><input type="range" id="rp3-h-slider" min="0" max="100" step="0.5" value="30"></div>' +
             '</div></div>';
         container.innerHTML = html;
     }

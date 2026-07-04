@@ -399,11 +399,10 @@ main {
 
 /* Curseurs distants (session partagée) */
 .realtime-cursors-overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
     pointer-events: none;
-    z-index: 40;
-    overflow: hidden;
+    z-index: 1200;
 }
 
 .realtime-remote-cursor {

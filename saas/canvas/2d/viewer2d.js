@@ -258,8 +258,11 @@ function draw2D() {
             primitives2D.drawSymmetricProfile(ctx2d, bagueProfile, drawingScale, { strokeStyle: '#000000' });
         }
         if (primitives2D && primitives2D.drawBagueNeckLinks) primitives2D.drawBagueNeckLinks(ctx2d, points, bagueProfile, drawingScale);
-        // Montrer explicitement toutes les sections de bague (traits horizontaux)
-        if (primitives2D && primitives2D.drawSectionLevelLines) primitives2D.drawSectionLevelLines(ctx2d, bagueProfile, drawingScale, { strokeStyle: '#000000' });
+        // Traits horizontaux aux hauteurs de section bague (points discrets, pas le profil tessellé).
+        const bagueSections = (plans2DData && plans2DData.getBagueSections2D) ? plans2DData.getBagueSections2D() : [];
+        if (primitives2D && primitives2D.drawSectionLevelLines && bagueSections.length) {
+            primitives2D.drawSectionLevelLines(ctx2d, bagueSections, drawingScale, { strokeStyle: '#000000' });
+        }
         // 3. Cotations verticales par section (corps principal uniquement).
         // Chaque cote represente la hauteur entre 2 sections consecutives.
         const mainSections = (plans2DData && plans2DData.getMainSections2D) ? plans2DData.getMainSections2D() : [];

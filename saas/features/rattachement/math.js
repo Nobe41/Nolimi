@@ -358,6 +358,253 @@ var RattachementMath = (function () {
         return { valid: true, R: pick.fillet.R };
     }
 
+    function prepareCourbeSFrame(P0, P1, prevPoint, nextPoint) {
+        var Dx = P1.x - P0.x;
+        var Dy = P1.y - P0.y;
+        var dS = Math.sqrt(Dx * Dx + Dy * Dy);
+        if (dS < 1e-6) return null;
+        var T0x = Dx / dS;
+        var T0y = Dy / dS;
+        if (prevPoint) {
+            var pdx = P0.x - prevPoint.x;
+            var pdy = P0.y - prevPoint.y;
+            var pd = Math.sqrt(pdx * pdx + pdy * pdy);
+            if (pd > 1e-6) { T0x = pdx / pd; T0y = pdy / pd; }
+        }
+        var T1x = Dx / dS;
+        var T1y = Dy / dS;
+        if (nextPoint) {
+            var ndx = nextPoint.x - P1.x;
+            var ndy = nextPoint.y - P1.y;
+            var nd = Math.sqrt(ndx * ndx + ndy * ndy);
+            if (nd > 1e-6) { T1x = ndx / nd; T1y = ndy / nd; }
+        }
+        var n0x = -T0y;
+        var n0y = T0x;
+        var DdotN0 = Dx * n0x + Dy * n0y;
+        if (DdotN0 <= 0) { n0x = -n0x; n0y = -n0y; DdotN0 = -DdotN0; }
+        var n1x = -T1y;
+        var n1y = T1x;
+        var DdotN1 = Dx * n1x + Dy * n1y;
+        if (DdotN1 >= 0) { n1x = -n1x; n1y = -n1y; DdotN1 = -DdotN1; }
+        return {
+            Dx: Dx, Dy: Dy, dS: dS,
+            T0x: T0x, T0y: T0y, T1x: T1x, T1y: T1y,
+            n0x: n0x, n0y: n0y, n1x: n1x, n1y: n1y,
+            DdotN0: DdotN0, DdotN1: DdotN1
+        };
+    }
+
+    function resolveCourbeSPick(P0, P1, frame) {
+        if (!frame) return null;
+        var dS = frame.dS;
+        var minR = 5;
+        var candidates = [];
+
+        function tryCandidate(R, useFallback) {
+            if (!(R > minR)) return;
+            if (!canCourbeSConfigWork(P0, P1, frame, R, useFallback)) return;
+            candidates.push({ R: R, useFallback: useFallback });
+        }
+
+        var Dx = frame.Dx;
+        var Dy = frame.Dy;
+        var Vx = frame.n1x - frame.n0x;
+        var Vy = frame.n1y - frame.n0y;
+        var V2 = Vx * Vx + Vy * Vy;
+        var denom = V2 - 4;
+        if (Math.abs(denom) > 1e-9) {
+            var DdotV = Dx * Vx + Dy * Vy;
+            var disc = 4 * DdotV * DdotV + 4 * dS * dS * denom;
+            if (disc >= 0) {
+                var sqrtDisc = Math.sqrt(disc);
+                tryCandidate((-2 * DdotV + sqrtDisc) / (2 * denom), false);
+                tryCandidate((-2 * DdotV - sqrtDisc) / (2 * denom), false);
+            }
+        }
+        if (Math.abs(frame.DdotN0) > 1e-9) {
+            tryCandidate((dS * dS) / (4 * frame.DdotN0), true);
+        }
+
+        if (candidates.length) {
+            var nonFb = [];
+            for (var ci = 0; ci < candidates.length; ci++) {
+                if (!candidates[ci].useFallback) nonFb.push(candidates[ci]);
+            }
+            var pool = nonFb.length ? nonFb : candidates;
+            var targetR = Math.max(minR, dS * 0.6);
+            var best = pool[0];
+            for (var pi = 0; pi < pool.length; pi++) {
+                if (Math.abs(pool[pi].R - targetR) < Math.abs(best.R - targetR)) best = pool[pi];
+            }
+            return best;
+        }
+
+        var targetR2 = Math.abs(frame.DdotN0) > 1e-9 ? (dS * dS) / (4 * frame.DdotN0) : dS * 0.6;
+        targetR2 = Math.max(minR, targetR2);
+        for (var fb = 0; fb < 2; fb++) {
+            if (canCourbeSConfigWork(P0, P1, frame, targetR2, fb === 1)) {
+                return { R: targetR2, useFallback: fb === 1 };
+            }
+        }
+        var step = Math.max(0.5, dS * 0.02);
+        for (var r0 = minR; r0 <= dS * 4; r0 += step) {
+            for (var fb2 = 0; fb2 < 2; fb2++) {
+                if (canCourbeSConfigWork(P0, P1, frame, r0, fb2 === 1)) {
+                    return { R: r0, useFallback: fb2 === 1 };
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Rayon du 2e arc pour un rayon R0 fixé au 1er arc (jonction tangente sur la ligne des centres). */
+    function computeCourbeSPartnerRadius(R0, frame, useFallback) {
+        if (!frame || !(R0 > 0)) return null;
+        var dS = frame.dS;
+        var R1;
+        if (useFallback) {
+            if (Math.abs(frame.DdotN0) < 1e-9) return null;
+            R1 = (dS * dS) / (2 * frame.DdotN0) - R0;
+        } else {
+            var n0dotn1 = frame.n0x * frame.n1x + frame.n0y * frame.n1y;
+            var denom = 2 * frame.DdotN1 - 2 * R0 * (n0dotn1 + 1);
+            if (Math.abs(denom) < 1e-9) return null;
+            R1 = (2 * R0 * frame.DdotN0 - dS * dS) / denom;
+        }
+        if (!(R1 > 0.5)) return null;
+        return R1;
+    }
+
+    function canCourbeSConfigWork(P0, P1, frame, R0, useFallback) {
+        var R1 = computeCourbeSPartnerRadius(R0, frame, useFallback);
+        if (R1 == null) return false;
+        return appendCourbeSArcs([], P0, P1, frame, R0, R1, useFallback);
+    }
+
+    function canCourbeSConfigWorkAnyMode(P0, P1, frame, R0) {
+        if (canCourbeSConfigWork(P0, P1, frame, R0, false)) return true;
+        return canCourbeSConfigWork(P0, P1, frame, R0, true);
+    }
+
+    function computeCourbeSMinR0(P0, P1, prevPoint, nextPoint) {
+        var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint);
+        var pick = resolveCourbeSPick(P0, P1, frame);
+        if (!frame || !pick) return null;
+        var absMin = 5;
+        var hi = pick.R;
+        if (!canCourbeSConfigWorkAnyMode(P0, P1, frame, hi)) return null;
+
+        var lo = absMin;
+        if (!canCourbeSConfigWorkAnyMode(P0, P1, frame, lo)) {
+            var step = Math.max(0.25, frame.dS * 0.005);
+            var found = null;
+            for (var r0 = absMin + step; r0 <= hi; r0 += step) {
+                if (canCourbeSConfigWorkAnyMode(P0, P1, frame, r0)) {
+                    found = r0;
+                    break;
+                }
+            }
+            if (found == null) return Math.round(hi * 10) / 10;
+            lo = found;
+        }
+
+        var good = lo;
+        var bad = hi;
+        for (var i = 0; i < 48; i++) {
+            var mid = (good + bad) / 2;
+            if (canCourbeSConfigWorkAnyMode(P0, P1, frame, mid)) bad = mid;
+            else good = mid;
+        }
+        return Math.round(bad * 10) / 10;
+    }
+
+    function computeCourbeSMaxR0(P0, P1, prevPoint, nextPoint) {
+        var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint);
+        var pick = resolveCourbeSPick(P0, P1, frame);
+        if (!frame || !pick) return null;
+        var lo = computeCourbeSMinR0(P0, P1, prevPoint, nextPoint);
+        if (lo == null) lo = 5;
+        var hi = pick.R;
+        if (!canCourbeSConfigWork(P0, P1, frame, hi, pick.useFallback)) return pick.R;
+        while (hi < 2500 && canCourbeSConfigWork(P0, P1, frame, hi * 1.2, pick.useFallback)) {
+            hi *= 1.2;
+        }
+        if (canCourbeSConfigWork(P0, P1, frame, hi, pick.useFallback)) {
+            return Math.round(hi * 10) / 10;
+        }
+        var bad = hi;
+        for (var i = 0; i < 48; i++) {
+            var mid = (lo + bad) / 2;
+            if (canCourbeSConfigWork(P0, P1, frame, mid, pick.useFallback)) lo = mid;
+            else bad = mid;
+        }
+        return Math.round(lo * 10) / 10;
+    }
+
+    function appendCourbeSArcs(entities, P0, P1, frame, R0, R1, useFallback) {
+        var n0x = frame.n0x;
+        var n0y = frame.n0y;
+        var n1x = frame.n1x;
+        var n1y = frame.n1y;
+        var T0x = frame.T0x;
+        var T0y = frame.T0y;
+        var C1x = P0.x + R0 * n0x;
+        var C1y = P0.y + R0 * n0y;
+        var C2x = useFallback ? P1.x - R1 * n0x : P1.x + R1 * n1x;
+        var C2y = useFallback ? P1.y - R1 * n0y : P1.y + R1 * n1y;
+        var dxC = C2x - C1x;
+        var dyC = C2y - C1y;
+        var dC = Math.sqrt(dxC * dxC + dyC * dyC);
+        var sumR = R0 + R1;
+        if (dC < 1e-6 || Math.abs(dC - sumR) > Math.max(1, sumR) * 0.08) return false;
+        var tJ = R0 / sumR;
+        var Mx = C1x + dxC * tJ;
+        var My = C1y + dyC * tJ;
+        if (Math.min(Mx, Math.min(P0.x, P1.x)) < MIN_SAFE_X) return false;
+        var a1s = Math.atan2(P0.y - C1y, P0.x - C1x);
+        var a1e = Math.atan2(My - C1y, Mx - C1x);
+        var da1 = a1e - a1s;
+        if (da1 > Math.PI) da1 -= 2 * Math.PI;
+        if (da1 < -Math.PI) da1 += 2 * Math.PI;
+        var tangent1AtP0x = da1 > 0 ? -Math.sin(a1s) : Math.sin(a1s);
+        var tangent1AtP0y = da1 > 0 ? Math.cos(a1s) : -Math.cos(a1s);
+        var dot1 = tangent1AtP0x * T0x + tangent1AtP0y * T0y;
+        if (dot1 < 0) {
+            n0x = -n0x; n0y = -n0y;
+            n1x = -n1x; n1y = -n1y;
+            C1x = P0.x + R0 * n0x;
+            C1y = P0.y + R0 * n0y;
+            C2x = useFallback ? P1.x - R1 * n0x : P1.x + R1 * n1x;
+            C2y = useFallback ? P1.y - R1 * n0y : P1.y + R1 * n1y;
+            dxC = C2x - C1x;
+            dyC = C2y - C1y;
+            dC = Math.sqrt(dxC * dxC + dyC * dyC);
+            if (dC < 1e-6) return false;
+            Mx = C1x + dxC * tJ;
+            My = C1y + dyC * tJ;
+            a1s = Math.atan2(P0.y - C1y, P0.x - C1x);
+            a1e = Math.atan2(My - C1y, Mx - C1x);
+        }
+        var sweep1 = a1e - a1s;
+        if (sweep1 > Math.PI) a1e -= 2 * Math.PI;
+        if (sweep1 < -Math.PI) a1e += 2 * Math.PI;
+        var a2s = Math.atan2(My - C2y, Mx - C2x);
+        var a2e = Math.atan2(P1.y - C2y, P1.x - C2x);
+        var sweep2 = a2e - a2s;
+        if (sweep2 > Math.PI) a2e -= 2 * Math.PI;
+        if (sweep2 < -Math.PI) a2e += 2 * Math.PI;
+        entities.push(K.ArcSegment(C1x, C1y, R0, a1s, a1e));
+        entities.push(K.ArcSegment(C2x, C2y, R1, a2s, a2e));
+        return true;
+    }
+
+    function computeCourbeSDefaultRho(P0, P1, prevPoint, nextPoint) {
+        var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint);
+        var pick = resolveCourbeSPick(P0, P1, frame);
+        return pick ? pick.R : null;
+    }
+
     function buildProfileCurves(profilePoints, data) {
         if (!K) return [];
         var points = profilePoints || [];
@@ -391,117 +638,35 @@ var RattachementMath = (function () {
                     entities.push(K.LineSegment(sec0.x, sec0.y, sec1.x, sec1.y));
                 }
                 lastPoint = { x: sec1.x, y: sec1.y };
-            } else if (type === 'courbeS' && R > 0) {
+            } else if (type === 'courbeS') {
                 var prevPoint = i > 0 ? { x: points[i - 1].x, y: points[i - 1].y } : null;
                 var nextPoint = i + 2 < points.length ? { x: points[i + 2].x, y: points[i + 2].y } : null;
-                var Dx = P1.x - P0.x;
-                var Dy = P1.y - P0.y;
-                var dS = Math.sqrt(Dx * Dx + Dy * Dy);
-                if (dS < 1e-6) {
+                var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint);
+                if (!frame) {
                     entities.push(K.LineSegment(P0.x, P0.y, P1.x, P1.y));
                     lastPoint = { x: P1.x, y: P1.y };
                 } else {
-                    var T0x = Dx / dS;
-                    var T0y = Dy / dS;
-                    if (prevPoint) {
-                        var pdx = P0.x - prevPoint.x;
-                        var pdy = P0.y - prevPoint.y;
-                        var pd = Math.sqrt(pdx * pdx + pdy * pdy);
-                        if (pd > 1e-6) { T0x = pdx / pd; T0y = pdy / pd; }
-                    }
-                    var T1x = Dx / dS;
-                    var T1y = Dy / dS;
-                    if (nextPoint) {
-                        var ndx = nextPoint.x - P1.x;
-                        var ndy = nextPoint.y - P1.y;
-                        var nd = Math.sqrt(ndx * ndx + ndy * ndy);
-                        if (nd > 1e-6) { T1x = ndx / nd; T1y = ndy / nd; }
-                    }
-                    var n0x = -T0y;
-                    var n0y = T0x;
-                    var DdotN0 = Dx * n0x + Dy * n0y;
-                    if (DdotN0 <= 0) { n0x = -n0x; n0y = -n0y; DdotN0 = -DdotN0; }
-                    var n1x = -T1y;
-                    var n1y = T1x;
-                    var DdotN1 = Dx * n1x + Dy * n1y;
-                    if (DdotN1 >= 0) { n1x = -n1x; n1y = -n1y; DdotN1 = -DdotN1; }
-                    var Vx = n1x - n0x;
-                    var Vy = n1y - n0y;
-                    var V2 = Vx * Vx + Vy * Vy;
-                    var denom = V2 - 4;
-                    var R_eff = null;
-                    if (Math.abs(denom) > 1e-9) {
-                        var DdotV = Dx * Vx + Dy * Vy;
-                        var disc = 4 * DdotV * DdotV + 4 * dS * dS * denom;
-                        if (disc >= 0) {
-                            var sqrtDisc = Math.sqrt(disc);
-                            var R1 = (-2 * DdotV + sqrtDisc) / (2 * denom);
-                            var R2 = (-2 * DdotV - sqrtDisc) / (2 * denom);
-                            R_eff = R1 > dS * 0.25 && R1 < dS * 0.9 ? R1 : (R2 > dS * 0.25 && R2 < dS * 0.9 ? R2 : null);
-                        }
-                    }
-                    var useFallback = false;
-                    if (R_eff == null && Math.abs(DdotN0) > 1e-9) {
-                        var R_geom = (dS * dS) / (4 * DdotN0);
-                        if (R_geom >= dS * 0.25 && R_geom <= dS * 0.9) {
-                            R_eff = R_geom;
-                            useFallback = true;
-                        }
-                    }
-                    if (R_eff == null || R_eff < dS * 0.2) {
+                    var pick = resolveCourbeSPick(P0, P1, frame);
+                    if (!pick) {
                         entities.push(K.LineSegment(P0.x, P0.y, P1.x, P1.y));
                         lastPoint = { x: P1.x, y: P1.y };
                     } else {
-                        R_eff = Math.max(dS * 0.25, Math.min(dS * 0.85, R_eff));
-                        var C1x = P0.x + R_eff * n0x;
-                        var C1y = P0.y + R_eff * n0y;
-                        var C2x = useFallback ? P1.x - R_eff * n0x : P1.x + R_eff * n1x;
-                        var C2y = useFallback ? P1.y - R_eff * n0y : P1.y + R_eff * n1y;
-                        var dxC = C2x - C1x;
-                        var dyC = C2y - C1y;
-                        var dC = Math.sqrt(dxC * dxC + dyC * dyC);
-                        if (dC < 1e-6) {
+                        var R0 = (R > 0) ? R : pick.R;
+                        R0 = Math.max(5, R0);
+                        var useFb = pick.useFallback;
+                        var R1 = computeCourbeSPartnerRadius(R0, frame, useFb);
+                        if (R1 == null) {
+                            useFb = !useFb;
+                            R1 = computeCourbeSPartnerRadius(R0, frame, useFb);
+                        }
+                        if (R1 == null) {
+                            entities.push(K.LineSegment(P0.x, P0.y, P1.x, P1.y));
+                            lastPoint = { x: P1.x, y: P1.y };
+                        } else if (!appendCourbeSArcs(entities, P0, P1, frame, R0, R1, useFb)) {
                             entities.push(K.LineSegment(P0.x, P0.y, P1.x, P1.y));
                             lastPoint = { x: P1.x, y: P1.y };
                         } else {
-                            var Mx = (C1x + C2x) * 0.5;
-                            var My = (C1y + C2y) * 0.5;
-                            if (Math.min(Mx, Math.min(P0.x, P1.x)) < MIN_SAFE_X) {
-                                entities.push(K.LineSegment(P0.x, P0.y, P1.x, P1.y));
-                                lastPoint = { x: P1.x, y: P1.y };
-                            } else {
-                                var a1s = Math.atan2(P0.y - C1y, P0.x - C1x);
-                                var a1e = Math.atan2(My - C1y, Mx - C1x);
-                                var da1 = a1e - a1s;
-                                if (da1 > Math.PI) da1 -= 2 * Math.PI;
-                                if (da1 < -Math.PI) da1 += 2 * Math.PI;
-                                var tangent1AtP0x = da1 > 0 ? -Math.sin(a1s) : Math.sin(a1s);
-                                var tangent1AtP0y = da1 > 0 ? Math.cos(a1s) : -Math.cos(a1s);
-                                var dot1 = tangent1AtP0x * T0x + tangent1AtP0y * T0y;
-                                if (dot1 < 0) {
-                                    n0x = -n0x; n0y = -n0y;
-                                    n1x = -n1x; n1y = -n1y;
-                                    C1x = P0.x + R_eff * n0x;
-                                    C1y = P0.y + R_eff * n0y;
-                                    C2x = useFallback ? P1.x - R_eff * n0x : P1.x + R_eff * n1x;
-                                    C2y = useFallback ? P1.y - R_eff * n0y : P1.y + R_eff * n1y;
-                                    Mx = (C1x + C2x) * 0.5;
-                                    My = (C1y + C2y) * 0.5;
-                                    a1s = Math.atan2(P0.y - C1y, P0.x - C1x);
-                                    a1e = Math.atan2(My - C1y, Mx - C1x);
-                                }
-                                var sweep1 = a1e - a1s;
-                                if (sweep1 > Math.PI) a1e -= 2 * Math.PI;
-                                if (sweep1 < -Math.PI) a1e += 2 * Math.PI;
-                                var a2s = Math.atan2(My - C2y, Mx - C2x);
-                                var a2e = Math.atan2(P1.y - C2y, P1.x - C2x);
-                                var sweep2 = a2e - a2s;
-                                if (sweep2 > Math.PI) a2e -= 2 * Math.PI;
-                                if (sweep2 < -Math.PI) a2e += 2 * Math.PI;
-                                entities.push(K.ArcSegment(C1x, C1y, R_eff, a1s, a1e));
-                                entities.push(K.ArcSegment(C2x, C2y, R_eff, a2s, a2e));
-                                lastPoint = { x: P1.x, y: P1.y };
-                            }
+                            lastPoint = { x: P1.x, y: P1.y };
                         }
                     }
                 }
@@ -542,6 +707,9 @@ var RattachementMath = (function () {
 
     return {
         buildProfileCurves: buildProfileCurves,
-        computeRayonValidity: computeRayonValidity
+        computeRayonValidity: computeRayonValidity,
+        computeCourbeSDefaultRho: computeCourbeSDefaultRho,
+        computeCourbeSMaxR0: computeCourbeSMaxR0,
+        computeCourbeSMinR0: computeCourbeSMinR0
     };
 })();

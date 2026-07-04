@@ -93,8 +93,14 @@ var Canvas3DLifecycle = (function () {
         renderLoop();
     }
 
+    var updateRaf = 0;
+
     function update() {
-        if (typeof BottleView3D !== 'undefined' && BottleView3D.updateView) BottleView3D.updateView();
+        if (updateRaf) return;
+        updateRaf = requestAnimationFrame(function () {
+            updateRaf = 0;
+            if (typeof BottleView3D !== 'undefined' && BottleView3D.updateView) BottleView3D.updateView();
+        });
     }
 
     function dispose() {

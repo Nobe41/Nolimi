@@ -869,11 +869,15 @@ var BottleView3D = (function () {
 
         replaceSectionRingGroup();
 
+        var bottleTessOverride = (typeof Gravure3D !== 'undefined' && Gravure3D.getBottleTessellationOverrides)
+            ? Gravure3D.getBottleTessellationOverrides(sectionsData)
+            : null;
+
         if (!bottleGroup) {
             var baseMat = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getBottleBodyMaterial)
                 ? BottleMaterials.getBottleBodyMaterial()
                 : null;
-            bottleGroup = BottleMesh3D.createBottleMesh(sectionsData, baseMat);
+            bottleGroup = BottleMesh3D.createBottleMesh(sectionsData, baseMat, bottleTessOverride);
             if (bottleGroup) {
                 bottleGroup.userData = bottleGroup.userData || {};
                 bottleGroup.userData.materialMode = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getRenderMaterialMode)
@@ -890,7 +894,10 @@ var BottleView3D = (function () {
                     bottleGroup.userData.materialMode = targetMode;
                 }
             }
-            BottleMesh3D.updateBottleMesh(bottleGroup, sectionsData);
+            BottleMesh3D.updateBottleMesh(bottleGroup, sectionsData, bottleTessOverride);
+        }
+        if (bottleGroup && typeof Gravure3D !== 'undefined' && Gravure3D.applyInvertedEngravingsToBottleMesh) {
+            Gravure3D.applyInvertedEngravingsToBottleMesh(bottleGroup, sectionsData);
         }
         if (bottleGroup) {
             bottleGroup.userData.isPiqure = false;
@@ -940,6 +947,9 @@ var BottleView3D = (function () {
             bottleInnerGlassMesh.castShadow = false;
             bottleInnerGlassMesh.receiveShadow = true;
             bottleInnerGlassMesh.renderOrder = 3;
+            if (typeof Gravure3D !== 'undefined' && Gravure3D.punchHolesForInvertedEngravings) {
+                Gravure3D.punchHolesForInvertedEngravings(bottleInnerGlassMesh, sectionsData);
+            }
             sectionRingGroup.add(bottleInnerGlassMesh);
         }
 
@@ -1011,7 +1021,7 @@ var BottleView3D = (function () {
             }
         }
         var lastP = piqSections[piqSections.length - 1];
-        var rp3H = getPanelValue('rp3-h', 35);
+        var rp3H = getPanelValue('rp3-h', 30);
         if (lastP && rp3H > lastP.H) {
             var feuilleVersAxe = buildPiqureFeuilleVersAxe(lastP, rp3H);
             feuilleVersAxe.userData.isPiqure = true;

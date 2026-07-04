@@ -91,6 +91,20 @@ var Plans2DData = (function () {
         return points;
     }
 
+    function getBagueSections2D() {
+        var sections = [];
+        var sbIdxs = getIndexedHeights('sb');
+        sbIdxs.forEach(function (k) {
+            var h = getNumericValue('sb' + k + '-h', null);
+            var L = getNumericValue('sb' + k + '-L', null);
+            var P = getNumericValue('sb' + k + '-P', L);
+            if (h == null || L == null) return;
+            sections.push({ y: h, x: getHalfWidthAtMoldJoint(L, P), L: L, P: P });
+        });
+        sections.sort(function (a, b) { return a.y - b.y; });
+        return sections;
+    }
+
     function getMainSections2D() {
         var sections = [];
         var sIdxs = getIndexedHeights('s');
@@ -160,6 +174,7 @@ var Plans2DData = (function () {
         getPiqureBase2D: getPiqureBase2D,
         getPiqureProfile2D: getPiqureProfile2D,
         getBagueProfile2D: getBagueProfile2D,
+        getBagueSections2D: getBagueSections2D,
         getMainSections2D: getMainSections2D,
         getBottleVerticalExtents: getBottleVerticalExtents,
         getProfileHalfWidthAtY: getProfileHalfWidthAtY

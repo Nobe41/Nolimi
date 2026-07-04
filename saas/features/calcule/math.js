@@ -213,7 +213,7 @@ var CalculeVolumeMath = (function () {
         }
 
         var last = piq[piq.length - 1];
-        var apexH = Math.max(last.H, getPanelValue('rp3-h', 35));
+        var apexH = Math.max(last.H, getPanelValue('rp3-h', 30));
         var dy = apexH - last.H;
         if (dy > EPS) {
             var Alast = getShapeArea(last);
@@ -310,7 +310,7 @@ var CalculeVolumeMath = (function () {
         var rp3HInner = null;
         if (piq.length) {
             var last = piq[piq.length - 1];
-            rp3HInner = Math.max(last.H, getPanelValue('rp3-h', 35) + thicknessMm);
+            rp3HInner = Math.max(last.H, getPanelValue('rp3-h', 30) + thicknessMm);
         }
 
         return {

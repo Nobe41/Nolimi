@@ -161,6 +161,213 @@ var Gravure3D = (function () {
         return { x: r * Math.cos(theta), y: y, z: r * Math.sin(theta), r: r };
     }
 
+    function buildEngravingMask(img, g) {
+        if (!img || !img.width || !img.height) return null;
+        var widthMM = Math.max(1, parseFloat(g.width) || 50);
+        var depthMM = Math.max(0.05, parseFloat(g.depth) || 1.5);
+        var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
+        var baseAngle = isFinite(parseFloat(g.angle)) ? parseFloat(g.angle) : 0;
+        var heightMM = widthMM * (img.height / img.width);
+        var gridW = Math.max(64, Math.min(320, Math.ceil(img.width / 2)));
+        var gridH = Math.max(64, Math.min(320, Math.ceil(img.height / 2)));
+        var srcScale = Math.min(1, 1024 / Math.max(img.width, img.height));
+        var srcW = Math.max(1, Math.round(img.width * srcScale));
+        var srcH = Math.max(1, Math.round(img.height * srcScale));
+        var off = document.createElement('canvas');
+        off.width = srcW; off.height = srcH;
+        var ctx = off.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(img, 0, 0, srcW, srcH);
+        var pixels = ctx.getImageData(0, 0, srcW, srcH).data;
+
+        function alphaAtUV(u, v) {
+            var px = Math.max(0, Math.min(srcW - 1, Math.round(u * (srcW - 1))));
+            var py = Math.max(0, Math.min(srcH - 1, Math.round(v * (srcH - 1))));
+            return pixels[(py * srcW + px) * 4 + 3] / 255;
+        }
+
+        var mask = new Uint8Array(gridW * gridH);
+        for (var my = 0; my < gridH; my++) {
+            for (var mx = 0; mx < gridW; mx++) {
+                var u0 = mx / gridW, v0 = my / gridH, du = 1 / gridW, dv = 1 / gridH;
+                var c1 = alphaAtUV(u0 + du * 0.25, v0 + dv * 0.25);
+                var c2 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.25);
+                var c3 = alphaAtUV(u0 + du * 0.25, v0 + dv * 0.75);
+                var c4 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.75);
+                mask[my * gridW + mx] = (((c1 + c2 + c3 + c4) * 0.25) >= 0.35) ? 1 : 0;
+            }
+        }
+
+        return {
+            mask: mask,
+            gridW: gridW,
+            gridH: gridH,
+            widthMM: widthMM,
+            heightMM: heightMM,
+            depthMM: depthMM,
+            centerY: centerY,
+            baseAngle: baseAngle,
+            flip: !!g.flip,
+            invert: !!g.invert
+        };
+    }
+
+    function sampleMaskSolid(meta, radiusAt, y, theta) {
+        if (!meta || !meta.mask) return false;
+        var baseRadius = Math.max(1, radiusAt(meta.centerY, meta.baseAngle));
+        var dTheta = theta - meta.baseAngle;
+        while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
+        while (dTheta < -Math.PI) dTheta += 2 * Math.PI;
+        var xCentered = dTheta * baseRadius;
+        var uMap = (xCentered / meta.widthMM) + 0.5;
+        if (meta.flip) uMap = 1 - uMap;
+        var vMap = 0.5 - ((y - meta.centerY) / meta.heightMM);
+        if (uMap < 0 || uMap > 1 || vMap < 0 || vMap > 1) return false;
+        var ix = Math.max(0, Math.min(meta.gridW - 1, Math.floor(uMap * meta.gridW)));
+        var iy = Math.max(0, Math.min(meta.gridH - 1, Math.floor(vMap * meta.gridH)));
+        return meta.mask[iy * meta.gridW + ix] === 1;
+    }
+
+    function collectEngravingMetas(surfaceInput) {
+        if (typeof window === 'undefined' || typeof window.getEngravingsData !== 'function') return [];
+        var engravings = window.getEngravingsData();
+        if (!engravings || !engravings.length) return [];
+        var images = window.engravingImages || {};
+        var radiusAt = createRadiusSampler(extendSurfaceWithBague(surfaceInput));
+        var metas = [];
+        for (var i = 0; i < engravings.length; i++) {
+            var meta = buildEngravingMask(images[engravings[i].id], engravings[i]);
+            if (meta) {
+                meta.radiusAt = radiusAt;
+                metas.push(meta);
+            }
+        }
+        return metas;
+    }
+
+    function getInvertedEngravingMetas(surfaceInput) {
+        var metas = collectEngravingMetas(surfaceInput);
+        var inverted = [];
+        for (var i = 0; i < metas.length; i++) {
+            if (metas[i].invert) inverted.push(metas[i]);
+        }
+        return inverted;
+    }
+
+    function hasInvertedEngravings(surfaceInput) {
+        return getInvertedEngravingMetas(surfaceInput).length > 0;
+    }
+
+    function getBottleTessellationOverrides(surfaceInput) {
+        if (!hasInvertedEngravings(surfaceInput)) return null;
+        return { nTheta: 384, meridianRes: 192 };
+    }
+
+    function triangleShouldCutAtEngravingBorder(meta, radiusAt, pos, i0, i1, i2) {
+        var insideCount = 0;
+        var verts = [i0, i1, i2];
+        for (var vi = 0; vi < 3; vi++) {
+            var vx = pos.getX(verts[vi]), vy = pos.getY(verts[vi]), vz = pos.getZ(verts[vi]);
+            var vr = Math.sqrt(vx * vx + vz * vz);
+            if (vr < 1e-6) continue;
+            if (sampleMaskSolid(meta, radiusAt, vy, Math.atan2(vz, vx))) insideCount++;
+        }
+        if (insideCount >= 2) return true;
+        if (insideCount === 0) return false;
+        var cx = (pos.getX(i0) + pos.getX(i1) + pos.getX(i2)) / 3;
+        var cy = (pos.getY(i0) + pos.getY(i1) + pos.getY(i2)) / 3;
+        var cz = (pos.getZ(i0) + pos.getZ(i1) + pos.getZ(i2)) / 3;
+        var cr = Math.sqrt(cx * cx + cz * cz);
+        if (cr < 1e-6) return false;
+        return sampleMaskSolid(meta, radiusAt, cy, Math.atan2(cz, cx));
+    }
+
+    function punchHolesForInvertedEngravings(mesh, surfaceInput) {
+        if (!mesh || !mesh.geometry || typeof THREE === 'undefined') return;
+        var geo = mesh.geometry;
+        var pos = geo.attributes.position;
+        var index = geo.index;
+        if (!pos || !index || !index.count) return;
+
+        var inverted = getInvertedEngravingMetas(surfaceInput);
+        if (!inverted.length) return;
+
+        var newIndices = [];
+        for (var fi = 0; fi < index.count; fi += 3) {
+            var i0 = index.getX(fi), i1 = index.getX(fi + 1), i2 = index.getX(fi + 2);
+            var remove = false;
+            for (var ii = 0; ii < inverted.length && !remove; ii++) {
+                var meta = inverted[ii];
+                if (triangleShouldCutAtEngravingBorder(meta, meta.radiusAt, pos, i0, i1, i2)) remove = true;
+            }
+            if (!remove) newIndices.push(i0, i1, i2);
+        }
+        geo.setIndex(newIndices);
+        geo.computeVertexNormals();
+    }
+
+    function applyInvertedEngravingsToBottleMesh(mesh, surfaceInput) {
+        punchHolesForInvertedEngravings(mesh, surfaceInput);
+    }
+
+    function buildEngravingMeshGeometry(meta, radiusAt) {
+        return buildReliefEngravingGeometry(meta, radiusAt);
+    }
+
+    function buildReliefEngravingGeometry(meta, radiusAt) {
+        var widthMM = meta.widthMM;
+        var depthMM = meta.depthMM;
+        var centerY = meta.centerY;
+        var baseAngle = meta.baseAngle;
+        var heightMM = meta.heightMM;
+        var flip = meta.flip;
+        var invert = meta.invert;
+        var gridW = meta.gridW;
+        var gridH = meta.gridH;
+        var mask = meta.mask;
+        var baseRadius = Math.max(1, radiusAt(centerY, baseAngle));
+        var dirDepth = invert ? -depthMM : depthMM;
+
+        function isSolid(ix, iy) { return !(ix < 0 || iy < 0 || ix >= gridW || iy >= gridH) && mask[iy * gridW + ix] === 1; }
+        var vertices = [], indices = [];
+        function pushPoint(uRaw, vRaw, outwardDepth) {
+            var uMap = flip ? (1 - uRaw) : uRaw;
+            var xCentered = (uMap - 0.5) * widthMM;
+            var yMM = centerY + (0.5 - vRaw) * heightMM;
+            var theta = baseAngle + (xCentered / baseRadius);
+            var surf = getSurfacePoint(radiusAt, yMM, theta);
+            var nx = Math.cos(theta), nz = Math.sin(theta);
+            vertices.push(surf.x + nx * outwardDepth, yMM, surf.z + nz * outwardDepth);
+            return (vertices.length / 3) - 1;
+        }
+        function addQuad(a, b, c, d) { indices.push(a, b, c); indices.push(a, c, d); }
+
+        for (var gy = 0; gy < gridH; gy++) {
+            for (var gx = 0; gx < gridW; gx++) {
+                if (!isSolid(gx, gy)) continue;
+                var u0 = gx / gridW, u1 = (gx + 1) / gridW, v0 = gy / gridH, v1 = (gy + 1) / gridH;
+                var t00 = pushPoint(u0, v0, dirDepth), t10 = pushPoint(u1, v0, dirDepth), t11 = pushPoint(u1, v1, dirDepth), t01 = pushPoint(u0, v1, dirDepth);
+                addQuad(t00, t10, t11, t01);
+                var b00 = pushPoint(u0, v0, 0), b10 = pushPoint(u1, v0, 0), b11 = pushPoint(u1, v1, 0), b01 = pushPoint(u0, v1, 0);
+                if (!invert) addQuad(b01, b11, b10, b00);
+                if (!isSolid(gx - 1, gy)) addQuad(b00, t00, t01, b01);
+                if (!isSolid(gx + 1, gy)) addQuad(b11, t11, t10, b10);
+                if (!isSolid(gx, gy - 1)) addQuad(b10, t10, t00, b00);
+                if (!isSolid(gx, gy + 1)) addQuad(b01, t01, t11, b11);
+            }
+        }
+        if (!indices.length) return null;
+        return { vertices: vertices, indices: indices };
+    }
+
+    function createEngravingMaterial() {
+        var mat = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getGlassMaterial)
+            ? BottleMaterials.getGlassMaterial(BottleMaterials.DEFAULT_GLASS_COLOR)
+            : new THREE.MeshPhongMaterial({ color: 0x99bbdd, side: THREE.DoubleSide });
+        mat.side = THREE.DoubleSide;
+        return mat;
+    }
+
     function buildEngravingsGroup(surfaceInput) {
         if (typeof window === 'undefined' || typeof THREE === 'undefined') return null;
         if (typeof window.getEngravingsData !== 'function') return null;
@@ -173,82 +380,15 @@ var Gravure3D = (function () {
         for (var gi = 0; gi < engravings.length; gi++) {
             var g = engravings[gi], img = images[g.id];
             if (!img || !img.width || !img.height) continue;
-            var widthMM = Math.max(1, parseFloat(g.width) || 50);
-            var depthMM = Math.max(0.05, parseFloat(g.depth) || 1.5);
-            var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
-            var baseAngle = isFinite(parseFloat(g.angle)) ? parseFloat(g.angle) : 0;
-            var heightMM = widthMM * (img.height / img.width);
-            var baseRadius = Math.max(1, radiusAt(centerY, baseAngle));
-            var flip = !!g.flip, invert = !!g.invert;
-
-            var off = document.createElement('canvas');
-            var gridW = Math.max(64, Math.min(320, Math.ceil(img.width / 2)));
-            var gridH = Math.max(64, Math.min(320, Math.ceil(img.height / 2)));
-            var srcScale = Math.min(1, 1024 / Math.max(img.width, img.height));
-            var srcW = Math.max(1, Math.round(img.width * srcScale));
-            var srcH = Math.max(1, Math.round(img.height * srcScale));
-            off.width = srcW; off.height = srcH;
-            var ctx = off.getContext('2d'); if (!ctx) continue;
-            ctx.drawImage(img, 0, 0, srcW, srcH);
-            var pixels = ctx.getImageData(0, 0, srcW, srcH).data;
-
-            function alphaAtUV(u, v) {
-                var x = Math.max(0, Math.min(srcW - 1, Math.round(u * (srcW - 1))));
-                var y = Math.max(0, Math.min(srcH - 1, Math.round(v * (srcH - 1))));
-                return pixels[(y * srcW + x) * 4 + 3] / 255;
-            }
-
-            var mask = new Uint8Array(gridW * gridH);
-            for (var my = 0; my < gridH; my++) {
-                for (var mx = 0; mx < gridW; mx++) {
-                    var u0 = mx / gridW, v0 = my / gridH, du = 1 / gridW, dv = 1 / gridH;
-                    var c1 = alphaAtUV(u0 + du * 0.25, v0 + dv * 0.25);
-                    var c2 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.25);
-                    var c3 = alphaAtUV(u0 + du * 0.25, v0 + dv * 0.75);
-                    var c4 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.75);
-                    mask[my * gridW + mx] = (((c1 + c2 + c3 + c4) * 0.25) >= 0.35) ? 1 : 0;
-                }
-            }
-
-            function isSolid(ix, iy) { return !(ix < 0 || iy < 0 || ix >= gridW || iy >= gridH) && mask[iy * gridW + ix] === 1; }
-            var vertices = [], indices = [];
-            function pushPoint(uRaw, vRaw, outwardDepth) {
-                var uMap = flip ? (1 - uRaw) : uRaw;
-                var xCentered = (uMap - 0.5) * widthMM;
-                var yMM = centerY + (0.5 - vRaw) * heightMM;
-                var theta = baseAngle + (xCentered / baseRadius);
-                var surf = getSurfacePoint(radiusAt, yMM, theta);
-                var nx = Math.cos(theta), nz = Math.sin(theta);
-                vertices.push(surf.x + nx * outwardDepth, yMM, surf.z + nz * outwardDepth);
-                return (vertices.length / 3) - 1;
-            }
-            function addQuad(a, b, c, d) { indices.push(a, b, c); indices.push(a, c, d); }
-
-            for (var y = 0; y < gridH; y++) {
-                for (var x = 0; x < gridW; x++) {
-                    if (!isSolid(x, y)) continue;
-                    var u0 = x / gridW, u1 = (x + 1) / gridW, v0 = y / gridH, v1 = (y + 1) / gridH;
-                    var dirDepth = invert ? -depthMM : depthMM;
-                    var t00 = pushPoint(u0, v0, dirDepth), t10 = pushPoint(u1, v0, dirDepth), t11 = pushPoint(u1, v1, dirDepth), t01 = pushPoint(u0, v1, dirDepth);
-                    addQuad(t00, t10, t11, t01);
-                    var b00 = pushPoint(u0, v0, 0), b10 = pushPoint(u1, v0, 0), b11 = pushPoint(u1, v1, 0), b01 = pushPoint(u0, v1, 0);
-                    if (!invert) addQuad(b01, b11, b10, b00);
-                    if (!isSolid(x - 1, y)) addQuad(b00, t00, t01, b01);
-                    if (!isSolid(x + 1, y)) addQuad(b11, t11, t10, b10);
-                    if (!isSolid(x, y - 1)) addQuad(b10, t10, t00, b00);
-                    if (!isSolid(x, y + 1)) addQuad(b01, t01, t11, b11);
-                }
-            }
-
-            if (!indices.length) continue;
+            var meta = buildEngravingMask(img, g);
+            if (!meta) continue;
+            var built = buildEngravingMeshGeometry(meta, radiusAt);
+            if (!built) continue;
             var geom = new THREE.BufferGeometry();
-            geom.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            geom.setIndex(indices);
+            geom.setAttribute('position', new THREE.Float32BufferAttribute(built.vertices, 3));
+            geom.setIndex(built.indices);
             geom.computeVertexNormals();
-            var mat = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getGlassMaterial)
-                ? BottleMaterials.getGlassMaterial(BottleMaterials.DEFAULT_GLASS_COLOR)
-                : new THREE.MeshPhongMaterial({ color: 0x99bbdd, side: THREE.DoubleSide });
-            mat.side = THREE.DoubleSide;
+            var mat = createEngravingMaterial();
             var mesh = new THREE.Mesh(geom, mat);
             mesh.userData.isPiqure = false;
             mesh.userData.isInterior = false;
@@ -274,5 +414,12 @@ var Gravure3D = (function () {
         }
     }
 
-    return { updateScene: updateScene };
+    return {
+        updateScene: updateScene,
+        applyInvertedEngravingsToBottleMesh: applyInvertedEngravingsToBottleMesh,
+        applyInvertedDisplacementsToMesh: applyInvertedEngravingsToBottleMesh,
+        punchHolesForInvertedEngravings: punchHolesForInvertedEngravings,
+        getBottleTessellationOverrides: getBottleTessellationOverrides,
+        hasInvertedEngravings: hasInvertedEngravings
+    };
 })();

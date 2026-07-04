@@ -23,7 +23,7 @@ var SectionsRules = (function () {
     var mainLiaisons = [
         { rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 },
         { rho: 40, rhoMin: 5, rhoMax: 400, rhoStep: 1 },
-        { rho: 0, rhoMin: 0, rhoMax: 400, rhoStep: 0.5, type: 'courbeS' },
+        { rho: 24, rhoMin: 0, rhoMax: 400, rhoStep: 0.5, type: 'courbeS' },
         { rho: 20, rhoMin: 5, rhoMax: 400, rhoStep: 1 }
     ];
 

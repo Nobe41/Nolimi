@@ -5,9 +5,16 @@ const view2D = document.getElementById('viewport-2d');
 // GESTION DES INPUTS ET ACCORDEONS
 // ==========================================
 
-let updateTimer;
+let viewRefreshRaf = 0;
 
-// Les règles de clamp utilisateur sont centralisées dans js/state/validator.js
+function scheduleViewRefresh() {
+    if (viewRefreshRaf) return;
+    viewRefreshRaf = requestAnimationFrame(function () {
+        viewRefreshRaf = 0;
+        if (typeof updateBouteille === 'function') updateBouteille();
+        if (typeof draw2D === 'function' && view2D && !view2D.classList.contains('hidden')) draw2D();
+    });
+}
 
 function bindInspectorWheelScroll() {
     var scroller = document.getElementById('inspector-scroll');
@@ -26,7 +33,7 @@ function bindInspectorWheelScroll() {
 
 function setupListeners() {
     bindInspectorWheelScroll();
-    if (typeof UIControls !== 'undefined' && UIControls.syncAllRangeSliders) {
+    if (!window.nolimiSetupListenersDone && typeof UIControls !== 'undefined' && UIControls.syncAllRangeSliders) {
         UIControls.syncAllRangeSliders();
     }
 
@@ -138,106 +145,7 @@ function setupListeners() {
                     }
                 }
             }
-
-            // Validation globale des hauteurs de sections via Validator
-            if (typeof Validator !== 'undefined') {
-                const id = input.id || '';
-
-                if (Validator.validateSectionHeights) {
-                    // IDs possibles : s1-h, s1-h-slider, ..., sN-h, sN-h-slider
-                    const match = id.match(/^s(\d+)-h(?:-slider)?$/);
-                    if (match) {
-                        const sectionIndex = parseInt(match[1], 10);
-                        const rawValue = parseFloat(input.value);
-                        if (isFinite(rawValue)) {
-                            const corrected = Validator.validateSectionHeights(sectionIndex, rawValue);
-                            if (corrected !== rawValue) {
-                                const isRange = input.type === 'range';
-                                if (isRange) {
-                                    input.value = corrected;
-                                    const num = controlGroup && controlGroup.querySelector('input[type=number]');
-                                    if (num) num.value = corrected;
-                                } else {
-                                    input.value = corrected;
-                                    const rng = controlGroup && controlGroup.querySelector('input[type=range]');
-                                    if (rng) rng.value = corrected;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (Validator.validatePiqureHeight) {
-                    // Hauteurs de piqûre : sp2-h, sp3-h, rp3-h (+ leurs sliders)
-                    if (/^(sp[23]-h|rp3-h)(?:-slider)?$/.test(id)) {
-                        const rawValue = parseFloat(input.value);
-                        if (isFinite(rawValue)) {
-                            const corrected = Validator.validatePiqureHeight(rawValue);
-                            if (corrected !== rawValue) {
-                                const isRange = input.type === 'range';
-                                if (isRange) {
-                                    input.value = corrected;
-                                    const num = controlGroup && controlGroup.querySelector('input[type=number]');
-                                    if (num) num.value = corrected;
-                                } else {
-                                    input.value = corrected;
-                                    const rng = controlGroup && controlGroup.querySelector('input[type=range]');
-                                    if (rng) rng.value = corrected;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            // Si la dernière section principale (ex: s5-h) bouge, translater toute la bague
-            // avant validation pour préserver les écarts internes (bague "rigide").
-            var isTopMainHeightEdit = false;
-            var topMatch = id.match(/^s(\d+)-h(?:-slider)?$/);
-            if (topMatch) {
-                var editedSectionIndex = parseInt(topMatch[1], 10);
-                var mainCountNow = getMainSectionCount();
-                isTopMainHeightEdit = isFinite(editedSectionIndex) && editedSectionIndex === mainCountNow;
-                if (isTopMainHeightEdit) {
-                    var currentTop = getMainTopHeight();
-                    var deltaTop = currentTop - lastMainTopHeight;
-                    shiftBagueHeights(deltaTop);
-                }
-            }
-
-            if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) {
-                Validator.applyAllUserConstraints();
-            }
-            if (isTopMainHeightEdit) {
-                lastMainTopHeight = getMainTopHeight();
-            }
-            // Section corps (s1..s5) : hauteur ou L/P modifiés -> bornes Courbe S puis adapter les ρ.
-            if (/^s\d+-(h|L|P)(?:-slider)?$/.test(id)) {
-                updateCourbeSSliderLimits();
-                updateCourbeSRhosFromDistance();
-            }
-            // Utilisateur a changé le ρ d'un rattachement en Courbe S -> enregistrer le rapport ρ/d.
-            var rhoMatch = id.match(/^(r\d+|rp\d+|rb\d+)-rho(?:-slider)?$/);
-            if (rhoMatch) {
-                var rattId = rhoMatch[1];
-                var typeSelect = document.getElementById(rattId + '-type');
-                if (typeSelect && typeSelect.value === 'courbeS') {
-                    var cfg = MAIN_RATTACHEMENTS.find(function (c) { return c.id === rattId; });
-                    if (cfg) {
-                        var d = getDistanceForRattachement(cfg);
-                        var rhoVal = parseFloat(input.value);
-                        if (isFinite(rhoVal) && d >= 1e-6) storeCourbeSRatio(rattId, rhoVal, d);
-                    }
-                }
-            }
-            // Les modifications de sections peuvent rendre un rayon possible/impossible
-            // ou changer sa valeur géométrique, et la limite max spline (surfaces qui se touchent).
-            updateRayonAutoValues();
-            updateSplineMaxLimits();
-            clearTimeout(updateTimer);
-            updateTimer = setTimeout(() => {
-                if (typeof updateBouteille === 'function') updateBouteille();
-                if (typeof draw2D === 'function' && view2D && !view2D.classList.contains('hidden')) draw2D();
-            }, 20);
+            scheduleInputHeavyUpdate(id);
         };
         if (input.type === 'number') {
             var applyOnEnter = function () { onUpdate(); };
@@ -255,7 +163,11 @@ function setupListeners() {
             input.addEventListener('input', onUpdate);
             if (input.type === 'range') input.addEventListener('change', onUpdate);
         }
-        if (input.tagName === 'SELECT') input.addEventListener('change', onUpdate);
+        if (input.tagName === 'SELECT') {
+            if (!/-type$/.test(inputId) && !/-forme$/.test(inputId)) {
+                input.addEventListener('change', onUpdate);
+            }
+        }
     });
 
     function toggleCarreNiveauVisibility() {
@@ -286,7 +198,7 @@ function setupListeners() {
             const type = (sel.value || '').trim();
 
             if (type === 'courbeS') {
-                // Courbe S : afficher le groupe Rayon (slider 5 à 400).
+                // Courbe S : slider = rayon R0 du 1er arc ; R1 est calculé automatiquement.
                 var courbeSMin = 5;
                 rhoGroup.style.display = 'block';
                 rhoGroup.style.visibility = 'visible';
@@ -298,8 +210,6 @@ function setupListeners() {
                     numberInput.readOnly = false;
                     numberInput.min = courbeSMin;
                     numberInput.max = 400;
-                    var v = parseFloat(numberInput.value);
-                    if (!isFinite(v) || v < courbeSMin) { numberInput.value = courbeSMin; if (rangeInput) rangeInput.value = courbeSMin; }
                 }
                 if (rangeInput) {
                     rangeInput.min = courbeSMin;
@@ -348,6 +258,7 @@ function setupListeners() {
             }
         });
         updateCourbeSSliderLimits();
+        updateCourbeSAutoValues();
         // Recalculer la hauteur des panneaux ouverts pour que le groupe Rayon (ex. Courbe S) ne soit pas coupé.
         document.querySelectorAll('.panel-controls').forEach(panel => {
             if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
@@ -394,22 +305,24 @@ function setupListeners() {
         courbeSRatios[rattId] = rho / d;
     }
 
-    /** Calcule le min et max R valides pour la Courbe S entre deux points (même logique que rattachements.js). */
-    function getCourbeSRange(p0, p1) {
+    /** Calcule le min et max R0 valides pour la Courbe S entre deux points. */
+    function getCourbeSRange(p0, p1, pPrev, pNext) {
         var dx = p1.x - p0.x;
         var dy = p1.y - p0.y;
         var d = Math.sqrt(dx * dx + dy * dy);
-        var dSMax = 280;
-        if (d < 1e-6 || d > dSMax) return null;
-        var minRS = d * 0.5;
-        var maxRS = minRS * 3;
-        var minRSNoBoudin = minRS * 1.15;
-        var midX = (p0.x + p1.x) * 0.5;
-        var halfChord = d * 0.25;
-        var R_maxAxis = 2 * Math.sqrt(halfChord * halfChord + midX * midX);
-        var sliderMin = Math.max(5, minRSNoBoudin);
-        var sliderMax = Math.min(400, maxRS, R_maxAxis);
-        if (d > 150) sliderMax = Math.min(sliderMax, 120);
+        if (d < 1e-6) return null;
+        var sliderMin = 5;
+        var sliderMax = 400;
+        if (typeof RattachementMath !== 'undefined') {
+            if (RattachementMath.computeCourbeSMinR0) {
+                var geomMin = RattachementMath.computeCourbeSMinR0(p0, p1, pPrev || null, pNext || null);
+                if (geomMin != null) sliderMin = geomMin;
+            }
+            if (RattachementMath.computeCourbeSMaxR0) {
+                var geomMax = RattachementMath.computeCourbeSMaxR0(p0, p1, pPrev || null, pNext || null);
+                if (geomMax != null && geomMax > sliderMin) sliderMax = geomMax;
+            }
+        }
         if (sliderMax < sliderMin) sliderMax = sliderMin;
         return { min: Math.round(sliderMin * 10) / 10, max: Math.round(sliderMax * 10) / 10 };
     }
@@ -421,7 +334,9 @@ function setupListeners() {
             if (!typeSelect || typeSelect.value !== 'courbeS') return;
             var p0 = getSectionPointForRayon(cfg.fromSection);
             var p1 = getSectionPointForRayon(cfg.toSection);
-            var range = getCourbeSRange(p0, p1);
+            var pPrev = cfg.fromSection > 1 ? getSectionPointForRayon(cfg.fromSection - 1) : null;
+            var pNext = cfg.toSection < getMainSectionCount() ? getSectionPointForRayon(cfg.toSection + 1) : null;
+            var range = getCourbeSRange(p0, p1, pPrev, pNext);
             var numberInput = document.getElementById(cfg.id + '-rho');
             var rangeInput = document.getElementById(cfg.id + '-rho-slider');
             if (!numberInput) return;
@@ -505,6 +420,54 @@ function setupListeners() {
         });
     }
 
+    /** Centre le ρ (R0) sur la liaison Courbe S indiquée. */
+    function setCourbeSRhoToMid(rattId) {
+        var cfg = MAIN_RATTACHEMENTS.find(function (c) { return c.id === rattId; });
+        if (!cfg) return;
+        var p0 = getSectionPointForRayon(cfg.fromSection);
+        var p1 = getSectionPointForRayon(cfg.toSection);
+        var pPrev = cfg.fromSection > 1 ? getSectionPointForRayon(cfg.fromSection - 1) : null;
+        var pNext = cfg.toSection < getMainSectionCount() ? getSectionPointForRayon(cfg.toSection + 1) : null;
+        var range = getCourbeSRange(p0, p1, pPrev, pNext);
+        if (!range) return;
+        var val = rattId === 'r34'
+            ? Math.max(range.min, Math.min(range.max, 24))
+            : Math.round(((range.min + range.max) / 2) * 10) / 10;
+        var inputEl = document.getElementById(rattId + '-rho');
+        var sliderEl = document.getElementById(rattId + '-rho-slider');
+        if (inputEl) inputEl.value = val;
+        if (sliderEl) sliderEl.value = val;
+        var d = getDistanceForRattachement(cfg);
+        if (d >= 1e-6) storeCourbeSRatio(rattId, val, d);
+    }
+
+    /** Met à jour le ρ affiché (R0 du 1er arc) pour les rattachements en mode Courbe S. */
+    function updateCourbeSAutoValues() {
+        MAIN_RATTACHEMENTS.forEach(function (cfg) {
+            var typeSelect = document.getElementById(cfg.id + '-type');
+            if (!typeSelect || typeSelect.value !== 'courbeS') return;
+            var p0 = getSectionPointForRayon(cfg.fromSection);
+            var p1 = getSectionPointForRayon(cfg.toSection);
+            var pPrev = cfg.fromSection > 1 ? getSectionPointForRayon(cfg.fromSection - 1) : null;
+            var pNext = cfg.toSection < getMainSectionCount() ? getSectionPointForRayon(cfg.toSection + 1) : null;
+            var inputEl = document.getElementById(cfg.id + '-rho');
+            var sliderEl = document.getElementById(cfg.id + '-rho-slider');
+            if (!inputEl) return;
+            var defaultR = (typeof RattachementMath !== 'undefined' && RattachementMath.computeCourbeSDefaultRho)
+                ? RattachementMath.computeCourbeSDefaultRho(p0, p1, pPrev, pNext)
+                : null;
+            if (defaultR == null) return;
+            var val = Math.round(defaultR * 10) / 10;
+            var current = parseFloat(inputEl.value);
+            if (!isFinite(current) || current <= 0) {
+                inputEl.value = val;
+                if (sliderEl) sliderEl.value = val;
+                var d = getDistanceForRattachement(cfg);
+                if (d >= 1e-6) storeCourbeSRatio(cfg.id, val, d);
+            }
+        });
+    }
+
     function updateRayonAutoValues() {
         MAIN_RATTACHEMENTS.forEach(cfg => {
             const typeSelect = document.getElementById(cfg.id + '-type');
@@ -542,16 +505,128 @@ function setupListeners() {
         });
     }
 
+    var inputHeavyRaf = 0;
+    var pendingHeavyInputId = '';
+
+    function scheduleInputHeavyUpdate(id) {
+        if (id) pendingHeavyInputId = id;
+        if (inputHeavyRaf) return;
+        inputHeavyRaf = requestAnimationFrame(function () {
+            inputHeavyRaf = 0;
+            var heavyId = pendingHeavyInputId;
+            pendingHeavyInputId = '';
+            runInputHeavyUpdate(heavyId);
+        });
+    }
+
+    function runInputHeavyUpdate(id) {
+        var sourceEl = id ? (document.getElementById(id) || document.getElementById(id.replace(/-slider$/, ''))) : null;
+        var controlGroup = sourceEl ? sourceEl.closest('.control-group') : null;
+        if (typeof Validator !== 'undefined') {
+            if (Validator.validateSectionHeights) {
+                const match = id.match(/^s(\d+)-h(?:-slider)?$/);
+                if (match) {
+                    const sectionIndex = parseInt(match[1], 10);
+                    const input = document.getElementById('s' + sectionIndex + '-h') || document.getElementById('s' + sectionIndex + '-h-slider');
+                    const rawValue = input ? parseFloat(input.value) : NaN;
+                    if (input && isFinite(rawValue)) {
+                        const corrected = Validator.validateSectionHeights(sectionIndex, rawValue);
+                        if (corrected !== rawValue) {
+                            input.value = corrected;
+                            const num = controlGroup && controlGroup.querySelector('input[type=number]');
+                            const rng = controlGroup && controlGroup.querySelector('input[type=range]');
+                            if (num && num !== input) num.value = corrected;
+                            if (rng && rng !== input) rng.value = corrected;
+                        }
+                    }
+                }
+            }
+            if (Validator.validatePiqureHeight && /^(sp\d+-h|rp3-h)(?:-slider)?$/.test(id)) {
+                const pInput = document.getElementById(id.replace(/-slider$/, ''));
+                const rawValue = pInput ? parseFloat(pInput.value) : NaN;
+                if (pInput && isFinite(rawValue)) {
+                    const corrected = Validator.validatePiqureHeight(rawValue);
+                    if (corrected !== rawValue) {
+                        pInput.value = corrected;
+                        const slider = document.getElementById(pInput.id + '-slider');
+                        if (slider) slider.value = corrected;
+                    }
+                }
+            }
+        }
+
+        var isTopMainHeightEdit = false;
+        var topMatch = id.match(/^s(\d+)-h(?:-slider)?$/);
+        if (topMatch) {
+            var editedSectionIndex = parseInt(topMatch[1], 10);
+            var mainCountNow = getMainSectionCount();
+            isTopMainHeightEdit = isFinite(editedSectionIndex) && editedSectionIndex === mainCountNow;
+            if (isTopMainHeightEdit) {
+                var currentTop = getMainTopHeight();
+                var deltaTop = currentTop - lastMainTopHeight;
+                shiftBagueHeights(deltaTop);
+            }
+        }
+
+        if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) {
+            Validator.applyAllUserConstraints();
+        }
+        if (isTopMainHeightEdit) {
+            lastMainTopHeight = getMainTopHeight();
+        }
+
+        if (/^s\d+-(h|L|P)(?:-slider)?$/.test(id)) {
+            updateCourbeSSliderLimits();
+            updateCourbeSRhosFromDistance();
+            updateCourbeSAutoValues();
+            updateRayonAutoValues();
+            updateSplineMaxLimits();
+        } else {
+            var rhoMatch = id.match(/^(r\d+|rp\d+|rb\d+)-(?:type|rho)(?:-slider)?$/);
+            if (rhoMatch) {
+                if (/-type$/.test(id)) {
+                    var typeSel = document.getElementById(rhoMatch[1] + '-type');
+                    if (typeSel && typeSel.value === 'courbeS') {
+                        updateCourbeSAutoValues();
+                    }
+                }
+                if (/-rho(?:-slider)?$/.test(id)) {
+                    var rattId = rhoMatch[1];
+                    var typeSelect = document.getElementById(rattId + '-type');
+                    if (typeSelect && typeSelect.value === 'courbeS') {
+                        var cfg = MAIN_RATTACHEMENTS.find(function (c) { return c.id === rattId; });
+                        if (cfg) {
+                            var d = getDistanceForRattachement(cfg);
+                            var rhoEl = document.getElementById(rattId + '-rho');
+                            var rhoVal = rhoEl ? parseFloat(rhoEl.value) : NaN;
+                            if (isFinite(rhoVal) && d >= 1e-6) storeCourbeSRatio(rattId, rhoVal, d);
+                        }
+                    }
+                }
+                updateRayonAutoValues();
+                updateSplineMaxLimits();
+            }
+        }
+
+        scheduleViewRefresh();
+    }
+
     toggleCarreNiveauVisibility();
     toggleRhoVisibility();
+    updateCourbeSAutoValues();
     updateRayonAutoValues();
     document.querySelectorAll('select[id$="-forme"]').forEach(sel => {
+        if (sel.dataset.nolimiFormeBound === '1') return;
+        sel.dataset.nolimiFormeBound = '1';
         sel.addEventListener('change', () => {
             toggleCarreNiveauVisibility();
             updateRayonAutoValues();
+            scheduleViewRefresh();
         });
     });
     document.querySelectorAll('select[id$="-type"]').forEach(sel => {
+        if (sel.dataset.nolimiTypeBound === '1') return;
+        sel.dataset.nolimiTypeBound = '1';
         sel.addEventListener('change', () => {
             if (sel.value === 'spline') {
                 var card = sel.closest('.setting-card');
@@ -562,7 +637,12 @@ function setupListeners() {
                 if (rng) rng.value = 0;
             }
             toggleRhoVisibility();
+            if (sel.value === 'courbeS') {
+                var rattId = (sel.id || '').replace(/-type$/, '');
+                if (rattId) setCourbeSRhoToMid(rattId);
+            }
             updateRayonAutoValues();
+            scheduleViewRefresh();
         });
     });
     if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) {
@@ -611,6 +691,8 @@ function setupListeners() {
     }
 
     for (let i = 0; i < allAccordions.length; i++) {
+        if (allAccordions[i].dataset.nolimiAccordionBound === '1') continue;
+        allAccordions[i].dataset.nolimiAccordionBound = '1';
         allAccordions[i].onclick = function () {
             if (this.id === 'render-mode-title') return;
             var card = this.closest ? this.closest('.setting-card') : null;
@@ -644,7 +726,7 @@ function setupListeners() {
                 }
             }
 
-            if (typeof updateBouteille === 'function') updateBouteille();
+            scheduleViewRefresh();
         };
     }
 }
