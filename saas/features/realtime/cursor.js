@@ -61,12 +61,12 @@ var RealtimeCursors = (function () {
         var root = document.body;
         if (!root) return null;
         removeLegacyViewportOverlay();
-        if (overlay && overlay.parentNode === root) return overlay;
-
-        overlay = document.createElement('div');
-        overlay.id = 'realtime-cursors-overlay';
-        overlay.className = 'realtime-cursors-overlay';
-        overlay.setAttribute('aria-hidden', 'true');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'realtime-cursors-overlay';
+            overlay.className = 'realtime-cursors-overlay';
+            overlay.setAttribute('aria-hidden', 'true');
+        }
         root.appendChild(overlay);
         return overlay;
     }
@@ -85,8 +85,8 @@ var RealtimeCursors = (function () {
     }
 
     function placeCursorElement(el, nx, ny) {
-        el.style.left = (nx * 100) + '%';
-        el.style.top = (ny * 100) + '%';
+        var m = getScreenMetrics();
+        el.style.transform = 'translate(' + (nx * m.w) + 'px, ' + (ny * m.h) + 'px)';
     }
 
     function scheduleStaleHide(userId) {
@@ -99,7 +99,7 @@ var RealtimeCursors = (function () {
     function hideRemote(userId) {
         var entry = remoteByUser[userId];
         if (!entry || !entry.el) return;
-        entry.el.classList.add('hidden');
+        entry.el.classList.add('is-hidden');
         entry.visible = false;
     }
 
@@ -164,7 +164,7 @@ var RealtimeCursors = (function () {
         entry.nx = norm.x;
         entry.ny = norm.y;
         placeCursorElement(entry.el, entry.nx, entry.ny);
-        entry.el.classList.remove('hidden');
+        entry.el.classList.remove('is-hidden');
         entry.visible = true;
 
         if (payload.name) {
@@ -241,14 +241,18 @@ var RealtimeCursors = (function () {
         broadcastCursor(e.clientX, e.clientY, true);
     }
 
+    function onMouseMove(e) {
+        if (!RealtimeState.isConnected()) return;
+        broadcastCursor(e.clientX, e.clientY, true);
+    }
+
     function onMouseLeave() {
         if (!RealtimeState.isConnected()) return;
         broadcastCursor(0, 0, false);
     }
 
-    function onDocumentMouseOut(e) {
-        if (e.relatedTarget || e.toElement) return;
-        onMouseLeave();
+    function onWindowMouseOut(e) {
+        if (!e.relatedTarget && !e.toElement) onMouseLeave();
     }
 
     function onViewportChange() {
@@ -259,7 +263,9 @@ var RealtimeCursors = (function () {
         if (listenersBound) return;
         listenersBound = true;
         document.addEventListener('pointermove', onPointerMove, true);
-        document.addEventListener('mouseout', onDocumentMouseOut);
+        document.addEventListener('mousemove', onMouseMove, true);
+        document.documentElement.addEventListener('mouseleave', onMouseLeave);
+        window.addEventListener('mouseout', onWindowMouseOut);
         window.addEventListener('blur', onMouseLeave);
         window.addEventListener('resize', onViewportChange);
         if (window.visualViewport) {
@@ -270,7 +276,9 @@ var RealtimeCursors = (function () {
     function unbindListeners() {
         if (!listenersBound) return;
         document.removeEventListener('pointermove', onPointerMove, true);
-        document.removeEventListener('mouseout', onDocumentMouseOut);
+        document.removeEventListener('mousemove', onMouseMove, true);
+        document.documentElement.removeEventListener('mouseleave', onMouseLeave);
+        window.removeEventListener('mouseout', onWindowMouseOut);
         window.removeEventListener('blur', onMouseLeave);
         window.removeEventListener('resize', onViewportChange);
         if (window.visualViewport) {

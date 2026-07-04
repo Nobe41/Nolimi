@@ -401,22 +401,25 @@ main {
 .realtime-cursors-overlay {
     position: fixed;
     inset: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
-    z-index: 1200;
+    z-index: 2147483000;
 }
 
 .realtime-remote-cursor {
-    position: absolute;
+    position: fixed;
     left: 0;
     top: 0;
     pointer-events: none;
-    will-change: left, top;
-    transition: opacity 0.2s ease;
+    will-change: transform;
     opacity: 1;
+    visibility: visible;
 }
 
-.realtime-remote-cursor.hidden {
+.realtime-remote-cursor.is-hidden {
     opacity: 0;
+    visibility: hidden;
 }
 
 .realtime-remote-cursor-icon {
