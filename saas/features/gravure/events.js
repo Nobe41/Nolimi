@@ -218,6 +218,9 @@ var GravureEvents = (function () {
             this.classList.toggle('active');
             var panel = this.nextElementSibling;
             panel.style.maxHeight = (panel.style.maxHeight && panel.style.maxHeight !== '0px') ? '0px' : (panel.scrollHeight + 'px');
+            if (typeof InspectorUISync !== 'undefined' && InspectorUISync.notifyChange) {
+                InspectorUISync.notifyChange();
+            }
         };
         bindFileCard(card, id);
         bindNumericSlider('gravure-y-num-' + id, 'gravure-y-slider-' + id);

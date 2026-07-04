@@ -221,23 +221,35 @@ var TopbarShared = (function () {
             if (except !== 'realtime' && realtimeDropdown) realtimeDropdown.classList.add('hidden');
         }
 
+        function notifyUiSync() {
+            if (typeof InspectorUISync !== 'undefined' && InspectorUISync.notifyChange) {
+                InspectorUISync.notifyChange();
+            }
+        }
+
         if (btnFichierMenu && fichierDropdown) {
             btnFichierMenu.addEventListener('click', function (e) {
                 e.stopPropagation();
                 hideOtherDropdowns('fichier');
                 fichierDropdown.classList.toggle('hidden');
+                notifyUiSync();
             });
 
             document.addEventListener('click', function (e) {
+                var changed = false;
                 if (!fichierDropdown.contains(e.target) && !btnFichierMenu.contains(e.target)) {
+                    if (!fichierDropdown.classList.contains('hidden')) changed = true;
                     fichierDropdown.classList.add('hidden');
                 }
                 if (affichageDropdown && btnAffichageMenu && !affichageDropdown.contains(e.target) && !btnAffichageMenu.contains(e.target)) {
+                    if (!affichageDropdown.classList.contains('hidden')) changed = true;
                     affichageDropdown.classList.add('hidden');
                 }
                 if (realtimeDropdown && btnRealtimeMenu && !realtimeDropdown.contains(e.target) && !btnRealtimeMenu.contains(e.target)) {
+                    if (!realtimeDropdown.classList.contains('hidden')) changed = true;
                     realtimeDropdown.classList.add('hidden');
                 }
+                if (changed) notifyUiSync();
             });
         }
 
@@ -246,6 +258,7 @@ var TopbarShared = (function () {
                 e.stopPropagation();
                 hideOtherDropdowns('affichage');
                 affichageDropdown.classList.toggle('hidden');
+                notifyUiSync();
             });
         }
 
@@ -254,6 +267,7 @@ var TopbarShared = (function () {
                 e.stopPropagation();
                 hideOtherDropdowns('realtime');
                 realtimeDropdown.classList.toggle('hidden');
+                notifyUiSync();
             });
         }
 

@@ -29,6 +29,9 @@ function bindInspectorWheelScroll() {
         e.preventDefault();
         scroller.scrollTop += e.deltaY;
     }, { passive: false });
+    if (typeof InspectorUISync !== 'undefined' && InspectorUISync.bindScrollSync) {
+        InspectorUISync.bindScrollSync();
+    }
 }
 
 function setupListeners() {
@@ -727,6 +730,9 @@ function setupListeners() {
             }
 
             scheduleViewRefresh();
+            if (typeof InspectorUISync !== 'undefined' && InspectorUISync.notifyChange) {
+                InspectorUISync.notifyChange();
+            }
         };
     }
 }

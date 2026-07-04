@@ -45,6 +45,9 @@ var RealtimeViewSync = (function () {
         if (typeof window !== 'undefined' && window.displayOptions) {
             state.displayOptions = Object.assign({}, window.displayOptions);
         }
+        if (typeof InspectorUISync !== 'undefined' && InspectorUISync.collectState) {
+            state.ui = InspectorUISync.collectState();
+        }
         return state;
     }
 
@@ -97,6 +100,11 @@ var RealtimeViewSync = (function () {
                 });
             }
             if (view.displayOptions) applyDisplayOptions(view.displayOptions);
+            if (view.ui && typeof InspectorUISync !== 'undefined' && InspectorUISync.applyState) {
+                requestAnimationFrame(function () {
+                    InspectorUISync.applyState(view.ui);
+                });
+            }
             if (view.view3d) apply3D(view.view3d);
             if (view.view2d) apply2D(view.view2d);
         } finally {
