@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nolimi - Connexion</title>
-    <link rel="stylesheet" href="../website/css/main.css">
-    <link rel="stylesheet" href="../website/css/pages/auth.css">
+    <link rel="stylesheet" href="../../main.css">
+    <link rel="stylesheet" href="./connexion.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../saas/config/supabase.config.js"></script>
-    <script src="../saas/lib/auth.js"></script>
+    <script src="../../../saas/config/supabase.config.js"></script>
+    <script src="../../../saas/lib/auth.js"></script>
 </head>
 <body class="page page--auth">
     <header class="panel">
-        <a href="../website/index.html" class="panel-logo" aria-label="Nolimi — accueil">
+        <a href="../accueil/index.html" class="panel-logo" aria-label="Nolimi — accueil">
             <img
-                src="../assets/brand/nolimi-logo-wordmark.jpg"
+                src="../../../assets/brand/nolimi-logo-wordmark.jpg"
                 alt=""
                 class="panel-logo__img"
                 width="1024"
@@ -24,11 +24,11 @@
         </a>
         <nav class="panel-actions" aria-label="Actions principales">
             <a href="../abonnement/index.html" class="panel-cta panel-cta--secondary">Abonnement</a>
-            <a href="login.html" class="panel-cta panel-cta--current" aria-current="page">Se connecter</a>
+            <a href="index.html" class="panel-cta panel-cta--current" aria-current="page">Se connecter</a>
         </nav>
     </header>
     <main class="page-main page-main--auth">
-        <a href="../website/index.html" class="auth-back">← Retour</a>
+        <a href="../accueil/index.html" class="auth-back">← Retour</a>
         <div class="auth-centre">
         <form class="form-login" id="form-login">
             <input type="email" id="email" name="email" placeholder="Adresse mail" required autocomplete="email" aria-label="Adresse mail">
@@ -40,7 +40,7 @@
             <div id="error-msg" class="error-msg" aria-live="polite"></div>
             <p class="login-legal">
                 En vous connectant, vous acceptez nos
-                <a href="../website/mentions-legales.html">Mentions Légales &amp; CGU</a>.
+                <a href="../mentions-legales/index.html">Mentions Légales &amp; CGU</a>.
             </p>
             <button type="submit" id="btn-submit">Connexion</button>
             <details class="login-link-dropdown" id="login-link-dropdown">

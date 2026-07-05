@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolimi</title>
+    <link rel="stylesheet" href="../../main.css">
+    <link rel="stylesheet" href="./accueil.css">
+</head>
+<body class="page page--home">
+    <header class="panel">
+        <a href="index.html" class="panel-logo" aria-label="Nolimi — accueil">
+            <img
+                src="../../../assets/brand/nolimi-logo-wordmark.jpg"
+                alt=""
+                class="panel-logo__img"
+                width="1024"
+                height="300"
+                decoding="async"
+            >
+        </a>
+        <nav class="panel-actions" aria-label="Actions principales">
+            <a href="../abonnement/index.html" class="panel-cta panel-cta--secondary">Licences</a>
+            <a href="../connexion/index.html" class="panel-cta">Se connecter</a>
+        </nav>
+    </header>
+    <main class="page-main page-main--home" id="accueil">
+        <section class="home-hero" aria-labelledby="home-title">
+            <div class="home-hero__top">
+                <div class="home-hero__copy">
+                    <h1 id="home-title">Concevez vos bouteilles en quelques clics</h1>
+                    <p class="home-lead">Grâce à une conception paramétrique, créez vos bouteilles en quelques minutes.</p>
+                </div>
+                <a href="../connexion/index.html" class="home-cta home-cta--hero">Se connecter</a>
+            </div>
+            <figure class="home-preview">
+                <picture>
+                    <source
+                        media="(max-width: 768px)"
+                        srcset="../../assets/nolimi-app-screenshot-mobile.png"
+                    >
+                    <img
+                        src="../../assets/nolimi-app-screenshot.png"
+                        srcset="../../assets/nolimi-app-screenshot.png 1024w"
+                        sizes="(max-width: 768px) 100vw, min(100vw, 1024px)"
+                        alt="Interface Nolimi — conception 3D de bouteilles"
+                        class="home-preview__img"
+                        width="1024"
+                        height="591"
+                        decoding="async"
+                    >
+                </picture>
+            </figure>
+        </section>
+    </main>
+    <footer class="home-footer">
+        <span class="home-footer__version">1.0.0</span>
+        <p class="home-footer__copyright">© 2026 Nolimi. Tous droits réservés.</p>
+        <a href="../mentions-legales/index.html" class="home-footer__link">Mentions Légales &amp; CGU</a>
+    </footer>
+</body>
+</html>

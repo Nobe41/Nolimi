@@ -23,14 +23,14 @@ var NolimiAuth = (function () {
     }
 
     function getLoginUrl() {
-        if (window.location.pathname.indexOf('/auth/') !== -1) {
-            return resolveUrl('login.html');
+        if (window.location.pathname.indexOf('/connexion/') !== -1) {
+            return resolveUrl('index.html');
         }
-        return resolveUrl('../auth/login.html');
+        return resolveUrl('../website/pages/connexion/index.html');
     }
 
     function getAppUrl(sessionId) {
-        var url = resolveUrl('../saas/app.html?start=1');
+        var url = resolveUrl('../../../saas/app.html?start=1');
         if (!sessionId) return url;
         var parsed = parseSessionLink(sessionId);
         if (!parsed || !isValidSessionId(parsed)) return url;

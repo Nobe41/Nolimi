@@ -38,7 +38,7 @@ var UIEvents = (function () {
             btnBackMenu.addEventListener('click', function () {
                 if (fichierDropdown) fichierDropdown.classList.add('hidden');
                 if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) WorkspaceAutosave.saveNow();
-                window.location.href = '../website/index.html';
+                window.location.href = '../website/pages/accueil/index.html';
             });
         }
     }
