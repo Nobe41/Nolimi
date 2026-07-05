@@ -294,13 +294,11 @@ var Validator = (function () {
     }
 
     // ====== RÈGLES DIMENSIONS (L/P) ======
+    // Piqûre : chaînage diamètre. Bague : dernière section plafonnée par celle du dessous.
     var DIMENSION_RULES = [
         { sourceL: 's1-L',  sourceP: 's1-P',  targetL: 'sp-L',  targetP: 'sp-P',  min: MIN_DIMENSION, defaultSourceL: 70, defaultSourceP: 70 },
         { sourceL: 'sp-L',  sourceP: 'sp-P',  targetL: 'sp2-L', targetP: 'sp2-P', min: MIN_DIMENSION, defaultSourceL: 55, defaultSourceP: 55 },
-        { sourceL: 'sp2-L', sourceP: 'sp2-P', targetL: 'sp3-L', targetP: 'sp3-P', min: MIN_DIMENSION, defaultSourceL: 45, defaultSourceP: 45 },
-        { sourceL: 'sb2-L', sourceP: 'sb2-P', targetL: 'sb3-L', targetP: 'sb3-P', min: MIN_DIMENSION, defaultSourceL: 29.5, defaultSourceP: 29.5 },
-        { sourceL: 'sb3-L', sourceP: 'sb3-P', targetL: 'sb4-L', targetP: 'sb4-P', min: MIN_DIMENSION, defaultSourceL: 25.5, defaultSourceP: 25.5 },
-        { sourceL: 'sb4-L', sourceP: 'sb4-P', targetL: 'sb5-L', targetP: 'sb5-P', min: MIN_DIMENSION, defaultSourceL: 31, defaultSourceP: 31 }
+        { sourceL: 'sp2-L', sourceP: 'sp2-P', targetL: 'sp3-L', targetP: 'sp3-P', min: MIN_DIMENSION, defaultSourceL: 45, defaultSourceP: 45 }
     ];
 
     function clampDimensionsRule(rule) {
@@ -337,10 +335,84 @@ var Validator = (function () {
         }
     }
 
+    function getBagueSectionKeys() {
+        var state = (typeof SectionsState !== 'undefined' && SectionsState.getState)
+            ? SectionsState.getState()
+            : null;
+        if (state && state.bagueSections && state.bagueSections.length) {
+            var fromState = [];
+            for (var si = 0; si < state.bagueSections.length; si++) {
+                if (state.bagueSections[si].key) fromState.push(state.bagueSections[si].key);
+            }
+            if (fromState.length) return fromState;
+        }
+        var inputs = document.querySelectorAll('input[id^="sb"][id$="-L"]');
+        var idxs = [];
+        for (var i = 0; i < inputs.length; i++) {
+            var m = (inputs[i].id || '').match(/^sb(\d+)-L$/);
+            if (!m) continue;
+            var k = parseInt(m[1], 10);
+            if (isFinite(k)) idxs.push(k);
+        }
+        idxs.sort(function (a, b) { return a - b; });
+        var keys = [];
+        for (var j = 0; j < idxs.length; j++) {
+            if (j === 0 || idxs[j] !== idxs[j - 1]) keys.push('sb' + idxs[j]);
+        }
+        return keys;
+    }
+
+    function restoreBagueDimensionLimits() {
+        var state = (typeof SectionsState !== 'undefined' && SectionsState.getState)
+            ? SectionsState.getState()
+            : null;
+        if (!state || !state.bagueSections) return;
+        var keys = getBagueSectionKeys();
+        var topKey = keys.length >= 2 ? keys[keys.length - 1] : null;
+        for (var i = 0; i < state.bagueSections.length; i++) {
+            var s = state.bagueSections[i];
+            if (topKey && s.key === topKey) continue;
+            var key = s.key;
+            var lMin = s.LMin != null ? s.LMin : MIN_DIMENSION;
+            var lMax = s.LMax != null ? s.LMax : 120;
+            var inputL = document.getElementById(key + '-L');
+            var sliderL = document.getElementById(key + '-L-slider');
+            var inputP = document.getElementById(key + '-P');
+            var sliderP = document.getElementById(key + '-P-slider');
+            if (inputL) {
+                inputL.min = lMin;
+                inputL.max = lMax;
+                if (sliderL) { sliderL.min = lMin; sliderL.max = lMax; }
+            }
+            if (inputP) {
+                inputP.min = lMin;
+                inputP.max = lMax;
+                if (sliderP) { sliderP.min = lMin; sliderP.max = lMax; }
+            }
+        }
+    }
+
+    function applyTopBagueDimensionConstraint() {
+        var keys = getBagueSectionKeys();
+        if (keys.length < 2) return;
+        var belowKey = keys[keys.length - 2];
+        var topKey = keys[keys.length - 1];
+        if (!document.getElementById(topKey + '-L') || !document.getElementById(belowKey + '-L')) return;
+        clampDimensionsRule({
+            sourceL: belowKey + '-L',
+            sourceP: belowKey + '-P',
+            targetL: topKey + '-L',
+            targetP: topKey + '-P',
+            min: MIN_DIMENSION
+        });
+    }
+
     function applyDimensionRules() {
         for (var i = 0; i < DIMENSION_RULES.length; i++) {
             clampDimensionsRule(DIMENSION_RULES[i]);
         }
+        restoreBagueDimensionLimits();
+        applyTopBagueDimensionConstraint();
     }
 
     function applyAllUserConstraints() {
