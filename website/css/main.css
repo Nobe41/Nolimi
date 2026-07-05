@@ -10,7 +10,9 @@ body {
 }
 
 body.page--home,
-body.page--legal {
+body.page--legal,
+body.page--abonnement,
+body.page--auth {
     font-family: system-ui, -apple-system, sans-serif;
     background: var(--nolimi-bg);
     color: var(--nolimi-ink);

@@ -38,7 +38,7 @@ body.page--home {
     max-width: 44rem;
     margin: 0 auto;
     width: 100%;
-    padding: clamp(5.5rem, 12vh, 7rem) 1.75rem 2rem;
+    padding: clamp(var(--panel-offset), 12vh, calc(var(--panel-offset) + 1.5rem)) 1.75rem 2rem;
 }
 
 .home-hero h1 {
