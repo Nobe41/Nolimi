@@ -606,6 +606,30 @@ var Gravure3D = (function () {
         return secParts.join('|') + '##' + gParts.join('|') + '##rm:' + renderMode;
     }
 
+    function buildInvertedEngravingPunchSignature(surfaceInput) {
+        if (typeof window === 'undefined' || typeof window.getEngravingsData !== 'function') return '';
+        var engravings = window.getEngravingsData();
+        if (!engravings || !engravings.length) return '';
+        var images = window.engravingImages || {};
+        var parts = [];
+        for (var gi = 0; gi < engravings.length; gi++) {
+            var g = engravings[gi];
+            if (!g.invert) continue;
+            var img = images[g.id];
+            parts.push([
+                g.id || '',
+                img ? (img.width + 'x' + img.height) : '0',
+                Math.round((g.y || 0) * 100) / 100,
+                Math.round((g.angle || 0) * 10000) / 10000,
+                Math.round((g.width || 0) * 100) / 100,
+                Math.round((g.depth || 0) * 100) / 100,
+                g.flip ? 1 : 0,
+                g.enabled !== false ? 1 : 0
+            ].join(':'));
+        }
+        return parts.join('|');
+    }
+
     function refreshEngravingOpacity() {
         if (!engravingGroup || typeof BottleView3D === 'undefined' || !BottleView3D.applyViewOpacity) return;
         BottleView3D.applyViewOpacity(engravingGroup);
@@ -641,6 +665,7 @@ var Gravure3D = (function () {
         applyInvertedDisplacementsToMesh: applyInvertedEngravingsToBottleMesh,
         punchHolesForInvertedEngravings: punchHolesForInvertedEngravings,
         getBottleTessellationOverrides: getBottleTessellationOverrides,
-        hasInvertedEngravings: hasInvertedEngravings
+        hasInvertedEngravings: hasInvertedEngravings,
+        buildInvertedEngravingPunchSignature: buildInvertedEngravingPunchSignature
     };
 })();

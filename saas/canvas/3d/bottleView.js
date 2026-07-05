@@ -30,6 +30,8 @@ var BottleView3D = (function () {
     var lastGeometrySignature = '';
     var lastHighlightSignature = '';
     var lastOpacitySignature = '';
+    var lastInvertedPunchSignature = '';
+    var invertedPunchMeshEntries = [];
 
     function disposeLabelMeshById(labelId) {
         var mesh = bottleLabelMeshes[labelId];
@@ -1154,6 +1156,62 @@ var BottleView3D = (function () {
         }
     }
 
+    function clearInvertedPunchMeshEntries() {
+        invertedPunchMeshEntries = [];
+    }
+
+    function trackInvertedPunchMesh(mesh, rebuildFn) {
+        if (!mesh || typeof rebuildFn !== 'function') return;
+        invertedPunchMeshEntries.push({ mesh: mesh, rebuild: rebuildFn });
+    }
+
+    function swapMeshGeometry(mesh, freshMesh, sectionsData, shouldPunch) {
+        if (!mesh || !freshMesh || !freshMesh.geometry) {
+            if (freshMesh) disposeThreeHierarchy(freshMesh);
+            return;
+        }
+        if (mesh.geometry) mesh.geometry.dispose();
+        mesh.geometry = freshMesh.geometry;
+        freshMesh.geometry = new THREE.BufferGeometry();
+        disposeThreeHierarchy(freshMesh);
+        if (shouldPunch) punchInvertedEngravingsOnMesh(mesh, sectionsData);
+    }
+
+    function reapplyInvertedEngravingPunches(sectionsData, thicknessNow, bottleTessOverride) {
+        if (typeof Gravure3D === 'undefined' || typeof BottleMesh3D === 'undefined') return;
+        var hasInverted = Gravure3D.hasInvertedEngravings && Gravure3D.hasInvertedEngravings(sectionsData);
+
+        if (bottleGroup) {
+            BottleMesh3D.updateBottleMesh(bottleGroup, sectionsData, bottleTessOverride);
+            if (hasInverted && Gravure3D.applyInvertedEngravingsToBottleMesh) {
+                Gravure3D.applyInvertedEngravingsToBottleMesh(bottleGroup, sectionsData);
+            }
+        }
+
+        if (bottleInnerGlassMesh && typeof THREE !== 'undefined') {
+            var innerSectionsData = (typeof InterieurMath !== 'undefined' && InterieurMath.buildInteriorSectionsDataFromThickness)
+                ? InterieurMath.buildInteriorSectionsDataFromThickness(sectionsData, thicknessNow, thicknessNow)
+                : sectionsData;
+            var freshInner = BottleMesh3D.createBottleMesh(innerSectionsData, bottleInnerGlassMesh.material, bottleTessOverride);
+            if (freshInner) {
+                swapMeshGeometry(bottleInnerGlassMesh, freshInner, sectionsData, hasInverted);
+            }
+        }
+
+        for (var pi = 0; pi < invertedPunchMeshEntries.length; pi++) {
+            var entry = invertedPunchMeshEntries[pi];
+            if (!entry.mesh || !entry.mesh.parent) continue;
+            var fresh = entry.rebuild();
+            swapMeshGeometry(entry.mesh, fresh, sectionsData, hasInverted);
+        }
+    }
+
+    function getInvertedPunchSignature(sectionsData) {
+        return (typeof Gravure3D !== 'undefined' && Gravure3D.buildInvertedEngravingPunchSignature)
+            ? Gravure3D.buildInvertedEngravingPunchSignature(sectionsData)
+            : '';
+    }
+
     function punchInvertedEngravingsOnMesh(mesh, sectionsData) {
         if (!mesh || typeof Gravure3D === 'undefined' || !Gravure3D.punchHolesForInvertedEngravings) return;
         Gravure3D.punchHolesForInvertedEngravings(mesh, sectionsData);
@@ -1183,11 +1241,16 @@ var BottleView3D = (function () {
         var geomSig = buildGeometrySignature(sectionsData, piqSections, bagueSections, thicknessNow, bottleTessOverride);
         var highlightSig = buildHighlightSignature();
         var opacitySig = buildVisualOpacitySignature();
+        var invertedPunchSig = getInvertedPunchSignature(sectionsData);
 
         if (sectionRingGroup
             && geomSig === lastGeometrySignature
             && highlightSig === lastHighlightSignature
             && opacitySig === lastOpacitySignature) {
+            if (invertedPunchSig !== lastInvertedPunchSignature) {
+                reapplyInvertedEngravingPunches(sectionsData, thicknessNow, bottleTessOverride);
+                lastInvertedPunchSignature = invertedPunchSig;
+            }
             refreshGravureScene(sectionsData);
             return;
         }
@@ -1214,9 +1277,11 @@ var BottleView3D = (function () {
         if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) Validator.applyAllUserConstraints();
 
         replaceSectionRingGroup();
+        clearInvertedPunchMeshEntries();
         lastGeometrySignature = geomSig;
         lastHighlightSignature = highlightSig;
         lastOpacitySignature = opacitySig;
+        lastInvertedPunchSignature = invertedPunchSig;
 
         if (!bottleGroup) {
             var baseMat = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getBottleBodyMaterial)
@@ -1369,6 +1434,15 @@ var BottleView3D = (function () {
         if (sTop) {
             var feuilleColBague = buildNeckToBagueFeuille(sPrev, sTop, bague1, sectionsData, BottleMaterials.DEFAULT_GLASS_COLOR);
             punchInvertedEngravingsOnMesh(feuilleColBague, sectionsData);
+            trackInvertedPunchMesh(feuilleColBague, function () {
+                var secs = getSectionsDataFromPanel();
+                var secList = secs.sections || [];
+                var bagueList = collectBagueSectionsFromPanel();
+                if (!secList.length || !bagueList.length) return null;
+                var sTopNow = secList[secList.length - 1];
+                var sPrevNow = secList.length >= 2 ? secList[secList.length - 2] : null;
+                return buildNeckToBagueFeuille(sPrevNow, sTopNow, bagueList[0], secs, BottleMaterials.DEFAULT_GLASS_COLOR);
+            });
             feuilleColBague.userData.isPiqure = false;
             enableMeshShadows(feuilleColBague);
             sectionRingGroup.add(feuilleColBague);
@@ -1376,6 +1450,19 @@ var BottleView3D = (function () {
             var feuilleColBagueInner = InterieurMath.createInsetMeshFromMesh(feuilleColBague, thicknessNow, bagueInnerMat);
             if (feuilleColBagueInner && !isGlassRenderMode()) {
                 punchInvertedEngravingsOnMesh(feuilleColBagueInner, sectionsData);
+                trackInvertedPunchMesh(feuilleColBagueInner, function () {
+                    var secs = getSectionsDataFromPanel();
+                    var secList = secs.sections || [];
+                    var bagueList = collectBagueSectionsFromPanel();
+                    if (!secList.length || !bagueList.length) return null;
+                    var sTopNow = secList[secList.length - 1];
+                    var sPrevNow = secList.length >= 2 ? secList[secList.length - 2] : null;
+                    var outer = buildNeckToBagueFeuille(sPrevNow, sTopNow, bagueList[0], secs, BottleMaterials.DEFAULT_GLASS_COLOR);
+                    var tNow = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
+                        ? InterieurMath.getThicknessMm()
+                        : thicknessNow;
+                    return InterieurMath.createInsetMeshFromMesh(outer, tNow, getInnerShellMaterial());
+                });
                 feuilleColBagueInner.userData.isPiqure = false;
                 feuilleColBagueInner.userData.isInterior = true;
                 sectionRingGroup.add(feuilleColBagueInner);
@@ -1385,6 +1472,12 @@ var BottleView3D = (function () {
         var feuilleBagueStrip = buildLiaisonRevolvedMesh(bagueSectionsData, BottleMaterials.DEFAULT_GLASS_COLOR);
         if (feuilleBagueStrip) {
             punchInvertedEngravingsOnMesh(feuilleBagueStrip, sectionsData);
+            trackInvertedPunchMesh(feuilleBagueStrip, function () {
+                var bagueList = collectBagueSectionsFromPanel();
+                if (!bagueList.length) return null;
+                var bsd = buildSectionsDataBundle(bagueList.slice(), 'rb');
+                return buildLiaisonRevolvedMesh(bsd, BottleMaterials.DEFAULT_GLASS_COLOR);
+            });
             feuilleBagueStrip.userData.isPiqure = false;
             enableMeshShadows(feuilleBagueStrip);
             sectionRingGroup.add(feuilleBagueStrip);
@@ -1402,6 +1495,23 @@ var BottleView3D = (function () {
             var bagueStripInner = buildLiaisonRevolvedMesh(bagueInnerSectionsData, 0x6f8ead, { inner: true });
             if (bagueStripInner && !isGlassRenderMode()) {
                 punchInvertedEngravingsOnMesh(bagueStripInner, sectionsData);
+                trackInvertedPunchMesh(bagueStripInner, function () {
+                    var bagueList = collectBagueSectionsFromPanel();
+                    if (!bagueList.length) return null;
+                    var tNow = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
+                        ? InterieurMath.getThicknessMm()
+                        : thicknessNow;
+                    var innerSecs = [];
+                    for (var bi = 0; bi < bagueList.length; bi++) innerSecs.push(InterieurMath.insetSection(bagueList[bi], tNow));
+                    if (innerSecs.length >= 3) {
+                        innerSecs[1].a = innerSecs[2].a;
+                        innerSecs[1].b = innerSecs[2].b;
+                        innerSecs[1].shape = innerSecs[2].shape;
+                        innerSecs[1].carreNiveau = innerSecs[2].carreNiveau;
+                    }
+                    var innerData = buildSectionsDataBundle(innerSecs.slice(), 'rb');
+                    return buildLiaisonRevolvedMesh(innerData, 0x6f8ead, { inner: true });
+                });
                 bagueStripInner.userData.isPiqure = false;
                 bagueStripInner.userData.isInterior = true;
                 if (bagueStripInner.material) {
@@ -1422,6 +1532,17 @@ var BottleView3D = (function () {
             var lipSheet = buildPiqureBasHautFeuille(bagueTop, bagueTopInner);
             if (lipSheet && !isGlassRenderMode()) {
                 punchInvertedEngravingsOnMesh(lipSheet, sectionsData);
+                trackInvertedPunchMesh(lipSheet, function () {
+                    var bagueList = collectBagueSectionsFromPanel();
+                    if (!bagueList.length) return null;
+                    var tNow = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
+                        ? InterieurMath.getThicknessMm()
+                        : thicknessNow;
+                    var top = bagueList[bagueList.length - 1];
+                    var topInner = InterieurMath.insetSection(top, tNow);
+                    topInner.H = top.H;
+                    return buildPiqureBasHautFeuille(top, topInner);
+                });
                 lipSheet.userData.isPiqure = false;
                 lipSheet.userData.isInterior = true;
                 enableMeshShadows(lipSheet);
@@ -1496,9 +1617,11 @@ var BottleView3D = (function () {
         }
         disposeAllLabelMeshes();
         sectionRingGroup = null;
+        clearInvertedPunchMeshEntries();
         lastGeometrySignature = '';
         lastHighlightSignature = '';
         lastOpacitySignature = '';
+        lastInvertedPunchSignature = '';
     }
 
     return {
