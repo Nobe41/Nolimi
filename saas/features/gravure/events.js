@@ -51,6 +51,7 @@ var GravureEvents = (function () {
                 id: id,
                 fileName: fileNameEl ? fileNameEl.textContent : '',
                 imageDataUrl: imageToDataUrl(images[id]),
+                enabled: parsed.enabled,
                 y: parsed.y,
                 angleDeg: angleInput ? parseFloat(angleInput.value) : 0,
                 width: parsed.width,
@@ -136,7 +137,10 @@ var GravureEvents = (function () {
     function getEngravingsData() {
         var items = document.querySelectorAll('.gravure-item');
         var data = [];
-        items.forEach(function (item) { data.push(GravureMath.parseItemData(item)); });
+        items.forEach(function (item) {
+            var parsed = GravureMath.parseItemData(item);
+            if (parsed.enabled) data.push(parsed);
+        });
         return data;
     }
 
@@ -229,8 +233,15 @@ var GravureEvents = (function () {
         bindNumericSlider('gravure-profondeur-num-' + id, 'gravure-profondeur-slider-' + id);
         var flipCheckbox = document.getElementById('gravure-flip-' + id);
         var invertCheckbox = document.getElementById('gravure-invert-' + id);
+        var enabledCheckbox = document.getElementById('gravure-enabled-' + id);
         if (flipCheckbox) flipCheckbox.addEventListener('change', triggerUpdate);
         if (invertCheckbox) invertCheckbox.addEventListener('change', triggerUpdate);
+        if (enabledCheckbox) {
+            enabledCheckbox.addEventListener('change', function () {
+                scheduleProjectSave();
+                triggerUpdate();
+            });
+        }
         var removeBtn = card.querySelector('.btn-remove-gravure');
         if (removeBtn) removeBtn.addEventListener('click', function () { removeEngraving(id); });
     }

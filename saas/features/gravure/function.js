@@ -79,6 +79,72 @@ var Gravure3D = (function () {
         return out;
     }
 
+    var COMPLEX_LIAISON_TYPES = ['spline', 'courbeS', 'rayon'];
+    var ENGRAVING_GRID_CAP_COMPLEX = 96;
+    var ENGRAVING_PROFILE_RES_DEFAULT = 48;
+    var ENGRAVING_PROFILE_RES_COMPLEX = 16;
+    var ENGRAVING_THETA_BUCKETS_DEFAULT = 96;
+    var ENGRAVING_THETA_BUCKETS_COMPLEX = 48;
+
+    function normalizeSectionsData(surfaceInput) {
+        return Array.isArray(surfaceInput)
+            ? { sections: surfaceInput, edgeTypes: [], rhos: [] }
+            : (surfaceInput && surfaceInput.sections ? surfaceInput : { sections: [] });
+    }
+
+    function engravingOverlapsComplexLiaison(surfaceInput, yMin, yMax) {
+        var data = extendSurfaceWithBague(surfaceInput);
+        var sections = data.sections || [];
+        var edgeTypes = data.edgeTypes || [];
+        var rhos = data.rhos || [];
+        if (sections.length < 2 || !edgeTypes.length) return false;
+        for (var i = 0; i < sections.length - 1; i++) {
+            var type = edgeTypes[i] || 'ligne';
+            if (COMPLEX_LIAISON_TYPES.indexOf(type) < 0) continue;
+            var y0 = sections[i].H;
+            var y1 = sections[i + 1].H;
+            var edgeYMin = Math.min(y0, y1);
+            var edgeYMax = Math.max(y0, y1);
+            var margin = Math.max(4, Math.abs(rhos[i] || 0) * 0.35);
+            if (yMax >= edgeYMin - margin && yMin <= edgeYMax + margin) return true;
+        }
+        return false;
+    }
+
+    function isComplexEngravingRegion(surfaceInput, meta) {
+        if (!meta) return false;
+        var yMin = meta.centerY - meta.heightMM * 0.5;
+        var yMax = meta.centerY + meta.heightMM * 0.5;
+        return engravingOverlapsComplexLiaison(surfaceInput, yMin, yMax);
+    }
+
+    function getEngravingAdaptiveLimits(surfaceInput, meta) {
+        var complex = isComplexEngravingRegion(surfaceInput, meta);
+        return {
+            complex: complex,
+            gridCap: complex ? ENGRAVING_GRID_CAP_COMPLEX : 320,
+            profileRes: complex ? ENGRAVING_PROFILE_RES_COMPLEX : ENGRAVING_PROFILE_RES_DEFAULT,
+            thetaBuckets: complex ? ENGRAVING_THETA_BUCKETS_COMPLEX : ENGRAVING_THETA_BUCKETS_DEFAULT
+        };
+    }
+
+    function hasInvertedEngravingOnComplexLiaison(surfaceInput) {
+        if (typeof window === 'undefined' || typeof window.getEngravingsData !== 'function') return false;
+        var engravings = window.getEngravingsData();
+        if (!engravings || !engravings.length) return false;
+        for (var i = 0; i < engravings.length; i++) {
+            if (!engravings[i].invert) continue;
+            var widthMM = Math.max(1, parseFloat(engravings[i].width) || 50);
+            var centerY = isFinite(parseFloat(engravings[i].y)) ? parseFloat(engravings[i].y) : 150;
+            var heightMM = widthMM;
+            var images = window.engravingImages || {};
+            var img = images[engravings[i].id];
+            if (img && img.width && img.height) heightMM = widthMM * (img.height / img.width);
+            if (engravingOverlapsComplexLiaison(surfaceInput, centerY - heightMM * 0.5, centerY + heightMM * 0.5)) return true;
+        }
+        return false;
+    }
+
     /** Étend sectionsData avec la bague pour que la gravure suive la surface extérieure du col. */
     function extendSurfaceWithBague(surfaceInput) {
         if (!surfaceInput || !surfaceInput.sections || surfaceInput.sections.length < 2) return surfaceInput;
@@ -132,17 +198,27 @@ var Gravure3D = (function () {
         return 1 / denom;
     }
 
-    function createRadiusSampler(surfaceInput) {
-        var sectionsData = Array.isArray(surfaceInput) ? { sections: surfaceInput, edgeTypes: [], rhos: [] } : (surfaceInput && surfaceInput.sections ? surfaceInput : { sections: [] });
+    function createRadiusSampler(surfaceInput, options) {
+        options = options || {};
+        var profileRes = options.profileRes || ENGRAVING_PROFILE_RES_DEFAULT;
+        var thetaBuckets = options.thetaBuckets || ENGRAVING_THETA_BUCKETS_DEFAULT;
+        var sectionsData = normalizeSectionsData(surfaceInput);
         var sections = sectionsData.sections || [];
         var canUseProfile = typeof BottleMaths !== 'undefined' && typeof GeomKernel !== 'undefined' && BottleMaths.buildExteriorProfile && GeomKernel.tessellateProfile && sectionsData.edgeTypes && sectionsData.rhos;
         var cache = {};
+
+        function thetaCacheKey(theta) {
+            var t = (theta % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+            return Math.min(thetaBuckets - 1, Math.floor(t / (2 * Math.PI) * thetaBuckets));
+        }
+
         function radiusFromProfile(y, theta) {
-            var key = String(Math.round(theta * 10000) / 10000);
+            var key = String(thetaCacheKey(theta));
             var profile = cache[key];
             if (!profile) {
-                var entities = BottleMaths.buildExteriorProfile(theta, sectionsData);
-                profile = GeomKernel.tessellateProfile(entities, 48) || [];
+                var bucketTheta = ((parseInt(key, 10) + 0.5) / thetaBuckets) * 2 * Math.PI;
+                var entities = BottleMaths.buildExteriorProfile(bucketTheta, sectionsData);
+                profile = GeomKernel.tessellateProfile(entities, profileRes) || [];
                 cache[key] = profile;
             }
             if (!profile.length) return getRadiusAtYTheta(sections, y, theta);
@@ -171,15 +247,16 @@ var Gravure3D = (function () {
         return { x: r * Math.cos(theta), y: y, z: r * Math.sin(theta), r: r };
     }
 
-    function buildEngravingMask(img, g) {
+    function buildEngravingMask(img, g, gridCap) {
         if (!img || !img.width || !img.height) return null;
         var widthMM = Math.max(1, parseFloat(g.width) || 50);
         var depthMM = Math.max(0.05, parseFloat(g.depth) || 1.5);
         var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
         var baseAngle = isFinite(parseFloat(g.angle)) ? parseFloat(g.angle) : 0;
         var heightMM = widthMM * (img.height / img.width);
-        var gridW = Math.max(64, Math.min(320, Math.ceil(img.width / 2)));
-        var gridH = Math.max(64, Math.min(320, Math.ceil(img.height / 2)));
+        var maxGrid = Math.max(48, gridCap || 320);
+        var gridW = Math.max(48, Math.min(maxGrid, Math.ceil(img.width / 2)));
+        var gridH = Math.max(48, Math.min(maxGrid, Math.ceil(img.height / 2)));
         var srcScale = Math.min(1, 1024 / Math.max(img.width, img.height));
         var srcW = Math.max(1, Math.round(img.width * srcScale));
         var srcH = Math.max(1, Math.round(img.height * srcScale));
@@ -238,19 +315,75 @@ var Gravure3D = (function () {
         return meta.mask[iy * meta.gridW + ix] === 1;
     }
 
+    function prepareMetaPunchBounds(meta, radiusAt) {
+        var baseRadius = Math.max(1, radiusAt(meta.centerY, meta.baseAngle));
+        meta._baseRadius = baseRadius;
+        meta._yMin = meta.centerY - meta.heightMM * 0.5 - 1;
+        meta._yMax = meta.centerY + meta.heightMM * 0.5 + 1;
+        meta._thetaHalf = (meta.widthMM * 0.5) / baseRadius + 0.08;
+    }
+
+    function normalizeAngleDelta(theta, baseAngle) {
+        var dTheta = theta - baseAngle;
+        while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
+        while (dTheta < -Math.PI) dTheta += 2 * Math.PI;
+        return dTheta;
+    }
+
+    function triangleOutsideMetaBounds(meta, pos, i0, i1, i2) {
+        if (meta._yMin == null) return false;
+        var yLo = Infinity;
+        var yHi = -Infinity;
+        var verts = [i0, i1, i2];
+        for (var vi = 0; vi < 3; vi++) {
+            var vy = pos.getY(verts[vi]);
+            if (vy < yLo) yLo = vy;
+            if (vy > yHi) yHi = vy;
+        }
+        if (yHi < meta._yMin || yLo > meta._yMax) return true;
+
+        var thetaInside = 0;
+        for (vi = 0; vi < 3; vi++) {
+            var vx = pos.getX(verts[vi]);
+            var vz = pos.getZ(verts[vi]);
+            if ((vx * vx + vz * vz) < 1e-8) continue;
+            if (Math.abs(normalizeAngleDelta(Math.atan2(vz, vx), meta.baseAngle)) <= meta._thetaHalf) thetaInside++;
+        }
+        if (thetaInside > 0) return false;
+
+        var cx = (pos.getX(i0) + pos.getX(i1) + pos.getX(i2)) / 3;
+        var cz = (pos.getZ(i0) + pos.getZ(i1) + pos.getZ(i2)) / 3;
+        if ((cx * cx + cz * cz) < 1e-8) return true;
+        return Math.abs(normalizeAngleDelta(Math.atan2(cz, cx), meta.baseAngle)) > meta._thetaHalf;
+    }
+
     function collectEngravingMetas(surfaceInput) {
         if (typeof window === 'undefined' || typeof window.getEngravingsData !== 'function') return [];
         var engravings = window.getEngravingsData();
         if (!engravings || !engravings.length) return [];
         var images = window.engravingImages || {};
-        var radiusAt = createRadiusSampler(extendSurfaceWithBague(surfaceInput));
+        var extended = extendSurfaceWithBague(surfaceInput);
         var metas = [];
         for (var i = 0; i < engravings.length; i++) {
-            var meta = buildEngravingMask(images[engravings[i].id], engravings[i]);
-            if (meta) {
-                meta.radiusAt = radiusAt;
-                metas.push(meta);
-            }
+            var g = engravings[i];
+            var img = images[g.id];
+            var widthMM = Math.max(1, parseFloat(g.width) || 50);
+            var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
+            var heightMM = widthMM;
+            if (img && img.width && img.height) heightMM = widthMM * (img.height / img.width);
+            var limits = getEngravingAdaptiveLimits(surfaceInput, {
+                centerY: centerY,
+                heightMM: heightMM,
+                widthMM: widthMM
+            });
+            var meta = buildEngravingMask(img, g, limits.gridCap);
+            if (!meta) continue;
+            meta.radiusAt = createRadiusSampler(extended, {
+                profileRes: limits.profileRes,
+                thetaBuckets: limits.thetaBuckets
+            });
+            prepareMetaPunchBounds(meta, meta.radiusAt);
+            metas.push(meta);
         }
         return metas;
     }
@@ -270,6 +403,9 @@ var Gravure3D = (function () {
 
     function getBottleTessellationOverrides(surfaceInput) {
         if (!hasInvertedEngravings(surfaceInput)) return null;
+        if (hasInvertedEngravingOnComplexLiaison(surfaceInput)) {
+            return { nTheta: 256, meridianRes: 128 };
+        }
         return { nTheta: 384, meridianRes: 192 };
     }
 
@@ -308,6 +444,7 @@ var Gravure3D = (function () {
             var remove = false;
             for (var ii = 0; ii < inverted.length && !remove; ii++) {
                 var meta = inverted[ii];
+                if (triangleOutsideMetaBounds(meta, pos, i0, i1, i2)) continue;
                 if (triangleShouldCutAtEngravingBorder(meta, meta.radiusAt, pos, i0, i1, i2)) remove = true;
             }
             if (!remove) newIndices.push(i0, i1, i2);
@@ -346,11 +483,16 @@ var Gravure3D = (function () {
             var yMM = centerY + (0.5 - vRaw) * heightMM;
             var theta = baseAngle + (xCentered / baseRadius);
             var surf = getSurfacePoint(radiusAt, yMM, theta);
+            if (!isFinite(surf.x) || !isFinite(surf.y) || !isFinite(surf.z)) return -1;
             var nx = Math.cos(theta), nz = Math.sin(theta);
             vertices.push(surf.x + nx * outwardDepth, yMM, surf.z + nz * outwardDepth);
             return (vertices.length / 3) - 1;
         }
-        function addQuad(a, b, c, d) { indices.push(a, b, c); indices.push(a, c, d); }
+        function addQuad(a, b, c, d) {
+            if (a < 0 || b < 0 || c < 0 || d < 0) return;
+            indices.push(a, b, c);
+            indices.push(a, c, d);
+        }
 
         for (var gy = 0; gy < gridH; gy++) {
             for (var gx = 0; gx < gridW; gx++) {
@@ -385,13 +527,25 @@ var Gravure3D = (function () {
         if (!engravings || !engravings.length) return null;
         var images = window.engravingImages || {};
         var group = new THREE.Group();
-        var radiusAt = createRadiusSampler(surfaceInput);
+        var extended = extendSurfaceWithBague(surfaceInput);
 
         for (var gi = 0; gi < engravings.length; gi++) {
             var g = engravings[gi], img = images[g.id];
             if (!img || !img.width || !img.height) continue;
-            var meta = buildEngravingMask(img, g);
+            var widthMM = Math.max(1, parseFloat(g.width) || 50);
+            var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
+            var heightMM = widthMM * (img.height / img.width);
+            var limits = getEngravingAdaptiveLimits(surfaceInput, {
+                centerY: centerY,
+                heightMM: heightMM,
+                widthMM: widthMM
+            });
+            var meta = buildEngravingMask(img, g, limits.gridCap);
             if (!meta) continue;
+            var radiusAt = createRadiusSampler(extended, {
+                profileRes: limits.profileRes,
+                thetaBuckets: limits.thetaBuckets
+            });
             var built = buildEngravingMeshGeometry(meta, radiusAt);
             if (!built) continue;
             var geom = new THREE.BufferGeometry();
@@ -442,7 +596,8 @@ var Gravure3D = (function () {
                 Math.round((g.width || 0) * 100) / 100,
                 Math.round((g.depth || 0) * 100) / 100,
                 g.flip ? 1 : 0,
-                g.invert ? 1 : 0
+                g.invert ? 1 : 0,
+                g.enabled !== false ? 1 : 0
             ].join(':'));
         }
         var renderMode = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getRenderMaterialMode)

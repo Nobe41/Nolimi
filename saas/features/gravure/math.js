@@ -12,8 +12,10 @@ var GravureMath = (function () {
     }
 
     function parseItemData(item) {
+        var enabledEl = item.querySelector('.gravure-enabled');
         return {
             id: item.dataset.id,
+            enabled: enabledEl ? enabledEl.checked : true,
             y: parseFloat(item.querySelector('.gravure-y').value),
             angle: toRadians(parseFloat(item.querySelector('.gravure-angle').value)),
             width: parseFloat(item.querySelector('.gravure-largeur').value),

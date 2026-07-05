@@ -18,10 +18,12 @@ var GravureBloc = (function () {
         var depth = opts.depth != null ? opts.depth : def.depth;
         var flipChecked = opts.flip ? ' checked' : '';
         var invertChecked = opts.invert ? ' checked' : '';
+        var enabledChecked = opts.enabled === false ? '' : ' checked';
         var fileName = opts.fileName ? String(opts.fileName) : '';
         return ''
             + '<button class="accordion sub-accordion">Gravure ' + index + '</button>'
             + '<div class="panel-controls">'
+            + '<div class="control-group"><div class="label-row"><label for="gravure-enabled-' + id + '">Activer</label><div class="input-wrapper"><input type="checkbox" class="gravure-enabled" id="gravure-enabled-' + id + '"' + enabledChecked + '></div></div></div>'
             + '<div class="control-group"><div class="label-row"><label>Fichier image (PNG)</label></div><div class="gravure-file-row"><button type="button" class="gravure-file-btn">Parcourir…</button><input type="file" id="gravure-file-' + id + '" class="gravure-file" accept=".png,image/png,image/*" data-id="' + id + '"><span id="gravure-filename-' + id + '" class="gravure-filename">' + fileName + '</span></div></div>'
             + '<div class="control-group"><div class="label-row"><label for="gravure-flip-' + id + '">Miroir</label><div class="input-wrapper"><input type="checkbox" class="gravure-flip" id="gravure-flip-' + id + '"' + flipChecked + '></div></div></div>'
             + '<div class="control-group"><div class="label-row"><label for="gravure-invert-' + id + '">Inverser</label><div class="input-wrapper"><input type="checkbox" class="gravure-invert" id="gravure-invert-' + id + '"' + invertChecked + '></div></div></div>'
