@@ -169,6 +169,31 @@ body {
     color: #333333 !important;
 }
 
+.btn-contact-mail {
+    -webkit-appearance: none;
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: normal;
+    font-family: inherit;
+    line-height: 1;
+    color: #333333;
+    cursor: pointer;
+    transition: color 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-contact-mail:hover {
+    color: #0078d4;
+}
+
+.btn-contact-mail.is-copied {
+    color: #2e7d32;
+}
+
 .btn-fichier:hover {
     background-color: #e0e0e0 !important; 
 }

@@ -70,7 +70,15 @@ var RealtimeViewSync = (function () {
 
     function applyDisplayOptions(opts) {
         if (!opts || typeof window === 'undefined') return;
-        window.displayOptions = Object.assign({}, window.displayOptions || {}, opts);
+        if (!window.displayOptions) {
+            window.displayOptions = {
+                showAxes: true,
+                showGrid: true,
+                showSectionRings: true,
+                showMoldJoint: true
+            };
+        }
+        Object.assign(window.displayOptions, opts);
         var axesToggle = document.getElementById('display-axes-toggle');
         var gridToggle = document.getElementById('display-grid-toggle');
         var ringsToggle = document.getElementById('display-rings-toggle');

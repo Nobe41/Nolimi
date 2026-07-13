@@ -15,6 +15,13 @@ var ExportRules = (function () {
             jpegQuality: 1.0,
             exportScaleFactor: 8
         },
+        /** Tessellation export STL : plus légère que le viewport, mais lisse au minimum. */
+        STL_EXPORT: {
+            N_SEGMENTS: 64,
+            N_FEUILLE_V: 16,
+            N_THETA: 64,
+            MERIDIAN_RES: 32
+        },
         PAPER_MAP: {
             A4_P: { orientation: 'p', format: 'a4' },
             A4_L: { orientation: 'l', format: 'a4' },

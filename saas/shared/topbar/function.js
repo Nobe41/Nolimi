@@ -272,6 +272,56 @@ var TopbarShared = (function () {
         }
 
         initMobileMenu();
+        initContactMail();
+    }
+
+    function initContactMail() {
+        var btn = document.getElementById('btn-contact-mail');
+        if (!btn || btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+
+        var email = 'hello.nolimi+contact@gmail.com';
+        var defaultLabel = 'Mail';
+        var copiedLabel = 'email copié !';
+        var resetTimer = null;
+
+        function showCopiedFeedback() {
+            btn.textContent = copiedLabel;
+            btn.classList.add('is-copied');
+            if (resetTimer) clearTimeout(resetTimer);
+            resetTimer = setTimeout(function () {
+                btn.textContent = defaultLabel;
+                btn.classList.remove('is-copied');
+                resetTimer = null;
+            }, 1800);
+        }
+
+        function fallbackCopy() {
+            var ta = document.createElement('textarea');
+            ta.value = email;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'absolute';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                if (document.execCommand('copy')) showCopiedFeedback();
+            } catch (err) { /* ignore */ }
+            document.body.removeChild(ta);
+        }
+
+        function copyEmail() {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(email).then(showCopiedFeedback).catch(fallbackCopy);
+                return;
+            }
+            fallbackCopy();
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            copyEmail();
+        });
     }
 
     return {

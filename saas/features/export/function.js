@@ -34,50 +34,20 @@ var ExportFeature = (function () {
             alert("La librairie d'exportation STL n'est pas chargée.");
             return;
         }
-        var targetScene = typeof scene !== 'undefined' ? scene : window.scene;
-        if (!targetScene) {
-            alert("La scène 3D n'a pas pu être trouvée.");
-            return;
-        }
-
-        function isBottleExportMesh(obj) {
-            if (!obj.isMesh || !obj.geometry || !obj.geometry.index) return false;
-            if (obj.userData && (obj.userData.isInterior || obj.userData.isLabel)) return false;
-            var node = obj;
-            while (node) {
-                if (node.userData && node.userData.isBottleExportRoot) return true;
-                node = node.parent;
-            }
-            return false;
-        }
 
         try {
-            var tempGroup = new THREE.Group();
-            targetScene.traverse(function (obj) {
-                if (!isBottleExportMesh(obj)) return;
-                var geo = obj.geometry;
-                var idx = geo.index.array;
-                var newIdx = new idx.constructor(idx.length);
-                for (var i = 0; i < idx.length; i += 3) {
-                    newIdx[i] = idx[i];
-                    newIdx[i + 1] = idx[i + 2];
-                    newIdx[i + 2] = idx[i + 1];
-                }
-                var geoFlipped = geo.clone();
-                geoFlipped.setIndex(new THREE.BufferAttribute(newIdx, 1));
-                geoFlipped.computeVertexNormals();
-                var meshFlipped = new THREE.Mesh(geoFlipped, obj.material.clone());
-                meshFlipped.applyMatrix4(obj.matrixWorld);
-                tempGroup.add(meshFlipped);
-            });
+            var exportMesh = (typeof BottleView3D !== 'undefined' && BottleView3D.buildStlExportMesh)
+                ? BottleView3D.buildStlExportMesh()
+                : null;
 
-            if (!tempGroup.children.length) {
+            if (!exportMesh || !exportMesh.geometry) {
                 alert("Aucune géométrie de bouteille n'a pu être trouvée pour l'export.");
                 return;
             }
 
             var exporter = new THREE.STLExporter();
-            var stlData = exporter.parse(tempGroup, { binary: true });
+            var stlData = exporter.parse(exportMesh, { binary: true });
+            if (exportMesh.geometry) exportMesh.geometry.dispose();
 
             var blob = new Blob([stlData], { type: 'application/octet-stream' });
             var baseName = ExportMath.safeFileName(refs.projectTitle && refs.projectTitle.value, RULES.DEFAULTS.file3D);

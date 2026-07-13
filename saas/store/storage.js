@@ -96,7 +96,15 @@ var WorkspaceAutosave = (function () {
                 UIInspector.renderSections();
             }
             if (normalized.displayOptions && typeof window !== 'undefined') {
-                window.displayOptions = normalized.displayOptions;
+                if (!window.displayOptions) {
+                    window.displayOptions = {
+                        showAxes: true,
+                        showGrid: true,
+                        showSectionRings: true,
+                        showMoldJoint: true
+                    };
+                }
+                Object.assign(window.displayOptions, normalized.displayOptions);
             }
             if (normalized.interiorState && typeof window !== 'undefined') {
                 window.interiorState = {
@@ -219,6 +227,156 @@ var WorkspaceAutosave = (function () {
     };
 })();
 
+var PROJECT_HANDLE_DB = 'nolimi-project-files';
+var PROJECT_HANDLE_STORE = 'handles';
+var PROJECT_HANDLE_KEY = 'current';
+var PROJECT_FILE_NAME_KEY = 'nolimi-last-project-file-name';
+
+function isFileSystemHandle(handle) {
+    return !!(handle && typeof handle.createWritable === 'function');
+}
+
+function rememberProjectFileName(name) {
+    if (!name) return;
+    try {
+        localStorage.setItem(PROJECT_FILE_NAME_KEY, String(name).replace(/\.json$/i, '') + '.json');
+    } catch (e) { /* ignore */ }
+}
+
+function openProjectHandleDb() {
+    return new Promise(function (resolve, reject) {
+        var req = indexedDB.open(PROJECT_HANDLE_DB, 1);
+        req.onupgradeneeded = function () {
+            if (!req.result.objectStoreNames.contains(PROJECT_HANDLE_STORE)) {
+                req.result.createObjectStore(PROJECT_HANDLE_STORE);
+            }
+        };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+    });
+}
+
+function persistProjectFileHandle(handle) {
+    if (!isFileSystemHandle(handle)) return Promise.resolve();
+    return openProjectHandleDb().then(function (db) {
+        return new Promise(function (resolve, reject) {
+            var tx = db.transaction(PROJECT_HANDLE_STORE, 'readwrite');
+            tx.objectStore(PROJECT_HANDLE_STORE).put(handle, PROJECT_HANDLE_KEY);
+            tx.oncomplete = function () { db.close(); resolve(); };
+            tx.onerror = function () { db.close(); reject(tx.error); };
+        });
+    }).catch(function (err) {
+        console.warn('Persistance du fichier projet impossible', err);
+    });
+}
+
+function restoreProjectFileHandle() {
+    return openProjectHandleDb().then(function (db) {
+        return new Promise(function (resolve, reject) {
+            var tx = db.transaction(PROJECT_HANDLE_STORE, 'readonly');
+            var req = tx.objectStore(PROJECT_HANDLE_STORE).get(PROJECT_HANDLE_KEY);
+            req.onsuccess = function () { resolve(req.result || null); };
+            req.onerror = function () { reject(req.error); };
+            tx.oncomplete = function () { db.close(); };
+        });
+    }).catch(function () {
+        return null;
+    });
+}
+
+function clearPersistedProjectFileHandle() {
+    return openProjectHandleDb().then(function (db) {
+        return new Promise(function (resolve, reject) {
+            var tx = db.transaction(PROJECT_HANDLE_STORE, 'readwrite');
+            tx.objectStore(PROJECT_HANDLE_STORE).delete(PROJECT_HANDLE_KEY);
+            tx.oncomplete = function () { db.close(); resolve(); };
+            tx.onerror = function () { db.close(); reject(tx.error); };
+        });
+    }).catch(function () { /* ignore */ });
+}
+
+function clearProjectFileBinding() {
+    currentFileHandle = null;
+    linkedProjectFileRestorePromise = null;
+    clearPersistedProjectFileHandle();
+    try {
+        localStorage.removeItem(PROJECT_FILE_NAME_KEY);
+        sessionStorage.removeItem('nolimi-project-file-linked');
+    } catch (e) { /* ignore */ }
+}
+
+var linkedProjectFileRestorePromise = null;
+
+function resolveLinkedProjectFileHandle() {
+    if (isFileSystemHandle(currentFileHandle)) {
+        return Promise.resolve(currentFileHandle);
+    }
+    if (!linkedProjectFileRestorePromise) {
+        linkedProjectFileRestorePromise = restoreProjectFileHandle().then(function (handle) {
+            if (isFileSystemHandle(handle)) currentFileHandle = handle;
+            return isFileSystemHandle(currentFileHandle) ? currentFileHandle : null;
+        });
+    }
+    return linkedProjectFileRestorePromise;
+}
+
+function hasKnownProjectFileContext() {
+    if (isFileSystemHandle(currentFileHandle)) return true;
+    try {
+        return sessionStorage.getItem('nolimi-project-file-linked') === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+async function pickProjectFileHandleForWrite() {
+    if (!('showOpenFilePicker' in window)) return null;
+    var handles = await window.showOpenFilePicker({
+        mode: 'readwrite',
+        multiple: false,
+        types: [{ description: 'Fichier Bouteille JSON', accept: { 'application/json': ['.json'] } }]
+    });
+    return handles && handles.length ? handles[0] : null;
+}
+
+async function ensureWritePermission(handle) {
+    if (!isFileSystemHandle(handle) || typeof handle.queryPermission !== 'function') return false;
+    var opts = { mode: 'readwrite' };
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if (typeof handle.requestPermission !== 'function') return false;
+    return (await handle.requestPermission(opts)) === 'granted';
+}
+
+async function bindProjectFileHandle(handle, fileName) {
+    if (!isFileSystemHandle(handle)) return false;
+    currentFileHandle = handle;
+    linkedProjectFileRestorePromise = null;
+    rememberProjectFileName(fileName || (handle.name || ''));
+    try { sessionStorage.setItem('nolimi-project-file-linked', '1'); } catch (e) { /* ignore */ }
+    await persistProjectFileHandle(handle);
+    return true;
+}
+
+function showSavedFeedback() {
+    var btnFichierMenu = document.getElementById('btn-fichier-menu');
+    if (!btnFichierMenu) return;
+    btnFichierMenu.innerText = 'SAUVEGARDÉ ✓';
+    setTimeout(function () { btnFichierMenu.innerText = 'Fichier'; }, 1500);
+}
+
+function getKnownProjectFileName(fallback) {
+    try {
+        var stored = localStorage.getItem(PROJECT_FILE_NAME_KEY);
+        if (stored) return stored.replace(/\.json$/i, '');
+    } catch (e) { /* ignore */ }
+    return fallback;
+}
+
+async function initProjectFileHandleRestore() {
+    var handle = await restoreProjectFileHandle();
+    if (isFileSystemHandle(handle)) currentFileHandle = handle;
+}
+
 var btnOpenProject = document.getElementById('btn-open-project');
 var btnOpenWorkspace = document.getElementById('btn-open-workspace');
 var fileLoader = document.getElementById('file-loader');
@@ -265,10 +423,12 @@ async function handleOpenProject() {
     if ('showOpenFilePicker' in window) {
         try {
             var fileHandle = (await window.showOpenFilePicker({
+                mode: 'readwrite',
                 types: [{ description: 'Fichier Bouteille JSON', accept: { 'application/json': ['.json'] } }]
             }))[0];
-            currentFileHandle = fileHandle;
+            await ensureWritePermission(fileHandle);
             var file = await fileHandle.getFile();
+            await bindProjectFileHandle(fileHandle, file.name);
             loadProjectData(await file.text());
         } catch (err) {
             console.log("Ouverture annulée", err);
@@ -278,6 +438,18 @@ async function handleOpenProject() {
     }
 }
 
+async function writeProjectToHandle(handle, jsonString) {
+    if (!(await ensureWritePermission(handle))) return false;
+    var writable = await handle.createWritable();
+    await writable.write(jsonString);
+    await writable.close();
+    return true;
+}
+
+async function initProjectFileHandleRestore() {
+    await resolveLinkedProjectFileHandle();
+}
+
 async function saveProject(isSaveAs) {
     if (typeof isSaveAs === 'undefined') isSaveAs = false;
     hideFichierDropdown();
@@ -285,45 +457,71 @@ async function saveProject(isSaveAs) {
         ? WorkspaceAutosave.collectPayload()
         : { version: 1, inputs: {} };
     var titleInput = document.getElementById('cartouche-title');
-    var fileName = (titleInput && titleInput.value.trim() !== "") ? titleInput.value.trim() : "Bouteille_SansNom";
+    var fileName = (titleInput && titleInput.value.trim() !== '') ? titleInput.value.trim() : 'Bouteille_SansNom';
     var jsonString = JSON.stringify(payload, null, 2);
+    var canUseFileSystemAccess = ('showOpenFilePicker' in window) || ('showSaveFilePicker' in window);
 
-    if ('showSaveFilePicker' in window) {
+    if (canUseFileSystemAccess) {
         try {
-            if (isSaveAs || !currentFileHandle) {
-                currentFileHandle = await window.showSaveFilePicker({
-                    suggestedName: fileName + '.json',
-                    types: [{ description: 'Fichier Bouteille JSON', accept: { 'application/json': ['.json'] } }]
-                });
+            if (!isSaveAs) {
+                var linkedHandle = await resolveLinkedProjectFileHandle();
+                if (linkedHandle) {
+                    if (await writeProjectToHandle(linkedHandle, jsonString)) {
+                        rememberProjectFileName(linkedHandle.name || fileName + '.json');
+                        showSavedFeedback();
+                    } else {
+                        alert("Impossible de modifier le fichier existant. Autorisez l'accès en écriture, ou choisissez le fichier via Fichier → Ouvrir.");
+                    }
+                    return;
+                }
+
+                if (hasKnownProjectFileContext()) {
+                    var existingHandle = await pickProjectFileHandleForWrite();
+                    if (!existingHandle) return;
+                    await ensureWritePermission(existingHandle);
+                    await bindProjectFileHandle(existingHandle, existingHandle.name);
+                    if (await writeProjectToHandle(currentFileHandle, jsonString)) showSavedFeedback();
+                    return;
+                }
             }
-            var writable = await currentFileHandle.createWritable();
-            await writable.write(jsonString);
-            await writable.close();
-            var btnFichierMenu = document.getElementById('btn-fichier-menu');
-            if (btnFichierMenu) {
-                btnFichierMenu.innerText = "SAUVEGARDÉ ✓";
-                setTimeout(function () { btnFichierMenu.innerText = "Fichier"; }, 1500);
+
+            if (!('showSaveFilePicker' in window)) {
+                alert("Votre navigateur ne permet pas d'enregistrer directement. Utilisez Chrome ou Edge, ou Fichier → Ouvrir puis Enregistrer.");
+                return;
             }
+
+            var pickedHandle = await window.showSaveFilePicker({
+                suggestedName: getKnownProjectFileName(fileName) + '.json',
+                types: [{ description: 'Fichier Bouteille JSON', accept: { 'application/json': ['.json'] } }]
+            });
+            await bindProjectFileHandle(pickedHandle, pickedHandle.name || fileName + '.json');
+            if (await writeProjectToHandle(currentFileHandle, jsonString)) showSavedFeedback();
         } catch (err) {
-            console.log("Sauvegarde annulée", err);
+            console.log('Sauvegarde annulée', err);
         }
-    } else {
-        if (isSaveAs || !currentFileHandle) {
-            var userFileName = prompt("Entrez le nom de la sauvegarde :", fileName);
-            if (!userFileName) return;
-            fileName = userFileName;
-        }
-        var blob = new Blob([jsonString], { type: "application/json" });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = fileName + ".json";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        currentFileHandle = true;
+        return;
     }
+
+    var downloadName = fileName;
+    if (isSaveAs || !getKnownProjectFileName('')) {
+        var userFileName = prompt('Entrez le nom de la sauvegarde :', fileName);
+        if (!userFileName) return;
+        downloadName = userFileName;
+        rememberProjectFileName(downloadName + '.json');
+    } else {
+        downloadName = getKnownProjectFileName(fileName);
+    }
+
+    var blob = new Blob([jsonString], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = downloadName + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showSavedFeedback();
 }
 
 if (btnOpenProject) btnOpenProject.addEventListener('click', handleOpenProject);
@@ -333,11 +531,13 @@ if (fileLoader) {
     fileLoader.addEventListener('change', function (event) {
         var file = event.target.files[0];
         if (!file) return;
-        currentFileHandle = null;
+        clearProjectFileBinding();
+        rememberProjectFileName(file.name);
+        try { sessionStorage.setItem('nolimi-project-file-linked', '1'); } catch (e) { /* ignore */ }
         var reader = new FileReader();
         reader.onload = function (e) {
             loadProjectData(e.target.result);
-            fileLoader.value = "";
+            fileLoader.value = '';
         };
         reader.readAsText(file);
     });
@@ -346,4 +546,5 @@ if (fileLoader) {
 if (btnSave) btnSave.addEventListener('click', function () { saveProject(false); });
 if (btnSaveAs) btnSaveAs.addEventListener('click', function () { saveProject(true); });
 
+initProjectFileHandleRestore();
 if (typeof WorkspaceAutosave !== 'undefined') WorkspaceAutosave.init();

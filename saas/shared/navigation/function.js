@@ -19,7 +19,8 @@ var UIEvents = (function () {
         if (btnNewProject && pageMenu && pageBouteille && !btnNewProject.dataset.navBound) {
             btnNewProject.dataset.navBound = '1';
             btnNewProject.addEventListener('click', function () {
-                currentFileHandle = null;
+                if (typeof clearProjectFileBinding === 'function') clearProjectFileBinding();
+                else currentFileHandle = null;
                 if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.clear) WorkspaceAutosave.clear();
                 pageMenu.classList.add('hidden');
                 pageBouteille.classList.remove('hidden');

@@ -463,7 +463,7 @@ var BottleView3D = (function () {
         options = options || {};
         if (!sectionsData || !sectionsData.sections || sectionsData.sections.length < 2) return null;
         if (typeof BottleMesh3D === 'undefined' || !BottleMesh3D.createBottleMesh) {
-            return buildRuledSurfaceStrip(sectionsData.sections, color);
+            return buildRuledSurfaceStrip(sectionsData.sections, color, options.tessOverride);
         }
         var mat;
         if (options.inner) {
@@ -475,7 +475,7 @@ var BottleView3D = (function () {
         } else if (typeof BottleMaterials !== 'undefined' && BottleMaterials.getGlassMaterial) {
             mat = BottleMaterials.getGlassMaterial(color || BottleMaterials.DEFAULT_GLASS_COLOR);
         }
-        return BottleMesh3D.createBottleMesh(sectionsData, mat);
+        return BottleMesh3D.createBottleMesh(sectionsData, mat, options.tessOverride || null);
     }
 
     function buildSectionRingLine(H, points, isHighlight) {
@@ -633,9 +633,9 @@ var BottleView3D = (function () {
         }
     }
 
-    function buildPiqurePiedFeuille(s1, piqure, H) {
-        var nu = N_SEGMENTS;
-        var nv = N_FEUILLE_V;
+    function buildPiqurePiedFeuille(s1, piqure, H, tessOpts) {
+        var nu = (tessOpts && tessOpts.nSegments) || N_SEGMENTS;
+        var nv = (tessOpts && tessOpts.nFeuilleV) || N_FEUILLE_V;
         var vertices = [];
         var indices = [];
         for (var i = 0; i < nu; i++) {
@@ -655,9 +655,9 @@ var BottleView3D = (function () {
         return new THREE.Mesh(geom, mat);
     }
 
-    function buildPiqureBasHautFeuille(piqure, hautPiqure) {
-        var nu = N_SEGMENTS;
-        var nv = N_FEUILLE_V;
+    function buildPiqureBasHautFeuille(piqure, hautPiqure, tessOpts) {
+        var nu = (tessOpts && tessOpts.nSegments) || N_SEGMENTS;
+        var nv = (tessOpts && tessOpts.nFeuilleV) || N_FEUILLE_V;
         var vertices = [];
         var indices = [];
         for (var i = 0; i < nu; i++) {
@@ -708,15 +708,15 @@ var BottleView3D = (function () {
      * Feuille col → bague conforme au profil extérieur (courbe S, rayon, ovale L≠P).
      * Évite que le corps dépasse et « coupe » la feuille au-dessus de l'épaule/col.
      */
-    function buildNeckToBagueFeuille(sPrev, sTop, bague1, sectionsData, color) {
+    function buildNeckToBagueFeuille(sPrev, sTop, bague1, sectionsData, color, tessOpts) {
         if (!sTop || !bague1 || typeof BottleMaths === 'undefined' || typeof THREE === 'undefined') return null;
         var radiusAt = (BottleMaths.createExteriorRadiusSampler)
             ? BottleMaths.createExteriorRadiusSampler(sectionsData)
             : null;
-        if (!radiusAt) return buildPiqureBasHautFeuille(sTop, bague1);
+        if (!radiusAt) return buildPiqureBasHautFeuille(sTop, bague1, tessOpts);
 
-        var nu = N_SEGMENTS;
-        var nv = N_FEUILLE_V;
+        var nu = (tessOpts && tessOpts.nSegments) || N_SEGMENTS;
+        var nv = (tessOpts && tessOpts.nFeuilleV) || N_FEUILLE_V;
         var vertices = [];
         var indices = [];
         for (var i = 0; i < nu; i++) {
@@ -736,9 +736,9 @@ var BottleView3D = (function () {
         return new THREE.Mesh(geom, mat);
     }
 
-    function buildPiqureFeuilleVersAxe(section, topH) {
-        var nu = N_SEGMENTS;
-        var nv = N_FEUILLE_V;
+    function buildPiqureFeuilleVersAxe(section, topH, tessOpts) {
+        var nu = (tessOpts && tessOpts.nSegments) || N_SEGMENTS;
+        var nv = (tessOpts && tessOpts.nFeuilleV) || N_FEUILLE_V;
         var vertices = [];
         var indices = [];
         for (var i = 0; i < nu; i++) {
@@ -758,10 +758,10 @@ var BottleView3D = (function () {
         return new THREE.Mesh(geom, mat);
     }
 
-    function buildRuledSurfaceStrip(sections, color) {
+    function buildRuledSurfaceStrip(sections, color, tessOpts) {
         if (!sections || sections.length < 2) return null;
-        var nu = N_SEGMENTS;
-        var nv = N_FEUILLE_V;
+        var nu = (tessOpts && tessOpts.nSegments) || N_SEGMENTS;
+        var nv = (tessOpts && tessOpts.nFeuilleV) || N_FEUILLE_V;
         var K = sections.length;
         var totalRows = (K - 1) * nv + 1;
         var vertices = [];
@@ -1603,6 +1603,117 @@ var BottleView3D = (function () {
         return profilePointsFromSectionsData(buildSectionsDataBundle(collectBagueSectionsFromPanel(), 'rb'));
     }
 
+    function getStlExportTess() {
+        var exp = (typeof ExportRules !== 'undefined' && ExportRules.STL_EXPORT) ? ExportRules.STL_EXPORT : {};
+        return {
+            nSegments: exp.N_SEGMENTS || 48,
+            nFeuilleV: exp.N_FEUILLE_V || 8,
+            nTheta: exp.N_THETA || 48,
+            meridianRes: exp.MERIDIAN_RES || 24
+        };
+    }
+
+    function disposeExportMeshList(meshes) {
+        for (var i = 0; i < meshes.length; i++) {
+            var m = meshes[i];
+            if (!m) continue;
+            if (m.geometry) m.geometry.dispose();
+            if (m.material && m.material.dispose) m.material.dispose();
+        }
+    }
+
+    /** Maillage STL unique : résolution réduite, toutes les pièces extérieures fusionnées. */
+    function buildStlExportMesh() {
+        if (typeof THREE === 'undefined' || typeof BottleMesh3D === 'undefined') return null;
+        if (typeof ExportMath === 'undefined' || !ExportMath.mergeBufferGeometries || !ExportMath.prepareMeshGeometryForExport) return null;
+
+        var tess = getStlExportTess();
+        var tessOpts = { nSegments: tess.nSegments, nFeuilleV: tess.nFeuilleV };
+        var revTess = { nTheta: tess.nTheta, meridianRes: tess.meridianRes };
+        var glassColor = (typeof BottleMaterials !== 'undefined' && BottleMaterials.DEFAULT_GLASS_COLOR !== undefined)
+            ? BottleMaterials.DEFAULT_GLASS_COLOR
+            : 0x99bbdd;
+
+        var sectionsData = getSectionsDataFromPanel();
+        if (!sectionsData || !sectionsData.sections || sectionsData.sections.length < 2) return null;
+
+        var sections = sectionsData.sections;
+        var piqSections = collectPiqureSectionsFromPanel();
+        var bagueSections = collectBagueSectionsFromPanel();
+        var tempMeshes = [];
+        var geometries = [];
+
+        function track(mesh) {
+            if (mesh) tempMeshes.push(mesh);
+            return mesh;
+        }
+
+        function punch(mesh) {
+            if (mesh && typeof Gravure3D !== 'undefined' && Gravure3D.punchHolesForInvertedEngravings) {
+                Gravure3D.punchHolesForInvertedEngravings(mesh, sectionsData);
+            }
+        }
+
+        var body = track(BottleMesh3D.createBottleMesh(sectionsData, null, revTess));
+        if (body && typeof Gravure3D !== 'undefined' && Gravure3D.applyInvertedEngravingsToBottleMesh) {
+            Gravure3D.applyInvertedEngravingsToBottleMesh(body, sectionsData);
+        }
+
+        if (piqSections.length) {
+            var s1 = sections[0];
+            track(buildPiqurePiedFeuille(s1, piqSections[0], piqSections[0].H, tessOpts));
+            var piqSectionsData = buildSectionsDataBundle(piqSections.slice(), 'rp');
+            track(buildLiaisonRevolvedMesh(piqSectionsData, glassColor, { tessOverride: revTess }));
+            var lastP = piqSections[piqSections.length - 1];
+            var rp3H = getPanelValue('rp3-h', 30);
+            if (lastP && rp3H > lastP.H) {
+                track(buildPiqureFeuilleVersAxe(lastP, rp3H, tessOpts));
+            }
+        }
+
+        if (bagueSections.length) {
+            var bague1 = bagueSections[0];
+            var sTop = sections[sections.length - 1];
+            var sPrev = sections.length >= 2 ? sections[sections.length - 2] : null;
+            if (sTop) {
+                var feuilleColBague = track(buildNeckToBagueFeuille(sPrev, sTop, bague1, sectionsData, glassColor, tessOpts));
+                punch(feuilleColBague);
+            }
+            var bagueSectionsData = buildSectionsDataBundle(bagueSections.slice(), 'rb');
+            var feuilleBagueStrip = track(buildLiaisonRevolvedMesh(bagueSectionsData, glassColor, { tessOverride: revTess }));
+            punch(feuilleBagueStrip);
+        }
+
+        for (var ti = 0; ti < tempMeshes.length; ti++) {
+            var prepared = ExportMath.prepareMeshGeometryForExport(tempMeshes[ti]);
+            if (prepared) geometries.push(prepared);
+        }
+
+        var targetScene = typeof scene !== 'undefined' ? scene : (typeof window !== 'undefined' ? window.scene : null);
+        if (targetScene && sectionRingGroup) {
+            targetScene.traverse(function (obj) {
+                if (!obj.isMesh || !obj.geometry || !obj.geometry.index) return;
+                if (obj.userData && (obj.userData.isInterior || obj.userData.isLabel || obj.userData.isOverlay)) return;
+                var inExport = false;
+                var inStructural = false;
+                var node = obj;
+                while (node) {
+                    if (node === sectionRingGroup) inStructural = true;
+                    if (node.userData && node.userData.isBottleExportRoot) inExport = true;
+                    node = node.parent;
+                }
+                if (!inExport || inStructural) return;
+                var geo = ExportMath.prepareMeshGeometryForExport(obj);
+                if (geo) geometries.push(geo);
+            });
+        }
+
+        var merged = ExportMath.mergeBufferGeometries(geometries);
+        disposeExportMeshList(tempMeshes);
+        if (!merged) return null;
+        return new THREE.Mesh(merged);
+    }
+
     function dispose() {
         if (sectionRingGroup && scene) scene.remove(sectionRingGroup);
         detachPersistedFromSectionRing();
@@ -1632,6 +1743,7 @@ var BottleView3D = (function () {
         MOLD_JOINT_PROFILE_THETA: MOLD_JOINT_PROFILE_THETA,
         applyViewOpacity: applyViewOpacity,
         refreshLabelsOnly: refreshLabelsOnly,
+        buildStlExportMesh: buildStlExportMesh,
         dispose: dispose
     };
 })();

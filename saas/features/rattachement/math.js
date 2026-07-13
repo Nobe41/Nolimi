@@ -415,7 +415,7 @@ var RattachementMath = (function () {
         var denom = V2 - 4;
         if (Math.abs(denom) > 1e-9) {
             var DdotV = Dx * Vx + Dy * Vy;
-            var disc = 4 * DdotV * DdotV + 4 * dS * dS * denom;
+            var disc = 4 * DdotV * DdotV - 4 * dS * dS * denom;
             if (disc >= 0) {
                 var sqrtDisc = Math.sqrt(disc);
                 tryCandidate((-2 * DdotV + sqrtDisc) / (2 * denom), false);

@@ -6,7 +6,20 @@ var DisplayShared = (function () {
         var moldJointToggle = document.getElementById('display-mold-joint-toggle');
         if (!axesToggle || !gridToggle || !ringsToggle || !moldJointToggle) return;
 
-        var opts = (typeof window !== 'undefined' && window.displayOptions) ? window.displayOptions : null;
+        function readDisplayOptions() {
+            if (typeof window === 'undefined') return null;
+            if (!window.displayOptions) {
+                window.displayOptions = {
+                    showAxes: true,
+                    showGrid: true,
+                    showSectionRings: true,
+                    showMoldJoint: true
+                };
+            }
+            return window.displayOptions;
+        }
+
+        var opts = readDisplayOptions();
         if (opts) {
             axesToggle.checked = opts.showAxes !== false;
             gridToggle.checked = opts.showGrid !== false;
@@ -15,11 +28,12 @@ var DisplayShared = (function () {
         }
 
         function applyDisplayOptions() {
-            if (opts) {
-                opts.showAxes = !!axesToggle.checked;
-                opts.showGrid = !!gridToggle.checked;
-                opts.showSectionRings = !!ringsToggle.checked;
-                opts.showMoldJoint = !!moldJointToggle.checked;
+            var displayOpts = readDisplayOptions();
+            if (displayOpts) {
+                displayOpts.showAxes = !!axesToggle.checked;
+                displayOpts.showGrid = !!gridToggle.checked;
+                displayOpts.showSectionRings = !!ringsToggle.checked;
+                displayOpts.showMoldJoint = !!moldJointToggle.checked;
             }
             if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) SceneSetup3D.applyDisplayOptions();
             if (typeof updateBouteille === 'function') updateBouteille();

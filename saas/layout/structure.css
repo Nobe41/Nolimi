@@ -321,6 +321,13 @@ body {
     flex-shrink: 0;
 }
 
+.panel-haut-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
 .panel-haut-bar {
     display: flex;
     flex-direction: row;
