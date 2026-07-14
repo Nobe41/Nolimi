@@ -27,7 +27,6 @@
         </nav>
     </header>
     <main class="page-main page-main--auth">
-        <a href="../accueil/index.html" class="auth-back">← Retour</a>
         <div class="auth-centre">
             <div class="payment-success" aria-labelledby="payment-success-title">
                 <div class="payment-success__icon" aria-hidden="true">
@@ -51,6 +50,7 @@
                     En cliquant sur « Valider », vous allez recevoir vos identifiants par mail.
                 </p>
                 <button type="submit" id="btn-submit" disabled>Valider</button>
+                <a href="../connexion/index.html" class="license-login-btn" id="btn-login" hidden>Se connecter</a>
             </form>
         </div>
     </main>
@@ -63,6 +63,7 @@
             var errEl = document.getElementById('error-msg');
             var successEl = document.getElementById('success-msg');
             var submitBtn = document.getElementById('btn-submit');
+            var loginBtn = document.getElementById('btn-login');
             var stripeSessionId = typeof NolimiLicenseSupabase !== 'undefined' && NolimiLicenseSupabase.getStripeSessionId
                 ? NolimiLicenseSupabase.getStripeSessionId()
                 : (new URLSearchParams(window.location.search).get('session_id')
@@ -166,6 +167,7 @@
                 if (submitBtn.disabled || !form.checkValidity()) return;
                 errEl.textContent = '';
                 successEl.textContent = '';
+                if (loginBtn) loginBtn.hidden = true;
 
                 var emails = [];
                 for (var i = 1; i <= licenseCount; i++) {
@@ -211,7 +213,8 @@
 
                     successEl.textContent = result.message || 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.';
                     submitBtn.textContent = 'Valider';
-                    updateSubmitState();
+                    submitBtn.disabled = true;
+                    if (loginBtn) loginBtn.hidden = false;
                 });
             });
         })();

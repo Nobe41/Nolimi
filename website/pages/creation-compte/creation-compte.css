@@ -76,3 +76,31 @@
     min-height: 1.4em;
     margin-bottom: 0.25rem;
 }
+
+.license-login-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.65rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    background: var(--nolimi-accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+.license-login-btn:hover {
+    background: var(--nolimi-accent-hover);
+}
+
+.license-login-btn[hidden] {
+    display: none;
+}
