@@ -4,28 +4,6 @@
     --home-accent: var(--nolimi-accent);
 }
 
-.page--home .panel {
-    background: var(--nolimi-surface);
-    box-shadow: none;
-    border-bottom: 1px solid var(--nolimi-border-subtle);
-}
-
-.page--home .panel-cta--secondary {
-    color: var(--home-ink);
-    border-color: var(--nolimi-border);
-}
-
-.page--home .panel-cta--secondary:hover {
-    background: var(--nolimi-bg);
-    color: var(--home-ink);
-}
-
-body.page--home {
-    display: flex;
-    flex-direction: column;
-    background: var(--nolimi-surface);
-}
-
 .page-main--home {
     flex: 1;
     width: 100%;

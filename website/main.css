@@ -15,9 +15,32 @@ body.page--legal,
 body.page--abonnement,
 body.page--auth {
     font-family: system-ui, -apple-system, sans-serif;
-    background: var(--nolimi-bg);
+    background: var(--nolimi-surface);
     color: var(--nolimi-ink);
     -webkit-font-smoothing: antialiased;
+}
+
+body.page--home,
+body.page--legal,
+body.page--abonnement,
+body.page--auth {
+    display: flex;
+    flex-direction: column;
+}
+
+.page .panel {
+    box-shadow: none;
+    border-bottom: 1px solid var(--nolimi-border-subtle);
+}
+
+.page .panel-cta--secondary {
+    color: var(--nolimi-ink);
+    border-color: var(--nolimi-border);
+}
+
+.page .panel-cta--secondary:hover {
+    background: var(--nolimi-bg);
+    color: var(--nolimi-ink);
 }
 
 .page-main {

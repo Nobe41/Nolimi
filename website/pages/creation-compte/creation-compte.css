@@ -57,13 +57,6 @@
     padding-top: 0.5rem;
 }
 
-.license-notice {
-    margin: 0.25rem 0 0;
-    font-size: 0.72rem;
-    line-height: 1.45;
-    text-align: center;
-    color: var(--nolimi-text-muted);
-}
 
 .success-msg {
     color: var(--nolimi-accent);

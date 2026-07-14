@@ -10,16 +10,11 @@
     gap: 0.5rem 1.25rem;
 }
 
-.home-footer__version,
 .home-footer__copyright {
     font-size: 0.72rem;
     color: var(--nolimi-text-muted);
     letter-spacing: 0.01em;
     margin: 0;
-}
-
-.home-footer__version {
-    flex-shrink: 0;
 }
 
 .home-footer__link {

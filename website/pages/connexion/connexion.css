@@ -2,17 +2,6 @@
     --auth-muted: var(--nolimi-text-muted);
 }
 
-body.page--auth {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    min-height: 100dvh;
-}
-
-.page--auth .panel {
-    background: var(--nolimi-surface);
-}
-
 .page-main--auth {
     flex: 1;
     display: flex;

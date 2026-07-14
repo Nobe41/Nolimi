@@ -3,15 +3,6 @@
     --abo-accent: var(--nolimi-accent);
 }
 
-body.page--abonnement {
-    display: flex;
-    flex-direction: column;
-}
-
-.page--abonnement .panel {
-    background: var(--nolimi-surface);
-}
-
 .page-main--abonnement {
     flex: 1;
     width: 100%;
@@ -218,13 +209,22 @@ body.page--abonnement {
     box-shadow: 0 3px 12px rgba(74, 166, 247, 0.5);
 }
 
-.abo-note {
+.abo-legal {
     max-width: 36rem;
-    margin: 1.25rem auto 0;
+    margin: 1.5rem auto 0;
     text-align: center;
-    font-size: 0.85rem;
-    line-height: 1.6;
+    font-size: 0.72rem;
+    line-height: 1.45;
     color: var(--abo-muted);
+}
+
+.abo-legal a {
+    color: var(--abo-accent);
+    text-decoration: none;
+}
+
+.abo-legal a:hover {
+    text-decoration: underline;
 }
 
 .page--abonnement .home-footer {

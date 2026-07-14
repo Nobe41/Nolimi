@@ -11,15 +11,18 @@
     <main class="page-main page-main--legal">
         <button type="button" class="legal-back" id="legal-back">← Retour</button>
         <header class="legal-page-header">
-            <h1 class="legal-page__title">Documents Légaux — Nolimi</h1>
-            <p class="legal-page__updated">Dernière mise à jour : 1<sup>er</sup> juin 2026</p>
-            <p class="legal-page__intro">Bienvenue sur l'application Nolimi. Cette page regroupe l'ensemble des informations légales, les conditions d'utilisation de notre service ainsi que notre politique de gestion de vos données.</p>
+            <h1 class="legal-page__title">Documents légaux — Nolimi</h1>
+            <p class="legal-page__updated">Dernière mise à jour : 14 juillet 2026</p>
         </header>
+        <nav class="legal-tabs" aria-label="Chapitres légaux">
+            <button type="button" class="legal-tabs__btn legal-tabs__btn--active" data-legal-tab="mentions-legales">Mentions légales</button>
+            <button type="button" class="legal-tabs__btn" data-legal-tab="cgu">Conditions d'utilisation</button>
+            <button type="button" class="legal-tabs__btn" data-legal-tab="confidentialite">Politique de confidentialité</button>
+            <button type="button" class="legal-tabs__btn" data-legal-tab="cgv">Conditions de vente</button>
+        </nav>
         <article class="legal-doc">
-            <section class="legal-chapter" id="mentions-legales">
-                <h2 class="legal-chapter__title">1. Mentions Légales</h2>
+            <section class="legal-chapter legal-chapter--active" id="mentions-legales" data-legal-panel="mentions-legales">
                 <div class="legal-chapter__body">
-                    
                     <div class="legal-chapter__subsection">
                         <h3 class="legal-chapter__subtitle">1.1. Édition du site et du logiciel</h3>
                         <div class="legal-chapter__subsection-content">
@@ -28,7 +31,8 @@
                                 <strong>Propriétaire / Éditeur :</strong> BALLART AXEL<br>
                                 <strong>Adresse de domicile :</strong> Amiens (80000) France<br>
                                 <strong>Adresse de courrier électronique :</strong> hello.nolimi+contact@gmail.com<br>
-                                <strong>Directeur de la publication :</strong> BALLART AXEL
+                                <strong>Directeur de la publication :</strong> BALLART AXEL<br>
+                                <strong>Site internet :</strong> <a href="https://nolimi.net" target="_blank" rel="noopener noreferrer">https://nolimi.net</a>
                             </p>
                         </div>
                     </div>
@@ -46,22 +50,47 @@
                     </div>
 
                     <div class="legal-chapter__subsection">
-                        <h3 class="legal-chapter__subtitle">1.3. Hébergement des données</h3>
+                        <h3 class="legal-chapter__subtitle">1.3. Infrastructure technique et données</h3>
                         <div class="legal-chapter__subsection-content">
-                            <p>Le stockage des données techniques et le système d'authentification des utilisateurs sont hébergés par la société suivante :</p>
+                            <p>L'authentification des utilisateurs, la gestion des sessions et la collaboration en temps réel sont assurées par la société suivante :</p>
                             <p>
-                                <strong>Hébergeur :</strong> Supabase Inc.<br>
+                                <strong>Prestataire :</strong> Supabase Inc.<br>
                                 <strong>Siège social :</strong> 970 Topper Lane, Lafayette, CA 94549, États-Unis<br>
-                                <strong>Localisation des serveurs de stockage :</strong> Francfort, Allemagne (Union Européenne)<br>
+                                <strong>Localisation des serveurs :</strong> Francfort, Allemagne (Union Européenne)<br>
                                 <strong>Site internet :</strong> <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">https://supabase.com</a>
                             </p>
+                            <p>Les données d'identification (adresse e-mail et mot de passe chiffré) y sont stockées. Lors d'une session de collaboration, les données du projet transitent temporairement via cette infrastructure, sans être conservées après la fermeture de la session.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">1.4. Envoi des courriers électroniques</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Les e-mails transactionnels (transmission des identifiants de connexion) sont envoyés via la société suivante :</p>
+                            <p>
+                                <strong>Prestataire :</strong> Resend Inc.<br>
+                                <strong>Siège social :</strong> 2261 Market Street #5039, San Francisco, CA 94114, États-Unis<br>
+                                <strong>Site internet :</strong> <a href="https://resend.com" target="_blank" rel="noopener noreferrer">https://resend.com</a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">1.5. Paiement en ligne</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Le traitement des paiements et la gestion des abonnements sont assurés par la société suivante :</p>
+                            <p>
+                                <strong>Prestataire :</strong> Stripe Inc.<br>
+                                <strong>Siège social :</strong> 510 Townsend Street, San Francisco, CA 94103, États-Unis<br>
+                                <strong>Site internet :</strong> <a href="https://stripe.com" target="_blank" rel="noopener noreferrer">https://stripe.com</a>
+                            </p>
+                            <p>Nolimi ne stocke aucune coordonnée bancaire : celles-ci sont collectées et sécurisées directement par Stripe.</p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="legal-chapter" id="cgu">
-                <h2 class="legal-chapter__title">2. Conditions Générales d'Utilisation</h2>
+            <section class="legal-chapter" id="cgu" data-legal-panel="cgu" hidden>
                 <div class="legal-chapter__body">
                     <div class="legal-chapter__subsection">
                         <h3 class="legal-chapter__subtitle">2.1. Objet et description du service</h3>
@@ -73,7 +102,7 @@
                     <div class="legal-chapter__subsection">
                         <h3 class="legal-chapter__subtitle">2.2. Accès au service et sécurité du compte</h3>
                         <div class="legal-chapter__subsection-content">
-                            <p>L'accès à Nolimi se fait exclusivement sur invitation avec un identifiant et un mot de passe strictement personnels et confidentiels. Chaque licence d'utilisation est nominative et limitée à un seul utilisateur unique : le partage d'un même compte entre plusieurs personnes, collègues ou entités est strictement interdit. Vous êtes le seul responsable de la sécurité de vos accès et de toutes les actions réalisées avec votre compte.</p>
+                            <p>L'accès à Nolimi s'effectue sous réserve de la souscription d'une licence d'utilisation (conditions détaillées aux Conditions Générales de Vente) ou d'une attribution directe par l'éditeur, avec un identifiant et un mot de passe strictement personnels et confidentiels. Chaque licence d'utilisation est nominative et limitée à un seul utilisateur unique : le partage d'un même compte entre plusieurs personnes, collègues ou entités est strictement interdit. Vous êtes le seul responsable de la sécurité de vos accès et de toutes les actions réalisées avec votre compte.</p>
                             <p>En cas de constatation d'une utilisation abusive, anormale ou de connexions simultanées indiquant un partage manifeste d'identifiants, l'éditeur se réserve le droit de suspendre ou de supprimer définitivement et sans préavis l'accès au service.</p>
                         </div>
                     </div>
@@ -108,7 +137,50 @@
                     </div>
 
                     <div class="legal-chapter__subsection">
-                        <h3 class="legal-chapter__subtitle">2.7. Droit applicable et attribution de juridiction</h3>
+                        <h3 class="legal-chapter__subtitle">2.7. Collaboration en temps réel</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Nolimi permet de créer ou de rejoindre une session de collaboration en temps réel via un lien de session partagé. Cette fonctionnalité vise à faciliter le travail conjoint sur un même projet, dans le cadre d'une utilisation licite du service.</p>
+                            <p>La collaboration en temps réel ne remplace pas la souscription de licences supplémentaires : chaque personne utilisant Nolimi de manière régulière et autonome doit disposer de sa propre licence nominative. Le partage d'un même identifiant ou l'utilisation d'une seule licence pour couvrir plusieurs utilisateurs distincts reste interdit.</p>
+                            <p>Lors d'une session de collaboration, les données du projet transitent temporairement via l'infrastructure technique de Nolimi (Supabase) le temps de la session, sans être conservées de manière durable après sa fermeture. Chaque participant reste responsable des éléments qu'il importe ou manipule durant la session.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">2.8. Modification des conditions</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>L'éditeur se réserve le droit de modifier les présentes Conditions Générales d'Utilisation à tout moment, notamment pour tenir compte de l'évolution du service, de la réglementation ou des prestataires techniques.</p>
+                            <p>La date de dernière mise à jour est indiquée en tête de la page « Documents légaux ». En cas de modification substantielle, l'éditeur pourra en informer les utilisateurs par tout moyen approprié (e-mail ou notification dans l'application).</p>
+                            <p>La poursuite de l'utilisation de Nolimi après l'entrée en vigueur des conditions modifiées vaut acceptation des nouvelles dispositions. Si vous n'acceptez pas les modifications, vous devez cesser d'utiliser le service et demander la fermeture de votre accès.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">2.9. Suspension, résiliation et suppression de compte</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p><strong>Par l'utilisateur :</strong> Vous pouvez demander la fermeture de votre compte à tout moment en adressant une demande à hello.nolimi+contact@gmail.com. La résiliation d'un abonnement payant est régie par les Conditions Générales de Vente.</p>
+                            <p><strong>Par l'éditeur :</strong> L'éditeur peut suspendre ou résilier l'accès d'un utilisateur, sans préavis ni indemnité, en cas de violation des présentes conditions, de partage manifeste d'identifiants, d'utilisation abusive ou frauduleuse du service.</p>
+                            <p><strong>Suppression des données :</strong> À la fermeture du compte, les données d'accès (adresse e-mail et mot de passe chiffré) sont effacées conformément à la Politique de Confidentialité. Vos projets et fichiers locaux restent sous votre seule responsabilité.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">2.10. Force majeure</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>L'éditeur ne saurait être tenu responsable de tout retard, interruption ou défaillance du service résultant d'un cas de force majeure ou d'un événement indépendant de sa volonté raisonnable, notamment : panne ou indisponibilité des infrastructures d'hébergement (Vercel, Supabase), interruption des services de paiement (Stripe) ou d'envoi d'e-mails (Resend), cyberattaque, coupure de réseau, catastrophe naturelle, ou décision d'une autorité compétente.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">2.11. Acceptation des conditions</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>L'utilisation du site, la création d'un compte ou toute connexion à l'application Nolimi implique l'acceptation pleine et entière des présentes Conditions Générales d'Utilisation, sans réserve.</p>
+                            <p>La souscription d'une licence payante implique en outre l'acceptation des Conditions Générales de Vente.</p>
+                            <p>Si vous n'acceptez pas tout ou partie de ces conditions, vous ne devez pas utiliser le service.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">2.12. Droit applicable et attribution de juridiction</h3>
                         <div class="legal-chapter__subsection-content">
                             <p>Les présentes conditions sont régies par le droit français. En cas de litige lié à l'utilisation du logiciel Nolimi, et à défaut de résolution amiable, compétence exclusive est attribuée aux tribunaux du ressort de Amiens (80000), même en cas de pluralité de défendeurs ou d'appel en garantie.</p>
                         </div>
@@ -116,8 +188,7 @@
                 </div>
             </section>
 
-            <section class="legal-chapter" id="confidentialite">
-                <h2 class="legal-chapter__title">3. Politique de Confidentialité</h2>
+            <section class="legal-chapter" id="confidentialite" data-legal-panel="confidentialite" hidden>
                 <div class="legal-chapter__body">
                     <div class="legal-chapter__subsection">
                         <h3 class="legal-chapter__subtitle">3.1. Responsable du traitement</h3>
@@ -129,82 +200,279 @@
                     <div class="legal-chapter__subsection">
                         <h3 class="legal-chapter__subtitle">3.2. Données collectées</h3>
                         <div class="legal-chapter__subsection-content">
-                            <p>Nolimi applique le principe de minimisation stricte des données. L'accès à la plateforme se faisant exclusivement sur invitation, les seules informations traitées sont celles nécessaires à l'ouverture et au bon fonctionnement de votre licence d'utilisation :</p>
-                            <p><strong>Données d'identification :</strong> Votre adresse e-mail (fournie à l'éditeur pour vous transmettre vos accès).</p>
-                            <p><strong>Données de sécurité :</strong> Le mot de passe généré par l'éditeur, qui sert pour l'ensemble de vos connexions au service. Ce mot de passe est haché et chiffré par notre infrastructure technique (Supabase) : il reste pleinement fonctionnel pour vous connecter à tout moment, mais il est stocké de manière sécurisée pour qu'il soit impossible de le lire en clair, y compris par l'éditeur.</p>
-                            <p><strong>Note essentielle sur vos créations :</strong> L'application Nolimi ne sauvegarde aucun projet, modèle 3D, image ou fichier importé sur ses serveurs. Vos visuels et fichiers exportés (STL, PDF) sont générés en temps réel par votre navigateur internet et restent exclusivement stockés en local sur votre ordinateur.</p>
+                            <p>Nolimi applique le principe de minimisation stricte des données. Les seules informations personnelles traitées sont celles nécessaires à l'ouverture, au paiement et au bon fonctionnement de votre licence d'utilisation :</p>
+                            <p><strong>Données d'identification :</strong> Votre adresse e-mail (fournie lors de l'achat ou de l'activation de votre licence).</p>
+                            <p><strong>Données de sécurité :</strong> Votre mot de passe, utilisé pour vos connexions au service. Ce mot de passe est haché par notre infrastructure technique (Supabase) : il reste fonctionnel pour vous connecter, mais il est stocké de manière sécurisée et ne peut pas être lu en clair, y compris par l'éditeur.</p>
+                            <p><strong>Données de paiement :</strong> Lors d'un achat, vos coordonnées bancaires sont saisies directement sur la page sécurisée de Stripe. Nolimi ne collecte ni ne stocke aucune coordonnée bancaire. Stripe peut conserver l'adresse e-mail de l'acheteur et les informations de facturation nécessaires à la gestion de l'abonnement.</p>
+                            <p><strong>Données stockées localement :</strong> Vos projets, modèles 3D, images importées et fichiers exportés (STL, PDF) sont générés et conservés par votre navigateur, notamment via le stockage local (<em>localStorage</em>) pour l'autosauvegarde. Ces données ne sont pas transmises aux serveurs de Nolimi, sauf lors d'une session de collaboration (voir ci-dessous).</p>
+                            <p><strong>Collaboration en temps réel :</strong> Nolimi ne stocke pas durablement vos projets sur ses serveurs. En revanche, lors d'une session de collaboration, les données du projet transitent temporairement via l'infrastructure Supabase le temps de la session, sans être conservées après sa fermeture.</p>
                         </div>
                     </div>
 
                     <div class="legal-chapter__subsection">
                         <h3 class="legal-chapter__subtitle">3.3. Finalités du traitement</h3>
                         <div class="legal-chapter__subsection-content">
-                            <p>L'éditeur collecte et utilise vos données d'identification (adresse e-mail et mot de passe) uniquement pour les objectifs suivants :</p>
+                            <p>L'éditeur collecte et utilise vos données personnelles uniquement pour les objectifs suivants :</p>
                             <ul>
-                                <li><strong>Gestion et activation de votre licence d'utilisation :</strong> Permettre la création de vos accès et vérifier que vous disposez d'une licence valide pour utiliser le logiciel Nolimi.</li>
-                                <li><strong>Sécurité et authentification :</strong> Assurer la sécurité de la plateforme en vérifiant votre identité lors de chaque connexion pour empêcher tout accès non autorisé.</li>
-                                <li><strong>Support technique et suivi :</strong> Vous contacter en cas de besoin lié au fonctionnement de votre licence, pour vous aider en cas de bug technique, ou pour vous informer des mises à jour importantes du logiciel.</li>
+                                <li><strong>Gestion et activation de votre licence d'utilisation :</strong> Création de vos accès et vérification de la validité de votre licence.</li>
+                                <li><strong>Sécurité et authentification :</strong> Vérification de votre identité à chaque connexion et protection contre les accès non autorisés.</li>
+                                <li><strong>Paiement et facturation :</strong> Traitement de votre abonnement via Stripe et gestion des renouvellements.</li>
+                                <li><strong>Envoi de vos identifiants :</strong> Transmission de vos accès de connexion par e-mail via Resend.</li>
+                                <li><strong>Support technique et suivi :</strong> Vous contacter en cas de besoin lié à votre licence, de bug technique ou de mise à jour importante du logiciel.</li>
+                                <li><strong>Collaboration en temps réel :</strong> Synchronisation temporaire des données de projet entre participants d'une même session.</li>
                             </ul>
-                            <p><strong>Rappel essentiel :</strong> Vos données ne servent qu'à faire tourner l'application et gérer vos accès. Aucune donnée personnelle n'est revendue, louée ou cédée à des tiers à des fins publicitaires ou commerciales.</p>
+                            <p><strong>Rappel essentiel :</strong> Vos données ne servent qu'à faire fonctionner l'application et gérer vos accès. Aucune donnée personnelle n'est revendue, louée ou cédée à des tiers à des fins publicitaires ou commerciales.</p>
                         </div>
                     </div>
 
                     <div class="legal-chapter__subsection">
-                        <h3 class="legal-chapter__subtitle">3.4. Hébergement et sécurité des données</h3>
+                        <h3 class="legal-chapter__subtitle">3.4. Bases légales du traitement</h3>
                         <div class="legal-chapter__subsection-content">
-                            <p>Les uniques données d'accès traitées par l'application (adresses e-mail et mots de passe chiffrés) sont stockées et sécurisées via l'infrastructure de notre prestataire technique Supabase, sur des serveurs hautement sécurisés situés au sein de l'Union Européenne.</p>
-                            <p>L'éditeur met en œuvre les mesures de sécurité standards de l'industrie pour garantir la confidentialité et la protection de vos accès :</p>
+                            <p>Conformément au RGPD, vos données sont traitées sur les bases légales suivantes :</p>
                             <ul>
-                                <li><strong>Chiffrement des connexions :</strong> L'ensemble des échanges entre votre navigateur internet et l'application Nolimi est entièrement sécurisé et chiffré via le protocole HTTPS (SSL).</li>
-                                <li><strong>Protection des mots de passe :</strong> Comme mentionné à l'article 3.2, les mots de passe ne sont jamais stockés « en clair » mais sont transformés par un algorithme de hachage cryptographique irréversible.</li>
-                                <li><strong>Sécurité de vos projets :</strong> Aucun système de stockage cloud n'étant parfait, le choix technique de Nolimi de ne sauvegarder aucun de vos modèles 3D, cotes ou images sur nos serveurs élimine à 100 % le risque de fuite ou de vol de vos créations industrielles en cas de cyberattaque.</li>
-                                <li><strong>Cookies techniques :</strong> L'application Nolimi n'utilise aucun cookie publicitaire ou de suivi (tracking). Elle utilise uniquement les cookies et traceurs techniques strictement nécessaires fournis par Supabase pour gérer votre session et vous maintenir connecté de manière sécurisée à votre compte.</li>
+                                <li><strong>Exécution du contrat :</strong> Gestion de votre licence, authentification, envoi de vos identifiants et accès au service.</li>
+                                <li><strong>Exécution du contrat / obligation légale :</strong> Traitement des paiements et conservation des données de facturation via Stripe.</li>
+                                <li><strong>Intérêt légitime :</strong> Sécurité de la plateforme, prévention du partage frauduleux de comptes et amélioration du service.</li>
                             </ul>
                         </div>
                     </div>
 
                     <div class="legal-chapter__subsection">
-                        <h3 class="legal-chapter__subtitle">3.5. Durée de conservation</h3>
+                        <h3 class="legal-chapter__subtitle">3.5. Destinataires et sous-traitants</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Pour assurer le fonctionnement de Nolimi, vos données peuvent être traitées par les prestataires techniques suivants, agissant en qualité de sous-traitants ou de responsables de traitement distincts :</p>
+                            <ul>
+                                <li><strong>Supabase Inc.</strong> — Authentification, gestion des sessions et collaboration en temps réel. Serveurs situés à Francfort, Allemagne (UE).</li>
+                                <li><strong>Stripe Inc.</strong> — Traitement des paiements et gestion des abonnements. Siège aux États-Unis.</li>
+                                <li><strong>Resend Inc.</strong> — Envoi des e-mails transactionnels (identifiants de connexion). Siège aux États-Unis.</li>
+                                <li><strong>Vercel Inc.</strong> — Hébergement de l'interface web du site. Siège aux États-Unis.</li>
+                            </ul>
+                            <p>Ces prestataires n'accèdent qu'aux données strictement nécessaires à leur mission et sont contractuellement tenus de les protéger.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">3.6. Transferts de données hors Union Européenne</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Certains de nos prestataires (Stripe, Resend, Vercel) sont établis aux États-Unis. Les transferts de données vers ces pays sont encadrés par des garanties appropriées conformes au RGPD, notamment les clauses contractuelles types adoptées par la Commission européenne.</p>
+                            <p>Les données d'identification et d'authentification stockées via Supabase sont hébergées au sein de l'Union Européenne (Francfort, Allemagne).</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">3.7. Hébergement et sécurité des données</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Les données d'accès (adresses e-mail et mots de passe chiffrés) sont stockées et sécurisées via Supabase, sur des serveurs situés au sein de l'Union Européenne.</p>
+                            <p>L'éditeur met en œuvre les mesures de sécurité standards de l'industrie pour garantir la confidentialité et la protection de vos données :</p>
+                            <ul>
+                                <li><strong>Chiffrement des connexions :</strong> L'ensemble des échanges entre votre navigateur et l'application Nolimi est sécurisé via le protocole HTTPS (SSL/TLS).</li>
+                                <li><strong>Protection des mots de passe :</strong> Les mots de passe ne sont jamais stockés en clair mais transformés par un algorithme de hachage cryptographique irréversible.</li>
+                                <li><strong>Protection de vos projets :</strong> Vos créations ne sont pas stockées durablement sur nos serveurs. Seul le transit temporaire lors des sessions de collaboration passe par notre infrastructure.</li>
+                                <li><strong>Cookies techniques :</strong> Nolimi n'utilise aucun cookie publicitaire ou de suivi. Seuls les cookies techniques strictement nécessaires fournis par Supabase sont utilisés pour gérer votre session de connexion.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">3.8. Durée de conservation</h3>
                         <div class="legal-chapter__subsection-content">
                             <p>Vos données d'accès (adresse e-mail et mot de passe chiffré) sont conservées uniquement pendant la durée strictement nécessaire à la gestion de votre licence d'utilisation :</p>
                             <ul>
-                                <li><strong>Tant que votre licence est active :</strong> Vos identifiants sont conservés dans notre base de données pour vous permettre de vous connecter et d'utiliser le logiciel Nolimi à tout moment.</li>
-                                <li><strong>En cas de suppression ou de révocation de l'accès :</strong> Si vous demandez la suppression de votre compte ou si l'éditeur révoque votre invitation, l'intégralité de vos données (adresse e-mail et mot de passe) est définitivement et proprement effacée de l'infrastructure Supabase dans un délai maximal de 30 jours.</li>
+                                <li><strong>Tant que votre licence est active :</strong> Vos identifiants sont conservés pour vous permettre de vous connecter et d'utiliser le logiciel Nolimi.</li>
+                                <li><strong>En cas de suppression ou de révocation de l'accès :</strong> Si vous demandez la suppression de votre compte ou si l'éditeur révoque votre accès, l'intégralité de vos données (adresse e-mail et mot de passe) est définitivement effacée de l'infrastructure Supabase dans un délai maximal de 30 jours.</li>
+                                <li><strong>Données de paiement :</strong> Les données conservées par Stripe sont soumises à la politique de confidentialité de Stripe et aux obligations légales de conservation comptable.</li>
                             </ul>
                         </div>
                     </div>
 
                     <div class="legal-chapter__subsection">
-                        <h3 class="legal-chapter__subtitle">3.6. Vos droits (RGPD)</h3>
+                        <h3 class="legal-chapter__subtitle">3.9. Vos droits (RGPD)</h3>
                         <div class="legal-chapter__subsection-content">
-                            <p>Conformément à la réglementation européenne sur la protection des données (RGPD), vous disposez de droits spécifiques concernant les seules données d'accès traitées par l'application :</p>
+                            <p>Conformément au RGPD, vous disposez des droits suivants concernant vos données personnelles :</p>
                             <ul>
-                                <li><strong>Droit d'accès et de rectification :</strong> Vous pouvez demander à tout moment de vérifier ou de modifier l'adresse e-mail associée à votre licence d'utilisation.</li>
-                                <li><strong>Droit à l'effacement (« droit à l'oubli ») :</strong> Vous pouvez exiger la suppression définitive et immédiate de votre adresse e-mail de la base de données Supabase, ce qui entraînera la fermeture de votre accès à Nolimi.</li>
-                                <li><strong>Droit à la limitation du traitement :</strong> Vous pouvez demander à ce que vos données ne soient plus utilisées temporairement (par exemple, le temps de suspendre votre licence).</li>
+                                <li><strong>Droit d'accès et de rectification :</strong> Vous pouvez demander à vérifier ou modifier l'adresse e-mail associée à votre licence.</li>
+                                <li><strong>Droit à l'effacement (« droit à l'oubli ») :</strong> Vous pouvez exiger la suppression de votre adresse e-mail, ce qui entraînera la fermeture de votre accès à Nolimi.</li>
+                                <li><strong>Droit à la limitation du traitement :</strong> Vous pouvez demander la suspension temporaire de l'utilisation de vos données.</li>
+                                <li><strong>Droit à la portabilité :</strong> Vous pouvez demander la communication de vos données d'identification dans un format structuré et lisible.</li>
+                                <li><strong>Droit d'opposition :</strong> Vous pouvez vous opposer au traitement de vos données fondé sur l'intérêt légitime de l'éditeur.</li>
                             </ul>
-                            <p>Pour exercer l'un de ces droits, il vous suffit d'envoyer une demande par e-mail au responsable du traitement mentionné à l'article 3.1. L'éditeur s'engage à traiter votre demande et à vous répondre dans un délai maximal d'un mois réglementaire.</p>
+                            <p>Pour exercer l'un de ces droits, envoyez une demande par e-mail à hello.nolimi+contact@gmail.com. L'éditeur s'engage à vous répondre dans un délai maximal d'un mois.</p>
+                            <p>Vous disposez également du <strong>droit d'introduire une réclamation auprès de la CNIL</strong> (Commission Nationale de l'Informatique et des Libertés) : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">www.cnil.fr</a>.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="legal-chapter" id="cgv" data-legal-panel="cgv" hidden>
+                <div class="legal-chapter__body">
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.1. Objet et champ d'application</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Les présentes Conditions Générales de Vente (ci-après « CGV ») régissent la vente de licences d'utilisation du logiciel Nolimi, proposées sous forme d'abonnement mensuel par l'éditeur BALLART AXEL.</p>
+                            <p>Elles s'appliquent à toute commande passée sur le site nolimi.net, sans préjudice des Conditions Générales d'Utilisation qui régissent l'usage du service une fois la licence activée.</p>
+                            <p>Toute commande implique l'acceptation pleine et entière des présentes CGV par l'acheteur, sans réserve.</p>
+                            <p>Certaines mentions liées à l'activité commerciale (numéro SIRET, numéro de TVA intracommunautaire, médiateur de la consommation) seront complétées au moment de l'ouverture de l'activité et de la mise en vente effective des licences.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.2. Produits et tarifs</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Nolimi propose des abonnements mensuels par licence d'utilisation, disponibles en formules de 1, 5 ou 10 licences. Chaque licence donne accès à un compte nominatif unique sur la plateforme.</p>
+                            <p>Les tarifs en vigueur sont indiqués en euros sur la page « Licences » du site au moment de la commande. Les prix affichés seront communiqués toutes taxes comprises (TTC) conformément au statut fiscal de l'éditeur, une fois l'activité commerciale ouverte.</p>
+                            <p>Le prix applicable à l'acheteur est celui affiché et accepté au moment de la souscription. L'éditeur se réserve le droit de modifier ses tarifs pour les futures souscriptions ; les modifications ne s'appliquent pas rétroactivement aux abonnements en cours, sous réserve des conditions de renouvellement.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.3. Commande et paiement</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>La commande s'effectue en ligne via la page « Licences » du site. L'acheteur sélectionne la formule souhaitée et est redirigé vers la page de paiement sécurisée de Stripe.</p>
+                            <p>Le paiement est traité par le prestataire Stripe Inc. Nolimi ne collecte ni ne stocke aucune coordonnée bancaire : celles-ci sont saisies et conservées directement par Stripe.</p>
+                            <p>La commande n'est définitivement confirmée qu'après validation du paiement par Stripe. En cas de refus de paiement, la commande est automatiquement annulée.</p>
+                            <p>En validant le paiement, l'acheteur reconnaît avoir pris connaissance des présentes CGV et des Conditions Générales d'Utilisation.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.4. Livraison et activation du service</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Nolimi est un service numérique accessible en ligne. Il ne fait l'objet d'aucune livraison physique.</p>
+                            <p>Après validation du paiement, l'acheteur est invité à renseigner les adresses e-mail des utilisateurs pour lesquels les licences seront activées (une adresse distincte par licence).</p>
+                            <p>Les identifiants de connexion sont ensuite transmis par e-mail à chaque utilisateur concerné. L'accès au service est effectivement disponible dès réception de ces identifiants.</p>
+                            <p>L'acheteur est responsable de l'exactitude des adresses e-mail communiquées lors de l'activation. Toute erreur de saisie relève de sa responsabilité.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.5. Abonnement et renouvellement</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Chaque licence est souscrite sous forme d'abonnement mensuel. Sauf résiliation préalable par l'acheteur, l'abonnement se renouvelle automatiquement à chaque échéance mensuelle, pour la même durée.</p>
+                            <p>L'acheteur est informé du caractère récurrent de l'abonnement et de son renouvellement automatique avant la validation du paiement.</p>
+                            <p>En cas d'impayé, de rejet de prélèvement ou de fraude, l'éditeur se réserve le droit de suspendre l'accès au service jusqu'à régularisation de la situation, sans préjudice des sommes dues.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.6. Résiliation de l'abonnement</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>L'acheteur peut résilier son abonnement à tout moment via l'espace de gestion Stripe associé à son paiement, ou en adressant une demande à hello.nolimi+contact@gmail.com.</p>
+                            <p>La résiliation prend effet à la fin de la période d'abonnement en cours : l'accès au service reste actif jusqu'à cette date, sauf disposition légale contraire.</p>
+                            <p>L'éditeur peut résilier un abonnement en cas d'impayé persistant, de fraude ou de violation des Conditions Générales d'Utilisation, sans remboursement des sommes déjà versées.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.7. Politique de remboursement</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Sauf disposition légale impérative contraire, les sommes versées au titre d'un abonnement en cours ne donnent lieu à aucun remboursement au prorata temporis, notamment en cas de résiliation en cours de période ou de non-utilisation du service.</p>
+                            <p>En cas de dysfonctionnement majeur imputable à l'éditeur et non résolu dans un délai raisonnable après signalement, une solution commerciale pourra être étudiée au cas par cas sur simple demande à l'adresse hello.nolimi+contact@gmail.com.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.8. Droit de rétractation</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Conformément au Code de la consommation, le consommateur dispose d'un délai de quatorze (14) jours à compter de la souscription pour exercer son droit de rétractation, sans avoir à motiver sa décision.</p>
+                            <p>Pour exercer ce droit, l'acheteur peut adresser sa demande par e-mail à hello.nolimi+contact@gmail.com, en précisant son nom, son adresse e-mail et le numéro ou la date de sa commande.</p>
+                            <p><strong>Service numérique :</strong> Nolimi est un contenu numérique fourni immédiatement après l'activation de la licence. Conformément à l'article L221-28 du Code de la consommation, si l'acheteur demande l'exécution immédiate du service avant l'expiration du délai de rétractation, il renonce à son droit de rétractation pour la période déjà exécutée.</p>
+                            <p>En cas de rétractation acceptée, l'éditeur procédera au remboursement des sommes versées dans un délai de quatorze (14) jours, via le même moyen de paiement que celui utilisé lors de la commande, et désactivera l'accès au service concerné.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.9. Facturation</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>Les factures et reçus de paiement sont émis par Stripe et envoyés à l'adresse e-mail de l'acheteur utilisée lors du paiement.</p>
+                            <p>Les mentions légales obligatoires de facturation (SIRET, TVA) seront complétées au moment de l'ouverture de l'activité commerciale.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.10. Modification des conditions de vente</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>L'éditeur se réserve le droit de modifier les présentes CGV à tout moment. La date de dernière mise à jour est indiquée en tête de la page « Documents légaux ».</p>
+                            <p>Les CGV applicables sont celles en vigueur au moment de la commande. Les modifications ne s'appliquent pas aux abonnements en cours sans acceptation expresse de l'acheteur, sauf disposition légale contraire.</p>
+                        </div>
+                    </div>
+
+                    <div class="legal-chapter__subsection">
+                        <h3 class="legal-chapter__subtitle">4.11. Médiation et litiges</h3>
+                        <div class="legal-chapter__subsection-content">
+                            <p>En cas de litige, l'acheteur est invité à contacter l'éditeur en priorité à l'adresse hello.nolimi+contact@gmail.com afin de rechercher une solution amiable.</p>
+                            <p>Conformément aux articles L.612-1 et suivants du Code de la consommation, le consommateur a le droit de recourir gratuitement à un médiateur de la consommation. Les coordonnées du médiateur compétent seront communiquées au moment de l'ouverture de l'activité commerciale.</p>
+                            <p>Conformément au règlement européen n° 524/2013, la Commission européenne met à disposition une plateforme de règlement en ligne des litiges accessible à l'adresse suivante : <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">https://ec.europa.eu/consumers/odr</a>.</p>
+                            <p>Les présentes CGV sont régies par le droit français. En cas de litige non résolu à l'amiable, compétence exclusive est attribuée aux tribunaux du ressort d'Amiens (80000).</p>
                         </div>
                     </div>
                 </div>
             </section>
         </article>
         <footer class="legal-page-footer">
-            <p>En utilisant l'application Nolimi, vous reconnaissez avoir pris connaissance de ces documents et vous acceptez de vous y conformer sans réserve.</p>
-            <p>Pour toute question ou demande concernant ces documents légaux, vous pouvez contacter l'éditeur à l'adresse suivante : <a href="mailto:hello.nolimi+contact@gmail.com">hello.nolimi+contact@gmail.com</a>.</p>
+            <div class="legal-page-footer__inner">
+                <p>En utilisant l'application Nolimi, vous reconnaissez avoir pris connaissance de ces documents (Conditions Générales d'Utilisation, Conditions Générales de Vente et Politique de Confidentialité) et vous acceptez de vous y conformer sans réserve.</p>
+                <p>Pour toute question ou demande concernant ces documents légaux, vous pouvez contacter l'éditeur à l'adresse suivante : <a href="mailto:hello.nolimi+contact@gmail.com">hello.nolimi+contact@gmail.com</a>.</p>
+            </div>
         </footer>
     </main>
     <script>
         (function () {
             var btn = document.getElementById('legal-back');
-            if (!btn) return;
-            btn.addEventListener('click', function () {
-                if (window.history.length > 1) {
-                    window.history.back();
-                    return;
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    if (window.history.length > 1) {
+                        window.history.back();
+                        return;
+                    }
+                    window.location.href = '../accueil/index.html';
+                });
+            }
+
+            var tabButtons = document.querySelectorAll('[data-legal-tab]');
+            var panels = document.querySelectorAll('[data-legal-panel]');
+            var validTabs = ['mentions-legales', 'cgu', 'confidentialite', 'cgv'];
+
+            function setActiveTab(tabId, updateHash) {
+                if (validTabs.indexOf(tabId) === -1) tabId = 'mentions-legales';
+
+                tabButtons.forEach(function (button) {
+                    var isActive = button.getAttribute('data-legal-tab') === tabId;
+                    button.classList.toggle('legal-tabs__btn--active', isActive);
+                    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                });
+
+                panels.forEach(function (panel) {
+                    var isActive = panel.getAttribute('data-legal-panel') === tabId;
+                    panel.classList.toggle('legal-chapter--active', isActive);
+                    panel.hidden = !isActive;
+                });
+
+                if (updateHash !== false && window.location.hash.replace(/^#/, '') !== tabId) {
+                    history.replaceState(null, '', '#' + tabId);
                 }
-                window.location.href = '../accueil/index.html';
+            }
+
+            tabButtons.forEach(function (button) {
+                button.setAttribute('role', 'tab');
+                button.addEventListener('click', function () {
+                    setActiveTab(button.getAttribute('data-legal-tab'));
+                });
             });
+
+            panels.forEach(function (panel) {
+                panel.setAttribute('role', 'tabpanel');
+            });
+
+            var nav = document.querySelector('.legal-tabs');
+            if (nav) nav.setAttribute('role', 'tablist');
+
+            function openFromHash() {
+                var hash = window.location.hash.replace(/^#/, '');
+                setActiveTab(hash || 'mentions-legales', false);
+            }
+
+            openFromHash();
+            window.addEventListener('hashchange', openFromHash);
         })();
     </script>
 </body>

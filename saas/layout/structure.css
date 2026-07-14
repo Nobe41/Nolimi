@@ -694,16 +694,11 @@ input[type="text"], .input-select, .input-select-disabled {
     gap: 0.5rem 1.25rem;
 }
 
-.saas-legal-footer__version,
 .saas-legal-footer__copyright {
     font-size: 0.72rem;
     color: #6b6b73;
     letter-spacing: 0.01em;
     margin: 0;
-}
-
-.saas-legal-footer__version {
-    flex-shrink: 0;
 }
 
 .saas-legal-footer__link {
