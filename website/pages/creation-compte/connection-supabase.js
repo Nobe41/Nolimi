@@ -1,5 +1,9 @@
-// Création de comptes licence via l'API Vercel (clé secrète Supabase côté serveur).
+// Création de comptes licence via l'API Vercel (Stripe + Supabase côté serveur).
 var NolimiLicenseSupabase = (function () {
+    function getStripeSessionId() {
+        return new URLSearchParams(window.location.search).get('session_id') || '';
+    }
+
     function collectEmails(licenseCount) {
         var emails = [];
 
@@ -36,13 +40,14 @@ var NolimiLicenseSupabase = (function () {
         return new URL('/api/create-license-accounts', window.location.origin).href;
     }
 
-    function createAccounts(emails, licenseCount) {
+    function createAccounts(emails, licenseCount, sessionId) {
         return fetch(resolveApiUrl(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 emails: emails,
-                licenseCount: licenseCount
+                licenseCount: licenseCount,
+                sessionId: sessionId
             })
         }).then(function (response) {
             return response.json().then(function (data) {
@@ -77,12 +82,20 @@ var NolimiLicenseSupabase = (function () {
     }
 
     function submitLicenseAccounts(licenseCount) {
+        var sessionId = getStripeSessionId();
+        if (!sessionId) {
+            return Promise.resolve({
+                ok: false,
+                error: 'Accès réservé après un paiement validé. Repassez par la page abonnement.'
+            });
+        }
+
         var collected = collectEmails(licenseCount);
         if (collected.error) {
             return Promise.resolve({ ok: false, error: collected.error });
         }
 
-        return createAccounts(collected.emails, licenseCount).then(function (result) {
+        return createAccounts(collected.emails, licenseCount, sessionId).then(function (result) {
             if (result.status === 207 && result.data && result.data.partial) {
                 return {
                     ok: true,
@@ -104,6 +117,7 @@ var NolimiLicenseSupabase = (function () {
     }
 
     return {
+        getStripeSessionId: getStripeSessionId,
         collectEmails: collectEmails,
         createAccounts: createAccounts,
         submitLicenseAccounts: submitLicenseAccounts

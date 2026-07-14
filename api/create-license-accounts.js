@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const stripeVerify = require('./stripe-verify');
 
 const ALLOWED_COUNTS = [1, 5, 10];
 const PASSWORD_LENGTH = 14;
@@ -88,9 +89,10 @@ module.exports = async function handler(req, res) {
     }
 
     var supabaseUrl = process.env.SUPABASE_URL;
-    var secretKey = process.env.SUPABASE_SECRET_KEY;
+    var supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+    var stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
-    if (!supabaseUrl || !secretKey) {
+    if (!supabaseUrl || !supabaseSecretKey) {
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({
@@ -99,11 +101,42 @@ module.exports = async function handler(req, res) {
         return;
     }
 
+    if (!stripeSecretKey) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({
+            error: 'Configuration serveur Stripe manquante (STRIPE_SECRET_KEY).'
+        }));
+        return;
+    }
+
     var body = req.body || {};
     var emails = normalizeEmails(body.emails);
     var licenseCount = parseInt(body.licenseCount, 10);
+    var sessionId = String(body.sessionId || '').trim();
+
     if (ALLOWED_COUNTS.indexOf(licenseCount) === -1) {
         licenseCount = emails.length;
+    }
+
+    if (!sessionId) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Session de paiement requise.' }));
+        return;
+    }
+
+    var paymentCheck = await stripeVerify.verifyPaidCheckoutSession(
+        stripeSecretKey,
+        sessionId,
+        licenseCount
+    );
+
+    if (!paymentCheck.ok) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: paymentCheck.error }));
+        return;
     }
 
     var validationError = validatePayload(emails, licenseCount);
@@ -120,11 +153,10 @@ module.exports = async function handler(req, res) {
     for (var i = 0; i < emails.length; i++) {
         var email = emails[i];
         var password = generatePassword(PASSWORD_LENGTH);
-        var result = await createSupabaseUser(supabaseUrl, secretKey, email, password);
+        var result = await createSupabaseUser(supabaseUrl, supabaseSecretKey, email, password);
 
         if (result.ok) {
             created.push({ email: result.email, userId: result.userId });
-            // TODO : envoyer email avec identifiants (email + password)
         } else {
             errors.push(result.error);
         }
@@ -135,6 +167,10 @@ module.exports = async function handler(req, res) {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: errors[0], errors: errors }));
         return;
+    }
+
+    if (created.length) {
+        await stripeVerify.markCheckoutSessionUsed(stripeSecretKey, sessionId);
     }
 
     if (errors.length) {

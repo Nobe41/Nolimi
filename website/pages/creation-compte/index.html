@@ -63,6 +63,9 @@
             var errEl = document.getElementById('error-msg');
             var successEl = document.getElementById('success-msg');
             var submitBtn = document.getElementById('btn-submit');
+            var stripeSessionId = typeof NolimiLicenseSupabase !== 'undefined' && NolimiLicenseSupabase.getStripeSessionId
+                ? NolimiLicenseSupabase.getStripeSessionId()
+                : (new URLSearchParams(window.location.search).get('session_id') || '');
 
             function parseLicenseCount() {
                 var raw = new URLSearchParams(window.location.search).get('licences');
@@ -109,6 +112,11 @@
             }
 
             function updateSubmitState() {
+                if (!stripeSessionId) {
+                    submitBtn.disabled = true;
+                    return;
+                }
+
                 var emails = [];
 
                 for (var i = 1; i <= licenseCount; i++) {
@@ -140,7 +148,14 @@
             }
 
             var licenseCount = parseLicenseCount();
-            renderFields(licenseCount);
+
+            if (!stripeSessionId) {
+                errEl.textContent = 'Accès réservé après un paiement validé. Repassez par la page abonnement.';
+                instructionsEl.textContent = '';
+                form.hidden = true;
+            } else {
+                renderFields(licenseCount);
+            }
 
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
