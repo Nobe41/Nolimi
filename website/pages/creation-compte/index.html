@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../../main.css">
     <link rel="stylesheet" href="../connexion/connexion.css">
     <link rel="stylesheet" href="./creation-compte.css">
+    <script src="./connection-supabase.js"></script>
 </head>
 <body class="page page--auth">
     <header class="panel">
@@ -49,7 +50,7 @@
                 <p class="license-notice">
                     En cliquant sur « Valider », vous allez recevoir vos identifiants par mail.
                 </p>
-                <button type="submit" id="btn-submit">Valider</button>
+                <button type="submit" id="btn-submit" disabled>Valider</button>
             </form>
         </div>
     </main>
@@ -99,8 +100,43 @@
                     input.setAttribute('aria-label', count === 1
                         ? 'Adresse mail licence'
                         : 'Adresse mail licence ' + i);
+                    input.addEventListener('input', updateSubmitState);
+                    input.addEventListener('blur', updateSubmitState);
                     fieldsEl.appendChild(input);
                 }
+
+                updateSubmitState();
+            }
+
+            function updateSubmitState() {
+                var emails = [];
+
+                for (var i = 1; i <= licenseCount; i++) {
+                    var field = document.getElementById('email-' + i);
+                    if (!field) {
+                        submitBtn.disabled = true;
+                        return;
+                    }
+                    var value = field.value.trim();
+                    if (!value || !field.checkValidity()) {
+                        submitBtn.disabled = true;
+                        return;
+                    }
+                    emails.push(value.toLowerCase());
+                }
+
+                if (licenseCount > 1) {
+                    var unique = {};
+                    for (var j = 0; j < emails.length; j++) {
+                        if (unique[emails[j]]) {
+                            submitBtn.disabled = true;
+                            return;
+                        }
+                        unique[emails[j]] = true;
+                    }
+                }
+
+                submitBtn.disabled = false;
             }
 
             var licenseCount = parseLicenseCount();
@@ -108,6 +144,7 @@
 
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
+                if (submitBtn.disabled || !form.checkValidity()) return;
                 errEl.textContent = '';
                 successEl.textContent = '';
 
@@ -138,11 +175,25 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Envoi…';
 
-                setTimeout(function () {
-                    successEl.textContent = 'Vos demandes ont été enregistrées. Vous recevrez vos identifiants par mail sous peu.';
-                    submitBtn.disabled = false;
+                if (typeof NolimiLicenseSupabase === 'undefined' || !NolimiLicenseSupabase.submitLicenseAccounts) {
+                    errEl.textContent = 'Service de création de comptes indisponible.';
                     submitBtn.textContent = 'Valider';
-                }, 600);
+                    updateSubmitState();
+                    return;
+                }
+
+                NolimiLicenseSupabase.submitLicenseAccounts(licenseCount).then(function (result) {
+                    if (!result.ok) {
+                        errEl.textContent = result.error || 'Impossible de créer les comptes.';
+                        submitBtn.textContent = 'Valider';
+                        updateSubmitState();
+                        return;
+                    }
+
+                    successEl.textContent = 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.';
+                    submitBtn.textContent = 'Valider';
+                    updateSubmitState();
+                });
             });
         })();
     </script>
