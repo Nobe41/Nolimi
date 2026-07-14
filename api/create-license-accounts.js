@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const stripeVerify = require('./stripe-verify');
+const resendMail = require('./send-credentials-email');
 
 const ALLOWED_COUNTS = [1, 5, 10];
 const PASSWORD_LENGTH = 14;
@@ -91,6 +92,9 @@ module.exports = async function handler(req, res) {
     var supabaseUrl = process.env.SUPABASE_URL;
     var supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
     var stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    var resendApiKey = process.env.RESEND_API_KEY;
+    var resendFrom = process.env.RESEND_FROM_EMAIL;
+    var loginUrl = process.env.NOLIMI_SITE_URL || 'https://nolimi.net';
 
     if (!supabaseUrl || !supabaseSecretKey) {
         res.statusCode = 500;
@@ -106,6 +110,15 @@ module.exports = async function handler(req, res) {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({
             error: 'Configuration serveur Stripe manquante (STRIPE_SECRET_KEY).'
+        }));
+        return;
+    }
+
+    if (!resendApiKey || !resendFrom) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({
+            error: 'Configuration Resend manquante (RESEND_API_KEY / RESEND_FROM_EMAIL).'
         }));
         return;
     }
@@ -156,7 +169,19 @@ module.exports = async function handler(req, res) {
         var result = await createSupabaseUser(supabaseUrl, supabaseSecretKey, email, password);
 
         if (result.ok) {
-            created.push({ email: result.email, userId: result.userId });
+            var mailResult = await resendMail.sendCredentialsEmail({
+                apiKey: resendApiKey,
+                from: resendFrom,
+                to: email,
+                password: password,
+                siteUrl: loginUrl
+            });
+
+            if (!mailResult.ok) {
+                errors.push('Compte créé pour ' + email + ', mais l\'envoi du mail a échoué : ' + mailResult.error);
+            }
+
+            created.push({ email: result.email, userId: result.userId, emailSent: mailResult.ok });
         } else {
             errors.push(result.error);
         }

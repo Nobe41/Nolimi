@@ -1,7 +1,10 @@
 // Création de comptes licence via l'API Vercel (Stripe + Supabase côté serveur).
 var NolimiLicenseSupabase = (function () {
     function getStripeSessionId() {
-        return new URLSearchParams(window.location.search).get('session_id') || '';
+        var params = new URLSearchParams(window.location.search);
+        return params.get('session_id')
+            || params.get('checkout_session_id')
+            || '';
     }
 
     function collectEmails(licenseCount) {

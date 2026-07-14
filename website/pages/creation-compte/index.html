@@ -65,7 +65,10 @@
             var submitBtn = document.getElementById('btn-submit');
             var stripeSessionId = typeof NolimiLicenseSupabase !== 'undefined' && NolimiLicenseSupabase.getStripeSessionId
                 ? NolimiLicenseSupabase.getStripeSessionId()
-                : (new URLSearchParams(window.location.search).get('session_id') || '');
+                : (new URLSearchParams(window.location.search).get('session_id')
+                    || new URLSearchParams(window.location.search).get('checkout_session_id')
+                    || '');
+            var paymentSuccessEl = document.querySelector('.payment-success');
 
             function parseLicenseCount() {
                 var raw = new URLSearchParams(window.location.search).get('licences');
@@ -150,8 +153,9 @@
             var licenseCount = parseLicenseCount();
 
             if (!stripeSessionId) {
-                errEl.textContent = 'Accès réservé après un paiement validé. Repassez par la page abonnement.';
-                instructionsEl.textContent = '';
+                if (paymentSuccessEl) paymentSuccessEl.hidden = true;
+                errEl.textContent = 'Paiement reçu, mais la session Stripe est introuvable dans l’URL. Vérifiez que l’URL de redirection Stripe contient bien : session_id={CHECKOUT_SESSION_ID}';
+                instructionsEl.textContent = 'Exemple d’URL Stripe : …/creation-compte/index.html?licences=1&session_id={CHECKOUT_SESSION_ID}';
                 form.hidden = true;
             } else {
                 renderFields(licenseCount);
