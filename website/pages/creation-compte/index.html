@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolimi - Création de compte</title>
+    <link rel="stylesheet" href="../../main.css">
+    <link rel="stylesheet" href="../connexion/connexion.css">
+    <link rel="stylesheet" href="./creation-compte.css">
+</head>
+<body class="page page--auth">
+    <header class="panel">
+        <a href="../accueil/index.html" class="panel-logo" aria-label="Nolimi — accueil">
+            <img
+                src="../../../assets/brand/nolimi-logo-wordmark.jpg"
+                alt=""
+                class="panel-logo__img"
+                width="1024"
+                height="300"
+                decoding="async"
+            >
+        </a>
+        <nav class="panel-actions" aria-label="Actions principales">
+            <a href="../abonnement/index.html" class="panel-cta panel-cta--secondary">Licences</a>
+            <a href="../connexion/index.html" class="panel-cta">Se connecter</a>
+        </nav>
+    </header>
+    <main class="page-main page-main--auth">
+        <a href="../accueil/index.html" class="auth-back">← Retour</a>
+        <div class="auth-centre">
+            <div class="payment-success" aria-labelledby="payment-success-title">
+                <div class="payment-success__icon" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="3"/>
+                        <path d="M20 33.5L28.5 42L44 24.5" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <p class="payment-success__text" id="payment-success-title">Paiement validé</p>
+            </div>
+
+            <p class="license-instructions">
+                Veuillez entrer les 5 adresses mail des licences souhaitées.
+            </p>
+
+            <form class="form-login form-licenses" id="form-licenses">
+                <input type="email" id="email-1" name="email-1" placeholder="Adresse mail — licence 1" required autocomplete="email" aria-label="Adresse mail licence 1">
+                <input type="email" id="email-2" name="email-2" placeholder="Adresse mail — licence 2" required autocomplete="email" aria-label="Adresse mail licence 2">
+                <input type="email" id="email-3" name="email-3" placeholder="Adresse mail — licence 3" required autocomplete="email" aria-label="Adresse mail licence 3">
+                <input type="email" id="email-4" name="email-4" placeholder="Adresse mail — licence 4" required autocomplete="email" aria-label="Adresse mail licence 4">
+                <input type="email" id="email-5" name="email-5" placeholder="Adresse mail — licence 5" required autocomplete="email" aria-label="Adresse mail licence 5">
+
+                <div id="error-msg" class="error-msg" aria-live="polite"></div>
+                <div id="success-msg" class="success-msg" aria-live="polite"></div>
+
+                <p class="license-notice">
+                    En cliquant sur « Valider », vous allez recevoir vos identifiants par mail.
+                </p>
+                <button type="submit" id="btn-submit">Valider</button>
+            </form>
+        </div>
+    </main>
+    <script>
+        (function () {
+            var form = document.getElementById('form-licenses');
+            var errEl = document.getElementById('error-msg');
+            var successEl = document.getElementById('success-msg');
+            var submitBtn = document.getElementById('btn-submit');
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                errEl.textContent = '';
+                successEl.textContent = '';
+
+                var emails = [];
+                for (var i = 1; i <= 5; i++) {
+                    var value = document.getElementById('email-' + i).value.trim().toLowerCase();
+                    if (!value) {
+                        errEl.textContent = 'Veuillez renseigner les 5 adresses mail.';
+                        return;
+                    }
+                    emails.push(value);
+                }
+
+                var unique = {};
+                for (var j = 0; j < emails.length; j++) {
+                    if (unique[emails[j]]) {
+                        errEl.textContent = 'Chaque licence doit avoir une adresse mail différente.';
+                        return;
+                    }
+                    unique[emails[j]] = true;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Envoi…';
+
+                setTimeout(function () {
+                    successEl.textContent = 'Vos demandes ont été enregistrées. Vous recevrez vos identifiants par mail sous peu.';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Valider';
+                }, 600);
+            });
+        })();
+    </script>
+</body>
+</html>

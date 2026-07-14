@@ -29,6 +29,13 @@ var NolimiAuth = (function () {
         return resolveUrl('../website/pages/connexion/index.html');
     }
 
+    function getSignupUrl() {
+        if (window.location.pathname.indexOf('/creation-compte/') !== -1) {
+            return resolveUrl('index.html');
+        }
+        return resolveUrl('../website/pages/creation-compte/index.html');
+    }
+
     function getAppUrl(sessionId) {
         var url = resolveUrl('../../../saas/app.html?start=1');
         if (!sessionId) return url;
@@ -209,6 +216,45 @@ var NolimiAuth = (function () {
         });
     }
 
+    function mapSignUpError(error) {
+        if (!error) return 'Impossible de créer le compte.';
+        var msg = String(error.message || '');
+        var code = String(error.code || error.error_code || '');
+        if (/already registered|already been registered|user already exists/i.test(msg + ' ' + code)) {
+            return 'Cette adresse mail est déjà utilisée. Connectez-vous ou réinitialisez votre mot de passe.';
+        }
+        if (/signups not allowed|signup.*disabled|new users.*sign up/i.test(msg + ' ' + code)) {
+            return 'Les inscriptions sont actuellement désactivées. Contactez-nous pour obtenir un accès.';
+        }
+        if (/password.*at least|too short/i.test(msg + ' ' + code)) {
+            return 'Le mot de passe doit contenir au moins 6 caractères.';
+        }
+        if (/invalid email|valid email/i.test(msg + ' ' + code)) {
+            return 'Adresse mail invalide.';
+        }
+        return msg || 'Impossible de créer le compte.';
+    }
+
+    function signUpWithPassword(email, password) {
+        var sb = getClient();
+        if (!sb) {
+            return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
+        }
+        var credentials = {
+            email: String(email || '').trim(),
+            password: String(password || '')
+        };
+        return sb.auth.getSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            if (session && isAnonymousSession(session)) {
+                return sb.auth.signOut().then(function () {
+                    return sb.auth.signUp(credentials);
+                });
+            }
+            return sb.auth.signUp(credentials);
+        });
+    }
+
     function signInWithPassword(email, password) {
         var sb = getClient();
         if (!sb) {
@@ -350,6 +396,8 @@ var NolimiAuth = (function () {
         mapGuestAuthError: mapGuestAuthError,
         getClient: getClient,
         requireSession: requireSession,
+        signUpWithPassword: signUpWithPassword,
+        mapSignUpError: mapSignUpError,
         signInWithPassword: signInWithPassword,
         signInAnonymously: signInAnonymously,
         ensureAuthForSessionJoin: ensureAuthForSessionJoin,
@@ -366,6 +414,7 @@ var NolimiAuth = (function () {
         redirectIfAlreadyLoggedIn: redirectIfAlreadyLoggedIn,
         bindLogoutButton: bindLogoutButton,
         getLoginUrl: getLoginUrl,
+        getSignupUrl: getSignupUrl,
         getAppUrl: getAppUrl,
         parseSessionLink: parseSessionLink,
         isValidSessionId: isValidSessionId,
