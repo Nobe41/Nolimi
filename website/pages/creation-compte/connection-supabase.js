@@ -1,4 +1,4 @@
-// Création de comptes licence via l'API serveur (clé secrète Supabase côté serveur uniquement).
+// Création de comptes licence via l'API Vercel (clé secrète Supabase côté serveur).
 var NolimiLicenseSupabase = (function () {
     function collectEmails(licenseCount) {
         var emails = [];
@@ -81,11 +81,25 @@ var NolimiLicenseSupabase = (function () {
         if (collected.error) {
             return Promise.resolve({ ok: false, error: collected.error });
         }
+
         return createAccounts(collected.emails, licenseCount).then(function (result) {
+            if (result.status === 207 && result.data && result.data.partial) {
+                return {
+                    ok: true,
+                    partial: true,
+                    created: result.data.created || 0,
+                    message: (result.data.created || 0) + ' compte(s) créé(s), mais certaines adresses ont échoué : ' + (result.data.errors || []).join(' ')
+                };
+            }
+
             if (!result.ok) {
                 return { ok: false, error: mapApiError(result) };
             }
-            return { ok: true, created: result.data.created || collected.emails.length };
+
+            return {
+                ok: true,
+                created: result.data.created || collected.emails.length
+            };
         });
     }
 

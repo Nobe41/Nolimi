@@ -190,7 +190,7 @@
                         return;
                     }
 
-                    successEl.textContent = 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.';
+                    successEl.textContent = result.message || 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.';
                     submitBtn.textContent = 'Valider';
                     updateSubmitState();
                 });
