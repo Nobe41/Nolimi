@@ -53,16 +53,28 @@
     margin-bottom: 0;
 }
 
+.legal-tabs-shell {
+    width: 100%;
+    height: 3rem;
+    overflow: hidden;
+    border-bottom: 1px solid var(--nolimi-border-subtle);
+    background: var(--nolimi-surface);
+}
+
 .legal-tabs {
     display: flex;
-    align-items: stretch;
+    flex-wrap: nowrap;
+    align-items: center;
     gap: 0;
     width: 100%;
+    height: 100%;
     margin: 0;
     padding: 0 var(--legal-content-pad);
-    border-bottom: 1px solid var(--nolimi-border-subtle);
     overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
     scrollbar-width: none;
 }
 
@@ -71,9 +83,13 @@
 }
 
 .legal-tabs__btn {
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    align-self: stretch;
+    height: 100%;
     margin: 0;
-    padding: 0.85rem 1.25rem;
+    padding: 0 1.25rem;
     font: inherit;
     font-size: 0.9rem;
     font-weight: 500;
@@ -82,10 +98,11 @@
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
-    margin-bottom: -1px;
+    box-sizing: border-box;
     cursor: pointer;
     white-space: nowrap;
     transition: color 0.2s ease, border-color 0.2s ease;
+    touch-action: pan-x;
 }
 
 .legal-tabs__btn:hover {

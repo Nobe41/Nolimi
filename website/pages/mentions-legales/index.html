@@ -14,12 +14,14 @@
             <h1 class="legal-page__title">Documents légaux — Nolimi</h1>
             <p class="legal-page__updated">Dernière mise à jour : 14 juillet 2026</p>
         </header>
-        <nav class="legal-tabs" aria-label="Chapitres légaux">
-            <button type="button" class="legal-tabs__btn legal-tabs__btn--active" data-legal-tab="mentions-legales">Mentions légales</button>
-            <button type="button" class="legal-tabs__btn" data-legal-tab="cgu">Conditions d'utilisation</button>
-            <button type="button" class="legal-tabs__btn" data-legal-tab="confidentialite">Politique de confidentialité</button>
-            <button type="button" class="legal-tabs__btn" data-legal-tab="cgv">Conditions de vente</button>
-        </nav>
+        <div class="legal-tabs-shell">
+            <nav class="legal-tabs" aria-label="Chapitres légaux">
+                <button type="button" class="legal-tabs__btn legal-tabs__btn--active" data-legal-tab="mentions-legales">Mentions légales</button>
+                <button type="button" class="legal-tabs__btn" data-legal-tab="cgu">Conditions d'utilisation</button>
+                <button type="button" class="legal-tabs__btn" data-legal-tab="confidentialite">Politique de confidentialité</button>
+                <button type="button" class="legal-tabs__btn" data-legal-tab="cgv">Conditions de vente</button>
+            </nav>
+        </div>
         <article class="legal-doc">
             <section class="legal-chapter legal-chapter--active" id="mentions-legales" data-legal-panel="mentions-legales">
                 <div class="legal-chapter__body">
@@ -473,6 +475,39 @@
 
             openFromHash();
             window.addEventListener('hashchange', openFromHash);
+
+            var tabs = document.querySelector('.legal-tabs');
+            var tabsShell = document.querySelector('.legal-tabs-shell');
+            if (tabs && tabsShell) {
+                tabs.addEventListener('wheel', function (e) {
+                    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                var touchStartX = 0;
+                var touchStartY = 0;
+                var touchAxis = null;
+
+                tabs.addEventListener('touchstart', function (e) {
+                    if (!e.touches.length) return;
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    touchAxis = null;
+                }, { passive: true });
+
+                tabs.addEventListener('touchmove', function (e) {
+                    if (!e.touches.length) return;
+                    var dx = e.touches[0].clientX - touchStartX;
+                    var dy = e.touches[0].clientY - touchStartY;
+                    if (!touchAxis && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+                        touchAxis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+                    }
+                    if (touchAxis === 'y') {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+            }
         })();
     </script>
 </body>
