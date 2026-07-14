@@ -40,6 +40,23 @@
     max-width: 320px;
 }
 
+#license-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+.page-main--auth.page-main--licenses-many {
+    justify-content: flex-start;
+    padding-bottom: 2.5rem;
+}
+
+.page-main--auth.page-main--licenses-many .auth-centre {
+    justify-content: flex-start;
+    padding-top: 0.5rem;
+}
+
 .license-notice {
     margin: 0.25rem 0 0;
     font-size: 0.72rem;

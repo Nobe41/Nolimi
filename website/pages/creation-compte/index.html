@@ -38,16 +38,10 @@
                 <p class="payment-success__text" id="payment-success-title">Paiement validé</p>
             </div>
 
-            <p class="license-instructions">
-                Veuillez entrer les 5 adresses mail des licences souhaitées.
-            </p>
+            <p class="license-instructions" id="license-instructions"></p>
 
             <form class="form-login form-licenses" id="form-licenses">
-                <input type="email" id="email-1" name="email-1" placeholder="Adresse mail — licence 1" required autocomplete="email" aria-label="Adresse mail licence 1">
-                <input type="email" id="email-2" name="email-2" placeholder="Adresse mail — licence 2" required autocomplete="email" aria-label="Adresse mail licence 2">
-                <input type="email" id="email-3" name="email-3" placeholder="Adresse mail — licence 3" required autocomplete="email" aria-label="Adresse mail licence 3">
-                <input type="email" id="email-4" name="email-4" placeholder="Adresse mail — licence 4" required autocomplete="email" aria-label="Adresse mail licence 4">
-                <input type="email" id="email-5" name="email-5" placeholder="Adresse mail — licence 5" required autocomplete="email" aria-label="Adresse mail licence 5">
+                <div id="license-fields"></div>
 
                 <div id="error-msg" class="error-msg" aria-live="polite"></div>
                 <div id="success-msg" class="success-msg" aria-live="polite"></div>
@@ -61,10 +55,56 @@
     </main>
     <script>
         (function () {
+            var ALLOWED_COUNTS = [1, 5, 10];
             var form = document.getElementById('form-licenses');
+            var fieldsEl = document.getElementById('license-fields');
+            var instructionsEl = document.getElementById('license-instructions');
             var errEl = document.getElementById('error-msg');
             var successEl = document.getElementById('success-msg');
             var submitBtn = document.getElementById('btn-submit');
+
+            function parseLicenseCount() {
+                var raw = new URLSearchParams(window.location.search).get('licences');
+                var count = parseInt(raw, 10);
+                if (ALLOWED_COUNTS.indexOf(count) === -1) return 1;
+                return count;
+            }
+
+            function licenseInstructions(count) {
+                if (count === 1) {
+                    return 'Veuillez entrer l\'adresse mail de la licence souhaitée.';
+                }
+                return 'Veuillez entrer les ' + count + ' adresses mail des licences souhaitées.';
+            }
+
+            function renderFields(count) {
+                instructionsEl.textContent = licenseInstructions(count);
+                fieldsEl.innerHTML = '';
+
+                var mainEl = document.querySelector('.page-main--auth');
+                if (mainEl) {
+                    mainEl.classList.toggle('page-main--licenses-many', count >= 5);
+                }
+
+                for (var i = 1; i <= count; i++) {
+                    var input = document.createElement('input');
+                    input.type = 'email';
+                    input.id = 'email-' + i;
+                    input.name = 'email-' + i;
+                    input.required = true;
+                    input.autocomplete = 'email';
+                    input.placeholder = count === 1
+                        ? 'Adresse mail — licence'
+                        : 'Adresse mail — licence ' + i;
+                    input.setAttribute('aria-label', count === 1
+                        ? 'Adresse mail licence'
+                        : 'Adresse mail licence ' + i);
+                    fieldsEl.appendChild(input);
+                }
+            }
+
+            var licenseCount = parseLicenseCount();
+            renderFields(licenseCount);
 
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
@@ -72,22 +112,27 @@
                 successEl.textContent = '';
 
                 var emails = [];
-                for (var i = 1; i <= 5; i++) {
-                    var value = document.getElementById('email-' + i).value.trim().toLowerCase();
+                for (var i = 1; i <= licenseCount; i++) {
+                    var field = document.getElementById('email-' + i);
+                    var value = field ? field.value.trim().toLowerCase() : '';
                     if (!value) {
-                        errEl.textContent = 'Veuillez renseigner les 5 adresses mail.';
+                        errEl.textContent = licenseCount === 1
+                            ? 'Veuillez renseigner l\'adresse mail.'
+                            : 'Veuillez renseigner les ' + licenseCount + ' adresses mail.';
                         return;
                     }
                     emails.push(value);
                 }
 
-                var unique = {};
-                for (var j = 0; j < emails.length; j++) {
-                    if (unique[emails[j]]) {
-                        errEl.textContent = 'Chaque licence doit avoir une adresse mail différente.';
-                        return;
+                if (licenseCount > 1) {
+                    var unique = {};
+                    for (var j = 0; j < emails.length; j++) {
+                        if (unique[emails[j]]) {
+                            errEl.textContent = 'Chaque licence doit avoir une adresse mail différente.';
+                            return;
+                        }
+                        unique[emails[j]] = true;
                     }
-                    unique[emails[j]] = true;
                 }
 
                 submitBtn.disabled = true;
