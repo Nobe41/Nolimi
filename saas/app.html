@@ -6,7 +6,10 @@
     <meta name="theme-color" content="#F8F8F8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>Nolimi - Atelier Bouteille</title>
+    <title>Nolimi</title>
+    <link rel="icon" href="../assets/brand/favicon-64.png" type="image/png" sizes="64x64">
+    <link rel="icon" href="../assets/brand/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png" sizes="180x180">
     
     <link rel="stylesheet" href="layout/structure.css">
     <link rel="stylesheet" href="style/theme.css">
@@ -375,6 +378,27 @@
             <a href="../website/pages/mentions-legales/index.html" class="saas-legal-footer__link">Documents légaux</a>
         </footer>
     </section>
+
+    <div id="guide-modal" class="guide-modal hidden" role="dialog" aria-modal="true" aria-labelledby="guide-modal-title" aria-hidden="true">
+        <div class="guide-modal__backdrop" data-guide-close></div>
+        <div class="guide-modal__panel">
+            <header class="guide-modal__header">
+                <h2 id="guide-modal-title" class="guide-modal__title">Guide Nolimi</h2>
+                <button type="button" class="guide-modal__close" id="guide-modal-close" aria-label="Fermer le guide">&times;</button>
+            </header>
+            <div class="guide-modal__body">
+                <button type="button" class="guide-modal__nav guide-modal__nav--prev" id="guide-prev" aria-label="Diapositive précédente">‹</button>
+                <div class="guide-modal__slide">
+                    <img id="guide-slide-img" class="guide-modal__img" src="" alt="Diapositive du guide">
+                </div>
+                <button type="button" class="guide-modal__nav guide-modal__nav--next" id="guide-next" aria-label="Diapositive suivante">›</button>
+            </div>
+            <footer class="guide-modal__footer">
+                <div class="guide-modal__dots" id="guide-dots" role="tablist" aria-label="Navigation des diapositives"></div>
+                <p class="guide-modal__counter"><span id="guide-slide-index">1</span> / <span id="guide-slide-total">10</span></p>
+            </footer>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config/supabase.config.js"></script>

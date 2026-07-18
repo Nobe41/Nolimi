@@ -273,6 +273,144 @@ var TopbarShared = (function () {
 
         initMobileMenu();
         initContactMail();
+        initGuideModal();
+    }
+
+    function initGuideModal() {
+        var GUIDE_SLIDES = [
+            { src: '../assets/guide/01-welcome.png', alt: 'Bienvenue — Le guide de Nolimi' },
+            { src: '../assets/guide/02-principe-parametrique.png', alt: 'Principe de conception 3D paramétrique' },
+            { src: '../assets/guide/03-barre-outils.png', alt: 'Barre d’outils supérieure' },
+            { src: '../assets/guide/04-navigation.png', alt: 'Navigation latérale' },
+            { src: '../assets/guide/05-partie-section.png', alt: 'Partie Section' },
+            { src: '../assets/guide/06-partie-gravure.png', alt: 'Partie Gravure' },
+            { src: '../assets/guide/07-partie-plan.png', alt: 'Partie Plan' },
+            { src: '../assets/guide/08-partie-rendu.png', alt: 'Partie Rendu' },
+            { src: '../assets/guide/09-partie-calcule.png', alt: 'Partie Calcule' },
+            { src: '../assets/guide/10-fin.png', alt: 'Fin du guide' }
+        ];
+
+        var modal = document.getElementById('guide-modal');
+        var btnOpen = document.getElementById('btn-guide');
+        var btnClose = document.getElementById('guide-modal-close');
+        var btnPrev = document.getElementById('guide-prev');
+        var btnNext = document.getElementById('guide-next');
+        var img = document.getElementById('guide-slide-img');
+        var dotsEl = document.getElementById('guide-dots');
+        var indexEl = document.getElementById('guide-slide-index');
+        var totalEl = document.getElementById('guide-slide-total');
+
+        if (!modal || !btnOpen || !img || btnOpen.dataset.boundGuide === '1') return;
+        btnOpen.dataset.boundGuide = '1';
+
+        var current = 0;
+        var isOpen = false;
+
+        if (totalEl) totalEl.textContent = String(GUIDE_SLIDES.length);
+
+        if (dotsEl) {
+            dotsEl.innerHTML = '';
+            for (var i = 0; i < GUIDE_SLIDES.length; i++) {
+                (function (slideIndex) {
+                    var dot = document.createElement('button');
+                    dot.type = 'button';
+                    dot.className = 'guide-modal__dot';
+                    dot.setAttribute('aria-label', 'Aller à la diapositive ' + (slideIndex + 1));
+                    dot.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        goTo(slideIndex);
+                    });
+                    dotsEl.appendChild(dot);
+                })(i);
+            }
+        }
+
+        function render() {
+            var slide = GUIDE_SLIDES[current];
+            if (!slide) return;
+            img.src = slide.src;
+            img.alt = slide.alt;
+            if (indexEl) indexEl.textContent = String(current + 1);
+            if (btnPrev) btnPrev.disabled = current === 0;
+            if (btnNext) btnNext.disabled = current === GUIDE_SLIDES.length - 1;
+            if (dotsEl) {
+                var dots = dotsEl.querySelectorAll('.guide-modal__dot');
+                for (var d = 0; d < dots.length; d++) {
+                    dots[d].classList.toggle('is-active', d === current);
+                }
+            }
+        }
+
+        function goTo(index) {
+            if (index < 0 || index >= GUIDE_SLIDES.length) return;
+            current = index;
+            render();
+        }
+
+        function open() {
+            current = 0;
+            render();
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+            isOpen = true;
+            document.body.classList.add('guide-modal-open');
+            if (btnClose) btnClose.focus();
+        }
+
+        function close() {
+            if (!isOpen) return;
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            isOpen = false;
+            document.body.classList.remove('guide-modal-open');
+            btnOpen.focus();
+        }
+
+        btnOpen.addEventListener('click', function (e) {
+            e.stopPropagation();
+            open();
+        });
+
+        if (btnClose) {
+            btnClose.addEventListener('click', function (e) {
+                e.stopPropagation();
+                close();
+            });
+        }
+
+        if (btnPrev) {
+            btnPrev.addEventListener('click', function (e) {
+                e.stopPropagation();
+                goTo(current - 1);
+            });
+        }
+
+        if (btnNext) {
+            btnNext.addEventListener('click', function (e) {
+                e.stopPropagation();
+                goTo(current + 1);
+            });
+        }
+
+        modal.addEventListener('click', function (e) {
+            if (e.target && e.target.hasAttribute('data-guide-close')) close();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (!isOpen) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                close();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                goTo(current - 1);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                goTo(current + 1);
+            }
+        });
+
+        render();
     }
 
     function initContactMail() {
