@@ -387,17 +387,22 @@
                 <h2 id="guide-modal-title" class="guide-modal__title">Guide Nolimi</h2>
                 <button type="button" class="guide-modal__close" id="guide-modal-close" aria-label="Fermer le guide">&times;</button>
             </header>
-            <div class="guide-modal__body">
-                <button type="button" class="guide-modal__nav guide-modal__nav--prev" id="guide-prev" aria-label="Diapositive précédente">‹</button>
-                <div class="guide-modal__slide">
-                    <img id="guide-slide-img" class="guide-modal__img" src="" alt="Diapositive du guide">
+            <div class="guide-modal__layout">
+                <nav class="guide-modal__menu" id="guide-menu" aria-label="Sommaire du guide"></nav>
+                <div class="guide-modal__main">
+                    <div class="guide-modal__body">
+                        <button type="button" class="guide-modal__nav guide-modal__nav--prev" id="guide-prev" aria-label="Diapositive précédente">‹</button>
+                        <div class="guide-modal__slide">
+                            <img id="guide-slide-img" class="guide-modal__img" src="" alt="Diapositive du guide">
+                        </div>
+                        <button type="button" class="guide-modal__nav guide-modal__nav--next" id="guide-next" aria-label="Diapositive suivante">›</button>
+                    </div>
+                    <footer class="guide-modal__footer">
+                        <div class="guide-modal__dots" id="guide-dots" role="tablist" aria-label="Pages de la section"></div>
+                        <p class="guide-modal__counter"><span id="guide-slide-index">1</span> / <span id="guide-slide-total">1</span></p>
+                    </footer>
                 </div>
-                <button type="button" class="guide-modal__nav guide-modal__nav--next" id="guide-next" aria-label="Diapositive suivante">›</button>
             </div>
-            <footer class="guide-modal__footer">
-                <div class="guide-modal__dots" id="guide-dots" role="tablist" aria-label="Navigation des diapositives"></div>
-                <p class="guide-modal__counter"><span id="guide-slide-index">1</span> / <span id="guide-slide-total">10</span></p>
-            </footer>
         </div>
     </div>
 

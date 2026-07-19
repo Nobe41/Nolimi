@@ -277,17 +277,71 @@ var TopbarShared = (function () {
     }
 
     function initGuideModal() {
-        var GUIDE_SLIDES = [
-            { src: '../assets/guide/01-welcome.png', alt: 'Bienvenue — Le guide de Nolimi' },
-            { src: '../assets/guide/02-principe-parametrique.png', alt: 'Principe de conception 3D paramétrique' },
-            { src: '../assets/guide/03-barre-outils.png', alt: 'Barre d’outils supérieure' },
-            { src: '../assets/guide/04-navigation.png', alt: 'Navigation latérale' },
-            { src: '../assets/guide/05-partie-section.png', alt: 'Partie Section' },
-            { src: '../assets/guide/06-partie-gravure.png', alt: 'Partie Gravure' },
-            { src: '../assets/guide/07-partie-plan.png', alt: 'Partie Plan' },
-            { src: '../assets/guide/08-partie-rendu.png', alt: 'Partie Rendu' },
-            { src: '../assets/guide/09-partie-calcule.png', alt: 'Partie Calcule' },
-            { src: '../assets/guide/10-fin.png', alt: 'Fin du guide' }
+        var GUIDE_SECTIONS = [
+            {
+                id: 'accueil',
+                label: 'Accueil',
+                slides: [
+                    { src: '../assets/guide/01-welcome.png', alt: 'Bienvenue — Le guide de Nolimi' }
+                ]
+            },
+            {
+                id: 'fonctionnement-3d',
+                label: 'Fonctionnement 3D',
+                slides: [
+                    { src: '../assets/guide/02-principe-parametrique.png', alt: 'Principe de conception 3D paramétrique' }
+                ]
+            },
+            {
+                id: 'boutons',
+                label: 'Boutons principaux',
+                slides: [
+                    { src: '../assets/guide/03-barre-outils.png', alt: 'Barre d’outils supérieure' },
+                    { src: '../assets/guide/04-navigation.png', alt: 'Navigation latérale' }
+                ]
+            },
+            {
+                id: 'section',
+                label: 'Partie section',
+                slides: [
+                    { src: '../assets/guide/05-partie-section.png', alt: 'Partie Section' }
+                ]
+            },
+            {
+                id: 'gravure',
+                label: 'Partie gravure',
+                slides: [
+                    { src: '../assets/guide/06-partie-gravure.png', alt: 'Partie Gravure' }
+                ]
+            },
+            {
+                id: 'plan',
+                label: 'Partie plan',
+                slides: [
+                    { src: '../assets/guide/07-partie-plan.png', alt: 'Partie Plan' }
+                ]
+            },
+            {
+                id: 'rendu',
+                label: 'Partie rendu',
+                slides: [
+                    { src: '../assets/guide/08-partie-rendu.png', alt: 'Partie Rendu' }
+                ]
+            },
+            {
+                id: 'calcule',
+                label: 'Partie calcule',
+                slides: [
+                    { src: '../assets/guide/09-partie-calcule.png', alt: 'Partie Calcule' }
+                ]
+            },
+            {
+                id: 'fin',
+                label: 'Fin',
+                slides: [
+                    { src: '../assets/guide/10-fin.png', alt: 'Fin du guide' }
+                ]
+            }
         ];
 
         var modal = document.getElementById('guide-modal');
@@ -296,6 +350,7 @@ var TopbarShared = (function () {
         var btnPrev = document.getElementById('guide-prev');
         var btnNext = document.getElementById('guide-next');
         var img = document.getElementById('guide-slide-img');
+        var menuEl = document.getElementById('guide-menu');
         var dotsEl = document.getElementById('guide-dots');
         var indexEl = document.getElementById('guide-slide-index');
         var totalEl = document.getElementById('guide-slide-total');
@@ -303,22 +358,57 @@ var TopbarShared = (function () {
         if (!modal || !btnOpen || !img || btnOpen.dataset.boundGuide === '1') return;
         btnOpen.dataset.boundGuide = '1';
 
-        var current = 0;
+        var sectionIndex = 0;
+        var slideIndex = 0;
         var isOpen = false;
 
-        if (totalEl) totalEl.textContent = String(GUIDE_SLIDES.length);
+        function currentSection() {
+            return GUIDE_SECTIONS[sectionIndex];
+        }
 
-        if (dotsEl) {
+        function currentSlide() {
+            var section = currentSection();
+            if (!section) return null;
+            return section.slides[slideIndex] || null;
+        }
+
+        function buildMenu() {
+            if (!menuEl) return;
+            menuEl.innerHTML = '';
+            for (var i = 0; i < GUIDE_SECTIONS.length; i++) {
+                (function (idx) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'guide-modal__menu-item';
+                    btn.setAttribute('data-section-index', String(idx));
+                    btn.textContent = GUIDE_SECTIONS[idx].label;
+                    btn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        goToSection(idx, 0);
+                    });
+                    menuEl.appendChild(btn);
+                })(i);
+            }
+        }
+
+        function buildDots() {
+            if (!dotsEl) return;
             dotsEl.innerHTML = '';
-            for (var i = 0; i < GUIDE_SLIDES.length; i++) {
-                (function (slideIndex) {
+            var section = currentSection();
+            if (!section || section.slides.length <= 1) {
+                dotsEl.classList.add('is-empty');
+                return;
+            }
+            dotsEl.classList.remove('is-empty');
+            for (var i = 0; i < section.slides.length; i++) {
+                (function (idx) {
                     var dot = document.createElement('button');
                     dot.type = 'button';
                     dot.className = 'guide-modal__dot';
-                    dot.setAttribute('aria-label', 'Aller à la diapositive ' + (slideIndex + 1));
+                    dot.setAttribute('aria-label', 'Page ' + (idx + 1) + ' de la section');
                     dot.addEventListener('click', function (e) {
                         e.stopPropagation();
-                        goTo(slideIndex);
+                        goToSection(sectionIndex, idx);
                     });
                     dotsEl.appendChild(dot);
                 })(i);
@@ -326,30 +416,64 @@ var TopbarShared = (function () {
         }
 
         function render() {
-            var slide = GUIDE_SLIDES[current];
-            if (!slide) return;
+            var section = currentSection();
+            var slide = currentSlide();
+            if (!section || !slide) return;
+
             img.src = slide.src;
             img.alt = slide.alt;
-            if (indexEl) indexEl.textContent = String(current + 1);
-            if (btnPrev) btnPrev.disabled = current === 0;
-            if (btnNext) btnNext.disabled = current === GUIDE_SLIDES.length - 1;
+
+            var total = section.slides.length;
+            if (indexEl) indexEl.textContent = String(slideIndex + 1);
+            if (totalEl) totalEl.textContent = String(total);
+
+            var multiPage = total > 1;
+            if (btnPrev) btnPrev.disabled = !multiPage || slideIndex === 0;
+            if (btnNext) btnNext.disabled = !multiPage || slideIndex === total - 1;
+            if (btnPrev) btnPrev.classList.toggle('is-hidden', !multiPage);
+            if (btnNext) btnNext.classList.toggle('is-hidden', !multiPage);
+
+            if (menuEl) {
+                var items = menuEl.querySelectorAll('.guide-modal__menu-item');
+                for (var m = 0; m < items.length; m++) {
+                    items[m].classList.toggle('is-active', m === sectionIndex);
+                }
+            }
+
             if (dotsEl) {
                 var dots = dotsEl.querySelectorAll('.guide-modal__dot');
                 for (var d = 0; d < dots.length; d++) {
-                    dots[d].classList.toggle('is-active', d === current);
+                    dots[d].classList.toggle('is-active', d === slideIndex);
                 }
             }
         }
 
-        function goTo(index) {
-            if (index < 0 || index >= GUIDE_SLIDES.length) return;
-            current = index;
+        function goToSection(sIdx, slIdx) {
+            if (sIdx < 0 || sIdx >= GUIDE_SECTIONS.length) return;
+            var section = GUIDE_SECTIONS[sIdx];
+            if (!section || !section.slides.length) return;
+            sectionIndex = sIdx;
+            slideIndex = Math.max(0, Math.min(slIdx || 0, section.slides.length - 1));
+            buildDots();
             render();
         }
 
+        function goPrev() {
+            var section = currentSection();
+            if (!section || section.slides.length <= 1) return;
+            if (slideIndex > 0) goToSection(sectionIndex, slideIndex - 1);
+        }
+
+        function goNext() {
+            var section = currentSection();
+            if (!section || section.slides.length <= 1) return;
+            if (slideIndex < section.slides.length - 1) {
+                goToSection(sectionIndex, slideIndex + 1);
+            }
+        }
+
         function open() {
-            current = 0;
-            render();
+            goToSection(0, 0);
             modal.classList.remove('hidden');
             modal.setAttribute('aria-hidden', 'false');
             isOpen = true;
@@ -366,6 +490,9 @@ var TopbarShared = (function () {
             btnOpen.focus();
         }
 
+        buildMenu();
+        buildDots();
+
         btnOpen.addEventListener('click', function (e) {
             e.stopPropagation();
             open();
@@ -381,14 +508,14 @@ var TopbarShared = (function () {
         if (btnPrev) {
             btnPrev.addEventListener('click', function (e) {
                 e.stopPropagation();
-                goTo(current - 1);
+                goPrev();
             });
         }
 
         if (btnNext) {
             btnNext.addEventListener('click', function (e) {
                 e.stopPropagation();
-                goTo(current + 1);
+                goNext();
             });
         }
 
@@ -403,10 +530,10 @@ var TopbarShared = (function () {
                 close();
             } else if (e.key === 'ArrowLeft') {
                 e.preventDefault();
-                goTo(current - 1);
+                goPrev();
             } else if (e.key === 'ArrowRight') {
                 e.preventDefault();
-                goTo(current + 1);
+                goNext();
             }
         });
 
