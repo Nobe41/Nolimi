@@ -40,9 +40,6 @@ var UIEvents = (function () {
         if (btnNewProject && pageMenu && pageBouteille && !btnNewProject.dataset.navBound) {
             btnNewProject.dataset.navBound = '1';
             btnNewProject.addEventListener('click', function () {
-                if (typeof clearProjectFileBinding === 'function') clearProjectFileBinding();
-                else currentFileHandle = null;
-                if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.clear) WorkspaceAutosave.clear();
                 pageMenu.classList.add('hidden');
                 pageBouteille.classList.remove('hidden');
                 setTimeout(function () {
@@ -50,7 +47,14 @@ var UIEvents = (function () {
                         initLogiciel();
                         isLogicielInit = true;
                     }
-                    if (typeof updateBouteille === 'function') updateBouteille();
+                    if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.resetToDefaults) {
+                        WorkspaceAutosave.resetToDefaults();
+                    } else {
+                        if (typeof clearProjectFileBinding === 'function') clearProjectFileBinding();
+                        else currentFileHandle = null;
+                        if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.clear) WorkspaceAutosave.clear();
+                        if (typeof updateBouteille === 'function') updateBouteille();
+                    }
                 }, 50);
             });
         }

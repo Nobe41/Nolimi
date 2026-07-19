@@ -1,6 +1,7 @@
 // saas/store/storage.js
 // Persistance projet :
-//   1) WorkspaceAutosave — localStorage (debounce + intervalle), restore au boot via app/main.js
+//   1) WorkspaceAutosave — localStorage (debounce + intervalle). Un refresh repart des défauts
+//      (clear au boot). Reprise = Ouvrir un fichier JSON. resetToDefaults = bouton NOUVEAU.
 //   2) Fichier JSON — File System Access API / download (menu Fichier)
 // Globals utiles : clearProjectFileBinding, currentFileHandle (state.js)
 
@@ -181,28 +182,122 @@ var WorkspaceAutosave = (function () {
         try {
             localStorage.removeItem(AUTOSAVE_KEY);
         } catch (e) { /* ignore */ }
+        pendingRestore = null;
     }
 
-    // --- Restore boot (appelé par app/main.js AVANT le 1er saveNow) ---
-
-    function prepareRestoreFromStorage() {
-        pendingRestore = null;
-        try {
-            var raw = localStorage.getItem(AUTOSAVE_KEY);
-            if (!raw) return;
-            pendingRestore = JSON.parse(raw);
-            if (pendingRestore && pendingRestore.sectionsState && typeof SectionsState !== 'undefined' && SectionsState.setState) {
-                SectionsState.setState(pendingRestore.sectionsState);
+    function resetCameraViews() {
+        if (typeof camera !== 'undefined' && camera && typeof SceneSetup3D !== 'undefined') {
+            var sceneRules = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.SCENE) ? Canvas3DRules.SCENE : {};
+            var pos = sceneRules.CAMERA_POSITION || { x: 400, y: 300, z: 400 };
+            var targetY = sceneRules.CONTROLS_TARGET_Y != null ? sceneRules.CONTROLS_TARGET_Y : 150;
+            camera.position.set(pos.x, pos.y, pos.z);
+            camera.zoom = 1;
+            camera.updateProjectionMatrix();
+            if (typeof controls !== 'undefined' && controls) {
+                controls.target.set(0, targetY, 0);
+                controls.update();
             }
-        } catch (err) {
-            console.warn('Autosave corrompu, ignoré', err);
-            pendingRestore = null;
+        }
+        if (typeof Canvas2DView !== 'undefined' && Canvas2DView.setCamera && Canvas2DView.getCamera) {
+            var size = { w: 0, h: 0 };
+            var view2dEl = document.getElementById('viewport-2d');
+            if (view2dEl) {
+                size.w = view2dEl.clientWidth || 0;
+                size.h = view2dEl.clientHeight || 0;
+            }
+            if (size.w > 0 && size.h > 0) {
+                Canvas2DView.setCamera({ x: size.w / 2, y: size.h / 2, zoom: 0 });
+            }
+            if (typeof resizeCanvas2D === 'function') resizeCanvas2D();
         }
     }
 
+    // Remet le projet aux valeurs d’usine (sections, UI, caméras, gravure…).
+    function resetToDefaults(done) {
+        clear();
+        if (typeof clearProjectFileBinding === 'function') clearProjectFileBinding();
+        else if (typeof window !== 'undefined') window.currentFileHandle = null;
+
+        isApplyingRestore = true;
+        try {
+            if (typeof SectionsRules !== 'undefined' && SectionsRules.createInitialState
+                && typeof SectionsState !== 'undefined' && SectionsState.setState) {
+                SectionsState.setState(SectionsRules.createInitialState());
+            }
+            if (typeof NavigationState !== 'undefined' && NavigationState.patch) {
+                NavigationState.patch({
+                    activeLeftTab: 'sections',
+                    activeBarTab: 'sections',
+                    activeView: '3d'
+                });
+            }
+            if (typeof window !== 'undefined') {
+                window.displayOptions = (typeof createDefaultDisplayOptions === 'function')
+                    ? createDefaultDisplayOptions()
+                    : { showAxes: true, showGrid: true, showSectionRings: true, showMoldJoint: true };
+                if (typeof DisplayShared !== 'undefined' && DisplayShared.syncTogglesFromOptions) {
+                    DisplayShared.syncTogglesFromOptions();
+                }
+                var defaultThickness = (typeof InterieurRules !== 'undefined' && InterieurRules.DEFAULT_GLASS_THICKNESS_MM != null)
+                    ? InterieurRules.DEFAULT_GLASS_THICKNESS_MM
+                    : 3.5;
+                window.interiorState = { glassThicknessMm: defaultThickness };
+            }
+            if (typeof UIInspector !== 'undefined' && UIInspector.renderSections) {
+                UIInspector.renderSections();
+            }
+            if (typeof InterieurFeature !== 'undefined' && InterieurFeature.render) {
+                InterieurFeature.render();
+            }
+            if (typeof UIEvents !== 'undefined' && UIEvents.applyFromState) {
+                UIEvents.applyFromState({
+                    activeLeftTab: 'sections',
+                    activeBarTab: 'sections',
+                    activeView: '3d'
+                });
+            }
+            if (typeof setupListeners === 'function') setupListeners();
+            if (typeof UIControls !== 'undefined' && UIControls.syncAllRangeSliders) UIControls.syncAllRangeSliders();
+            if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) SceneSetup3D.applyDisplayOptions();
+            if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) Validator.applyAllUserConstraints();
+            resetCameraViews();
+        } finally {
+            isApplyingRestore = false;
+        }
+
+        function afterReset() {
+            if (typeof updateBouteille === 'function') updateBouteille();
+            if (typeof draw2D === 'function') draw2D();
+            if (typeof done === 'function') done();
+        }
+
+        function afterGravure() {
+            if (typeof RenderFeature !== 'undefined' && RenderFeature.restoreSaveState) {
+                RenderFeature.restoreSaveState({ labels: [] }, afterReset);
+            } else {
+                afterReset();
+            }
+        }
+
+        if (typeof GravureEvents !== 'undefined' && GravureEvents.restoreSaveState) {
+            GravureEvents.restoreSaveState({ items: [] }, afterGravure);
+        } else if (typeof GravureState !== 'undefined' && GravureState.reset) {
+            GravureState.reset();
+            afterGravure();
+        } else {
+            afterGravure();
+        }
+    }
+
+    // --- Restore boot (appelé par app/main.js AVANT le 1er saveNow) ---
+    // Désactivé : un refresh doit repartir des valeurs d’usine.
+    // Ouvrir un fichier JSON continue d’utiliser applyProjectPayload.
+
+    function prepareRestoreFromStorage() {
+        pendingRestore = null;
+    }
+
     function applyRestoredValues() {
-        if (!pendingRestore) return;
-        applyProjectPayload(pendingRestore);
         pendingRestore = null;
     }
 
@@ -231,6 +326,7 @@ var WorkspaceAutosave = (function () {
         scheduleSave: scheduleSave,
         saveNow: saveNow,
         clear: clear,
+        resetToDefaults: resetToDefaults,
         init: init
     };
 })();

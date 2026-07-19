@@ -17,11 +17,10 @@ function bootAtelier() {
 
     // 3) Lancer le logiciel (léger délai pour laisser le DOM / scripts prêts)
     setTimeout(function () {
-        // Restore localStorage AVANT saveNow (sinon on écrase le projet sauvegardé).
-        // Doit tourner ici : tous les scripts (gravure, render, storage) sont déjà chargés.
-        if (typeof WorkspaceAutosave !== 'undefined') {
-            if (WorkspaceAutosave.prepareRestoreFromStorage) WorkspaceAutosave.prepareRestoreFromStorage();
-            if (WorkspaceAutosave.applyRestoredValues) WorkspaceAutosave.applyRestoredValues();
+        // Refresh = valeurs d’usine (pas de reprise autosave localStorage).
+        // Pour reprendre un projet : menu Ouvrir / fichier JSON.
+        if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.clear) {
+            WorkspaceAutosave.clear();
         }
         if (typeof initLogiciel === 'function' && !isLogicielInit) {
             initLogiciel();
