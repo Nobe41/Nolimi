@@ -1,14 +1,18 @@
-// js/3d/viewer.js
-// Manager 3D : init scène (SceneSetup3D), vue bouteille (BottleView3D), boucle de rendu.
-// API globale : initLogiciel(), updateBouteille() — utilisées par main, ui, storage, gravure.
+// saas/canvas/3d/ — démarre la fenêtre 3D (scène + bouteille + boucle de rendu).
+// Point d’entrée : initLogiciel() / updateBouteille() → Canvas3DLifecycle.
+// Ordre : SceneSetup3D.initScene → BottleView3D.updateView → renderLoop.
 
 var Canvas3DLifecycle = (function () {
-    var viewPortId = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.VIEWPORT_ID) ? Canvas3DRules.VIEWPORT_ID : 'viewport-3d';
+    var viewPortId = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.VIEWPORT_ID)
+        ? Canvas3DRules.VIEWPORT_ID
+        : 'viewport-3d';
     var rafId = 0;
+    var updateRaf = 0;
     var isBound = false;
     var webglContextLost = false;
     var lifecycleHooksBound = false;
 
+    // --- Boucle de rendu ---
     function renderLoop() {
         rafId = requestAnimationFrame(renderLoop);
         if (webglContextLost) return;
@@ -21,9 +25,13 @@ var Canvas3DLifecycle = (function () {
         if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.resize) {
             SceneSetup3D.resize(viewport3D.clientWidth, viewport3D.clientHeight);
         }
+        if (typeof BottleViewGeometry !== 'undefined' && BottleViewGeometry.syncEdgeLineResolutions) {
+            BottleViewGeometry.syncEdgeLineResolutions();
+        }
         if (typeof controls !== 'undefined' && controls && controls.update) controls.update();
     }
 
+    // --- WebGL perdu / onglet qui revient ---
     function recoverWebGL() {
         webglContextLost = false;
         dispose();
@@ -67,34 +75,37 @@ var Canvas3DLifecycle = (function () {
         }, false);
     }
 
+    // --- Init / update / dispose ---
     function init() {
         if (renderer) return;
         viewport3D = document.getElementById(viewPortId);
         if (!viewport3D || typeof SceneSetup3D === 'undefined') return;
+
         SceneSetup3D.initScene(viewport3D);
         if (renderer && renderer.domElement) bindWebGLContextHandlers(renderer.domElement);
         if (typeof BottleView3D !== 'undefined' && BottleView3D.updateView) BottleView3D.updateView();
+
         if (typeof setupListeners === 'function' && !window.nolimiSetupListenersDone) {
             setupListeners();
             window.nolimiSetupListenersDone = true;
         } else if (typeof bindInspectorWheelScroll === 'function') {
             bindInspectorWheelScroll();
         }
+
         bindLifecycleHooks();
         if (!isBound) {
             isBound = true;
             window.addEventListener('resize', handleResize);
             if (typeof ResizeObserver !== 'undefined' && viewport3D) {
-                var resizeObserver3D = new ResizeObserver(handleResize);
-                resizeObserver3D.observe(viewport3D);
+                new ResizeObserver(handleResize).observe(viewport3D);
             }
         }
+
         webglContextLost = false;
         renderLoop();
     }
 
-    var updateRaf = 0;
-
+    // Une seule mise à jour par frame (évite les rafales)
     function update() {
         if (updateRaf) return;
         updateRaf = requestAnimationFrame(function () {

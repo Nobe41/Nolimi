@@ -1,16 +1,28 @@
-// Les variables partagées entre les fichiers (La Mémoire globale)
+// saas/store/state.js
+// Mémoire globale partagée (scène 3D, projet ouvert, options d’affichage).
+// Chargé tôt dans app.html. Pas de logique métier ici.
+
+// Scène Three.js (remplie par canvas/3d)
 var scene, camera, renderer, controls, bottleGroup;
 var viewport3D;
-var currentFileHandle = null; // Mémoire du projet ouvert
-var isLogicielInit = false; // Mémorise si le moteur 3D est lancé
 
-// Mémoire pour stocker les images (PNG) des gravures
+// Fichier projet lié (File System Access API) — voir store/storage.js
+var currentFileHandle = null;
+
+// true après le 1er initLogiciel() (évite de ré-init le moteur 3D)
+var isLogicielInit = false;
+
+// PNG des gravures (clé = id carte) — features/gravure
 window.engravingImages = {};
 
-// Options d'affichage 3D (topbar > Affichage)
-window.displayOptions = {
-    showAxes: true,
-    showGrid: true,
-    showSectionRings: true,
-    showMoldJoint: true
-};
+// Source UNIQUE des défauts Affichage (storage / display / realtime y puisent)
+function createDefaultDisplayOptions() {
+    return {
+        showAxes: true,
+        showGrid: true,
+        showSectionRings: true,
+        showMoldJoint: true
+    };
+}
+
+window.displayOptions = createDefaultDisplayOptions();

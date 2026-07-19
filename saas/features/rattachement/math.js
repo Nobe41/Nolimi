@@ -1,21 +1,24 @@
-// Calculs géométriques des liaisons du profil 2D.
+// saas/features/rattachement/math.js
+// RattachementMath = géométrie des raccords entre sections du profil 2D.
+// LiaisonsFeature (function.js) expose buildProfileCurves ; types : ligne / rayon / courbeS / spline.
+// Primitives 2D → GeomKernel. Constantes → RattachementRules. Appelé par ProfileMath.buildExteriorProfile.
+
 var RattachementMath = (function () {
     var K = (typeof GeomKernel !== 'undefined') ? GeomKernel : null;
-    var SPLINE_STEPS = (typeof RattachementRules !== 'undefined' && RattachementRules.SPLINE_STEPS) || 48;
-    var MIN_SAFE_X = (typeof RattachementRules !== 'undefined' && RattachementRules.MIN_SAFE_X) || 1;
-    var DEFAULT_EDGE_TYPE = (typeof RattachementRules !== 'undefined' && RattachementRules.DEFAULT_EDGE_TYPE) || 'ligne';
-    var DEFAULT_RHO = (typeof RattachementRules !== 'undefined' && RattachementRules.DEFAULT_RHO) || 0;
+    var RULES = (typeof RattachementRules !== 'undefined') ? RattachementRules : {};
+    var SPLINE_STEPS = RULES.SPLINE_STEPS || 48;
+    var MIN_SAFE_X = RULES.MIN_SAFE_X || 1;
+    var DEFAULT_EDGE_TYPE = RULES.DEFAULT_EDGE_TYPE || 'ligne';
+    var DEFAULT_RHO = RULES.DEFAULT_RHO || 0;
+    var RAYON_TOL_MM = RULES.QUARTER_ARC_TOLERANCE_MM || 0.5;
+    var RAYON_MIN_ANGLE_DEG = RULES.RAYON_MIN_CORNER_ANGLE_DEG || 25;
+    var RAYON_MAX_ANGLE_DEG = RULES.RAYON_MAX_CORNER_ANGLE_DEG || 155;
 
     function dist2d(A, B) {
         var dx = B.x - A.x;
         var dy = B.y - A.y;
         return Math.sqrt(dx * dx + dy * dy);
     }
-
-    var RULES = (typeof RattachementRules !== 'undefined') ? RattachementRules : {};
-    var RAYON_TOL_MM = RULES.QUARTER_ARC_TOLERANCE_MM || 0.5;
-    var RAYON_MIN_ANGLE_DEG = RULES.RAYON_MIN_CORNER_ANGLE_DEG || 25;
-    var RAYON_MAX_ANGLE_DEG = RULES.RAYON_MAX_CORNER_ANGLE_DEG || 155;
 
     /** T ∈ [A,B] (sur le segment fini, pas sur le prolongement de la droite). */
     function pointOnSegment(A, B, T, tol) {
@@ -39,19 +42,6 @@ var RattachementMath = (function () {
         return Math.abs(dx * (A.y - P.y) - (A.x - P.x) * dy) / len;
     }
 
-    /** Les deux segments (droites) admettent-ils un centre à égale distance ? (non parallèles) */
-    function segmentsAllowEqualDistanceCenter(P0, corner, P1) {
-        var leg1 = dist2d(P0, corner);
-        var leg2 = dist2d(corner, P1);
-        if (leg1 < 1e-6 || leg2 < 1e-6) return false;
-        var ux = (P0.x - corner.x) / leg1;
-        var uy = (P0.y - corner.y) / leg1;
-        var vx = (P1.x - corner.x) / leg2;
-        var vy = (P1.y - corner.y) / leg2;
-        var cross = Math.abs(ux * vy - uy * vx);
-        return cross > 1e-5;
-    }
-
     /** dist(centre, droite₁) = dist(centre, droite₂) = R (droites supports, pas seulement segments). */
     function centerEquidistantFromLines(fillet, P0, corner, P1, tol) {
         if (!fillet || !fillet.center) return false;
@@ -63,6 +53,8 @@ var RattachementMath = (function () {
         var d2 = distPointToLine(C, corner, P1);
         return Math.abs(d1 - d2) <= tol && Math.abs(d1 - R) <= tol && Math.abs(d2 - R) <= tol;
     }
+
+    // --- Validation et construction des congés (type « rayon ») ---
 
     function isValidRayonFillet(fillet, P0, corner, P1) {
         if (!fillet || !fillet.center || !fillet.T1 || !fillet.T2) return false;
@@ -155,7 +147,7 @@ var RattachementMath = (function () {
         return filletFromKernel(raw);
     }
 
-    /** Congé tangent aux deux branches S0–coin et coin–S1 (angle variable, pas seulement 90°). */
+    // Congé tangent aux deux branches S0–coin et coin–S1 ; délègue le calcul à GeomKernel.
     function buildFilletAtCorner(P0, corner, P1, legLen) {
         if (!K || legLen < 1e-6) return null;
         var theta = cornerInteriorAngleRad(P0, corner, P1);
@@ -236,12 +228,7 @@ var RattachementMath = (function () {
         return cornerRH;
     }
 
-    /**
-     * Perpendiculaires imaginaires depuis chaque section, ⟂ à la ligne/courbe du profil
-     * à cette section (prev→S0 et S1→next, ou jambes du rattachement en secours).
-     * Même longueur jusqu'à l'intersection → rayon admissible.
-     * Le congé suit le coin du L (S0–coin–S1).
-     */
+    // Perpendiculaires imaginaires depuis chaque section ; même longueur → rayon admissible.
     function getProfileTangentLayout(P0, P1, prevPoint, nextPoint) {
         var cornerM = pickTransitionCorner(P0, P1, prevPoint, nextPoint);
         if (!cornerM) return null;
@@ -277,10 +264,6 @@ var RattachementMath = (function () {
             lenFromP0: dist2d(P0, perpMeet),
             lenFromP1: dist2d(P1, perpMeet)
         };
-    }
-
-    function resolveRayonLayout(P0, P1, prevPoint, nextPoint) {
-        return getProfileTangentLayout(P0, P1, prevPoint, nextPoint);
     }
 
     function hasArcSweep(fillet) {
@@ -320,7 +303,7 @@ var RattachementMath = (function () {
     }
 
     function tryRayonAtSections(P0, P1, prevPoint, nextPoint) {
-        var layout = resolveRayonLayout(P0, P1, prevPoint, nextPoint);
+        var layout = getProfileTangentLayout(P0, P1, prevPoint, nextPoint);
         if (!layout || !perpendicularLegsAreEqual(layout)) return null;
         if (!layout.profileCorner) return null;
 
@@ -349,14 +332,16 @@ var RattachementMath = (function () {
     }
 
     function computeRayonValidity(P0, P1, prevPoint, nextPoint) {
-        var layout = resolveRayonLayout(P0, P1, prevPoint || null, nextPoint || null);
+        var layout = getProfileTangentLayout(P0, P1, prevPoint || null, nextPoint || null);
         if (!layout || !perpendicularLegsAreEqual(layout)) {
             return { valid: false, R: null };
         }
-        var pick = tryRayonAtSections(P0, P1, prevPoint || null, nextPoint || null, null);
+        var pick = tryRayonAtSections(P0, P1, prevPoint || null, nextPoint || null);
         if (!pick) return { valid: false, R: null };
         return { valid: true, R: pick.fillet.R };
     }
+
+    // --- Courbe S : deux arcs tangents entre S0 et S1 ---
 
     function prepareCourbeSFrame(P0, P1, prevPoint, nextPoint) {
         var Dx = P1.x - P0.x;
@@ -605,6 +590,7 @@ var RattachementMath = (function () {
         return pick ? pick.R : null;
     }
 
+    // Point d'entrée principal : profilePoints + edgeTypes/rhos → entités GeomKernel (line/arc).
     function buildProfileCurves(profilePoints, data) {
         if (!K) return [];
         var points = profilePoints || [];
@@ -622,6 +608,7 @@ var RattachementMath = (function () {
             var type = edgeTypes[i] || DEFAULT_EDGE_TYPE;
             var R = rhos[i] || DEFAULT_RHO;
 
+            // Branche selon le type de liaison choisi dans l'UI (ligne par défaut)
             if (type === 'rayon') {
                 var sec0 = { x: points[i].x, y: points[i].y };
                 var sec1 = { x: points[i + 1].x, y: points[i + 1].y };
@@ -639,6 +626,7 @@ var RattachementMath = (function () {
                 }
                 lastPoint = { x: sec1.x, y: sec1.y };
             } else if (type === 'courbeS') {
+                // Deux arcs tangents ; rho = rayon du 1er arc (R0), le 2e est calculé
                 var prevPoint = i > 0 ? { x: points[i - 1].x, y: points[i - 1].y } : null;
                 var nextPoint = i + 2 < points.length ? { x: points[i + 2].x, y: points[i + 2].y } : null;
                 var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint);
@@ -671,6 +659,7 @@ var RattachementMath = (function () {
                     }
                 }
             } else if (type === 'spline') {
+                // Courbe quadratique discrétisée en segments ; rho = amplitude / côté de la courbure
                 var dxSp = P1.x - P0.x;
                 var dySp = P1.y - P0.y;
                 var dSp = Math.sqrt(dxSp * dxSp + dySp * dySp);

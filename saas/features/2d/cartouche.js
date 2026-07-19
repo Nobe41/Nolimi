@@ -1,16 +1,24 @@
-// @ts-nocheck
-// Cartouche du plan 2D : grille, placement, textes (menus + resultats Calcul).
+// saas/features/2d/cartouche.js
+// Dessin du cartouche (grille + textes menus + résultats Calcul).
+// Styles / logo / formats → Plans2DRules. Appelé par canvas/2d/render.js.
+
 var Plans2DCartouche = (function () {
-    var COLS = 4;
-    var FULL_ROWS = 5;
-    var BRAND_LOGO_SRC = '../assets/brand/nolimi-logo-cartouche.png';
     var brandLogo = null;
     var brandLogoLoading = false;
 
-    function request2DRedraw() {
+    function cols() {
+        return Plans2DRules.CARTOUCHE_COLS;
+    }
+
+    function fullRows() {
+        return Plans2DRules.CARTOUCHE_FULL_ROWS;
+    }
+
+    function requestRedraw() {
         if (typeof draw2D === 'function') draw2D();
     }
 
+    // Charge le logo une fois ; redraw quand prêt
     function loadBrandLogo() {
         if (brandLogo && brandLogo.complete && brandLogo.naturalWidth) return;
         if (brandLogoLoading) return;
@@ -18,32 +26,30 @@ var Plans2DCartouche = (function () {
         brandLogo = new Image();
         brandLogo.onload = function () {
             brandLogoLoading = false;
-            request2DRedraw();
+            requestRedraw();
         };
         brandLogo.onerror = function () {
             brandLogoLoading = false;
         };
-        brandLogo.src = BRAND_LOGO_SRC;
+        brandLogo.src = Plans2DRules.CARTOUCHE_LOGO_SRC;
     }
 
     loadBrandLogo();
 
-    function getStyle(style) {
-        var base = (typeof Plans2DRules !== 'undefined' && Plans2DRules.DRAW_STYLE && Plans2DRules.DRAW_STYLE.cartouche)
-            ? Plans2DRules.DRAW_STYLE.cartouche
-            : {};
-        var s = style || {};
+    function getStyle(override) {
+        var base = Plans2DRules.DRAW_STYLE.cartouche;
+        var s = override || {};
         return {
-            referenceFormat: s.referenceFormat || base.referenceFormat || 'A4_P',
-            rowHeight: s.rowHeight || base.rowHeight || 13,
-            unitRowFactor: s.unitRowFactor != null ? s.unitRowFactor : (base.unitRowFactor != null ? base.unitRowFactor : 0.5),
-            labelPadding: s.labelPadding != null ? s.labelPadding : (base.labelPadding != null ? base.labelPadding : 1.2),
-            labelPaddingY: s.labelPaddingY != null ? s.labelPaddingY : (base.labelPaddingY != null ? base.labelPaddingY : 1),
-            valueOffsetY: s.valueOffsetY != null ? s.valueOffsetY : (base.valueOffsetY != null ? base.valueOffsetY : 1.2),
-            fontLabel: s.fontLabel || base.fontLabel || '2px Arial',
-            fontValue: s.fontValue || base.fontValue || '4.5px Arial',
-            fontBrand: s.fontBrand || base.fontBrand || '9px Arial',
-            fontUnit: s.fontUnit || base.fontUnit || '3.5px Arial'
+            referenceFormat: s.referenceFormat || base.referenceFormat,
+            rowHeight: s.rowHeight != null ? s.rowHeight : base.rowHeight,
+            unitRowFactor: s.unitRowFactor != null ? s.unitRowFactor : base.unitRowFactor,
+            labelPadding: s.labelPadding != null ? s.labelPadding : base.labelPadding,
+            labelPaddingY: s.labelPaddingY != null ? s.labelPaddingY : base.labelPaddingY,
+            valueOffsetY: s.valueOffsetY != null ? s.valueOffsetY : base.valueOffsetY,
+            fontLabel: s.fontLabel || base.fontLabel,
+            fontValue: s.fontValue || base.fontValue,
+            fontBrand: s.fontBrand || base.fontBrand,
+            fontUnit: s.fontUnit || base.fontUnit
         };
     }
 
@@ -66,33 +72,29 @@ var Plans2DCartouche = (function () {
         return String(str == null ? '' : str).toLocaleUpperCase('fr-FR');
     }
 
-    // --- Donnees affichees dans le cartouche ---
-
     function readPaperFormatShort() {
-        var ids = (typeof Plans2DRules !== 'undefined' && Plans2DRules.IDS) ? Plans2DRules.IDS : {};
-        var el = document.getElementById(ids.paperFormat || 'paper-format-select');
+        var el = document.getElementById(Plans2DRules.IDS.paperFormat);
         if (!el || !el.value) return 'A4';
         var match = String(el.value).match(/^(A\d+)/i);
         return match ? match[1].toUpperCase() : 'A4';
     }
 
+    // Champs saisis dans le panneau Plan (Plans2DRules.IDS)
     function readMenuData() {
-        var ids = (typeof Plans2DRules !== 'undefined' && Plans2DRules.IDS) ? Plans2DRules.IDS : {};
-        var scale = (typeof Plans2DViews !== 'undefined' && Plans2DViews.getScaleLabel)
-            ? Plans2DViews.getScaleLabel()
-            : readField(ids.drawingScale || 'drawing-scale-select', '1:1');
+        var i = Plans2DRules.IDS;
         return {
-            scale: scale,
-            planNumber: readField(ids.planNumber || 'cartouche-plan-number', ''),
-            date: readField(ids.date || 'cartouche-date', ''),
-            drafter: readField(ids.drafter || 'cartouche-drafter', ''),
+            scale: Plans2DFeature.getScaleLabel(),
+            planNumber: readField(i.planNumber, ''),
+            date: readField(i.date, ''),
+            drafter: readField(i.drafter, ''),
             format: readPaperFormatShort(),
-            checker: readField(ids.checker || 'cartouche-checker', ''),
-            title: readField(ids.projectTitle || 'cartouche-title', ''),
-            index: readField(ids.index || 'cartouche-index', '')
+            checker: readField(i.checker, ''),
+            title: readField(i.projectTitle, ''),
+            index: readField(i.index, '')
         };
     }
 
+    // Résultats volume/poids depuis CalculeVolumeFeature (features/calcule)
     function readCalculeData() {
         var dash = { capaciteNominal: '-', capaciteRasBord: '-', poids: '-', brochage: '-' };
         if (typeof CalculeVolumeFeature === 'undefined' || !CalculeVolumeFeature.getResults) return dash;
@@ -100,7 +102,10 @@ var Plans2DCartouche = (function () {
         if (!r || !r.available) return dash;
         var brochage = '-';
         if (r.canuleMm > 0) {
-            brochage = String.fromCharCode(216) + ' ' + r.canuleMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm';
+            brochage = String.fromCharCode(216) + ' ' + r.canuleMm.toLocaleString('fr-FR', {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1
+            }) + ' mm';
         }
         return {
             capaciteNominal: r.capaciteUtileCl.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' cl',
@@ -110,67 +115,72 @@ var Plans2DCartouche = (function () {
         };
     }
 
-    function getData() {
-        return {
-            menu: readMenuData(),
-            calcule: readCalculeData()
-        };
-    }
-
-    // --- Taille et position sur la feuille ---
-
     function getWidth(margin, referenceFormat) {
-        var m = margin != null ? margin : 10;
-        var formats = (typeof Plans2DRules !== 'undefined' && Plans2DRules.PAPER_FORMATS)
-            ? Plans2DRules.PAPER_FORMATS
-            : { A4_P: { w: 210 } };
-        var ref = formats[referenceFormat] || formats.A4_P || { w: 210 };
+        var m = margin != null ? margin : Plans2DRules.DRAW_STYLE.page.margin;
+        var formats = Plans2DRules.PAPER_FORMATS;
+        var ref = formats[referenceFormat] || formats[Plans2DRules.DRAW_STYLE.cartouche.referenceFormat];
         return ref.w - m * 2;
     }
 
+    // Position du cartouche en bas à droite de la feuille (coords canvas)
     function getLayout(paperW, paperH, margin, style) {
         var s = getStyle(style);
         var w = getWidth(margin, s.referenceFormat);
         var rowH = s.rowHeight;
-        var h = rowH * FULL_ROWS + rowH * s.unitRowFactor;
+        var h = rowH * fullRows() + rowH * s.unitRowFactor;
         var left = -paperW / 2 + margin;
         var right = paperW / 2 - margin;
         var bottom = paperH / 2 - margin;
         var innerW = paperW - margin * 2;
         var x = Math.abs(innerW - w) < 0.5 ? left : right - w;
-        return { x: x, y: bottom - h, width: w, height: h, rowHeight: rowH, unitHeight: rowH * s.unitRowFactor };
+        return {
+            x: x,
+            y: bottom - h,
+            width: w,
+            height: h,
+            rowHeight: rowH,
+            unitHeight: rowH * s.unitRowFactor
+        };
     }
-
-    // --- Dessin ---
 
     function line(ctx, x1, y1, x2, y2) {
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
     }
 
+    // Grille 4×5 + ligne unité (référence sections métier du cartouche)
     function drawGrid(ctx, box) {
         var x = box.x;
         var y = box.y;
         var w = box.width;
         var h = box.height;
         var rowH = box.rowHeight;
-        var colW = w / COLS;
+        var colW = w / cols();
+        var nRows = fullRows();
         var yBottle = y + rowH * 2;
-        var yUnit = y + rowH * FULL_ROWS;
+        var yUnit = y + rowH * nRows;
 
         ctx.beginPath();
         ctx.strokeRect(x, y, w, h);
-
-        for (var r = 1; r <= FULL_ROWS; r++) {
+        for (var r = 1; r <= nRows; r++) {
             line(ctx, x, y + rowH * r, x + w, y + rowH * r);
         }
-
         line(ctx, x + w / 2, y, x + w / 2, yBottle);
         line(ctx, x + colW, y + rowH * 2, x + colW, yUnit);
         line(ctx, x + colW * 3, y + rowH * 2, x + colW * 3, yUnit);
         line(ctx, x + colW * 2, y + rowH * 2, x + colW * 2, y + rowH * 3);
-
         ctx.stroke();
+    }
+
+    function cellRect(box, row, col, colSpan) {
+        var colW = box.width / cols();
+        colSpan = colSpan || 1;
+        return {
+            x: box.x + col * colW,
+            y: box.y + row * box.rowHeight,
+            w: colW * colSpan,
+            h: box.rowHeight
+        };
     }
 
     function drawCell(ctx, rect, label, value, style) {
@@ -185,17 +195,7 @@ var Plans2DCartouche = (function () {
         ctx.fillText(toUpper(showText(value)), rect.x + rect.w / 2, rect.y + rect.h / 2 + style.valueOffsetY);
     }
 
-    function cellRect(box, row, col, colSpan) {
-        var colW = box.width / COLS;
-        colSpan = colSpan || 1;
-        return {
-            x: box.x + col * colW,
-            y: box.y + row * box.rowHeight,
-            w: colW * colSpan,
-            h: box.rowHeight
-        };
-    }
-
+    // Logo NOLIMI ou image brand (cellule fusionnée ligne 3)
     function drawBrandName(ctx, box, style) {
         var rect = cellRect(box, 3, 1, 2);
         if (!brandLogo || !brandLogo.complete || !brandLogo.naturalWidth) {
@@ -219,27 +219,32 @@ var Plans2DCartouche = (function () {
             drawH = maxH;
             drawW = drawH * aspect;
         }
-        var dx = rect.x + (rect.w - drawW) / 2;
-        var dy = rect.y + (rect.h - drawH) / 2;
 
         ctx.save();
         ctx.filter = 'invert(1)';
-        ctx.drawImage(brandLogo, dx, dy, drawW, drawH);
+        ctx.drawImage(
+            brandLogo,
+            rect.x + (rect.w - drawW) / 2,
+            rect.y + (rect.h - drawH) / 2,
+            drawW,
+            drawH
+        );
         ctx.restore();
     }
 
+    // Point d’entrée rendu : grille + cellules calcul + menu + unité mm
     function draw(ctx, cartX, cartY, style) {
         if (!ctx) return;
         var s = getStyle(style);
-        var data = getData();
-        var menu = data.menu;
-        var calc = data.calcule;
+        var menu = readMenuData();
+        var calc = readCalculeData();
+        var nRows = fullRows();
 
         var box = {
             x: cartX,
             y: cartY,
-            width: style && style.width ? style.width : getWidth(10, s.referenceFormat),
-            height: style && style.height ? style.height : (s.rowHeight * FULL_ROWS + s.rowHeight * s.unitRowFactor),
+            width: style && style.width ? style.width : getWidth(Plans2DRules.DRAW_STYLE.page.margin, s.referenceFormat),
+            height: style && style.height ? style.height : (s.rowHeight * nRows + s.rowHeight * s.unitRowFactor),
             rowHeight: s.rowHeight
         };
 
@@ -247,9 +252,9 @@ var Plans2DCartouche = (function () {
         ctx.lineWidth = 0.5;
         drawGrid(ctx, box);
 
-        drawCell(ctx, cellRect(box, 0, 0, 2), 'Capacite nominal :', calc.capaciteNominal, s);
-        drawCell(ctx, cellRect(box, 0, 2, 2), 'Poid :', calc.poids, s);
-        drawCell(ctx, cellRect(box, 1, 0, 2), 'Capacite Ras Bord :', calc.capaciteRasBord, s);
+        drawCell(ctx, cellRect(box, 0, 0, 2), 'Capacité nominale :', calc.capaciteNominal, s);
+        drawCell(ctx, cellRect(box, 0, 2, 2), 'Poids :', calc.poids, s);
+        drawCell(ctx, cellRect(box, 1, 0, 2), 'Capacité ras bord :', calc.capaciteRasBord, s);
         drawCell(ctx, cellRect(box, 1, 2, 2), 'Brochage :', calc.brochage, s);
 
         drawCell(ctx, cellRect(box, 2, 0), 'ECH.', menu.scale, s);
@@ -268,15 +273,13 @@ var Plans2DCartouche = (function () {
         ctx.font = s.fontUnit;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        var unitTop = box.y + box.rowHeight * FULL_ROWS;
-        var unitH = box.height - box.rowHeight * FULL_ROWS;
+        var unitTop = box.y + box.rowHeight * nRows;
+        var unitH = box.height - box.rowHeight * nRows;
         ctx.fillText(toUpper('UNITE : mm'), box.x + box.width / 2, unitTop + unitH / 2);
     }
 
     return {
-        getData: getData,
         getLayout: getLayout,
-        draw: draw,
-        showText: showText
+        draw: draw
     };
 })();

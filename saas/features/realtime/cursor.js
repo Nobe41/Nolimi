@@ -1,4 +1,8 @@
-// Curseurs distants — zone viewport 3D / 2D uniquement (coords normalisées 0–1).
+// saas/features/realtime/cursor.js
+// Curseurs des autres participants, affichés par-dessus le viewport (#viewport).
+// Position en coordonnées normalisées 0–1 (indépendant de la taille de l’écran).
+// Broadcast throttlé via Supabase ; masquage auto si plus de nouvelles positions.
+
 var RealtimeCursors = (function () {
     var overlay = null;
     var remoteByUser = {};
@@ -10,7 +14,9 @@ var RealtimeCursors = (function () {
     var pendingCursor = null;
     var staleTimers = {};
 
-    var COLORS = ['#e53935', '#8e24aa', '#1e88e5', '#43a047', '#fb8c00', '#00acc1'];
+    function cursorColors() {
+        return (RealtimeRules && RealtimeRules.CURSOR_COLORS) || ['#e53935', '#8e24aa', '#1e88e5', '#43a047', '#fb8c00', '#00acc1'];
+    }
 
     function makeCursorId(authUserId) {
         var suffix = (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -26,7 +32,8 @@ var RealtimeCursors = (function () {
             hash = ((hash << 5) - hash) + id.charCodeAt(i);
             hash |= 0;
         }
-        return COLORS[Math.abs(hash) % COLORS.length];
+        var colors = cursorColors();
+        return colors[Math.abs(hash) % colors.length];
     }
 
     function shortName(name, userId) {
@@ -109,6 +116,7 @@ var RealtimeCursors = (function () {
         return null;
     }
 
+    // Crée ou déplace le curseur distant sur l’overlay
     function updateRemoteCursor(raw) {
         var payload = decodePayload(raw);
         if (!payload || !payload.userId || payload.userId === localCursorId) return;
@@ -156,6 +164,7 @@ var RealtimeCursors = (function () {
         return { x: x, y: y };
     }
 
+    // Envoie au plus une position toutes les CURSOR_THROTTLE_MS
     function flushCursorBroadcast() {
         throttleTimer = null;
         if (!channel || !pendingCursor) return;

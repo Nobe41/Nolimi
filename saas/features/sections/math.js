@@ -1,29 +1,29 @@
-// js/maths/sections.js
-// Points de section pour le profil méridien (CAO bouteille).
-// Garantit une hauteur (Y) monotone croissante pour éviter profils invalides.
+// saas/features/sections/math.js
+// Nettoyage des points du profil méridien (avant construction géométrique).
+//
+// Entrée  : [{ x: rayon_mm, y: hauteur_mm }, …]
+// Sortie  : mêmes points, avec :
+//   - x ≥ MIN_PROFILE_RADIUS (pas de rayon négatif)
+//   - y monotone non décroissant (évite les plis du profil)
+//
+// Consommé par ProfileMath.buildExteriorProfile (features/profile/math.js).
 
 var SectionsMaths = (function () {
-    var EPS = 1e-9;
-    var MIN_RADIUS = 0;
+    var R = typeof SectionsRules !== 'undefined' ? SectionsRules : {};
+    var MIN_RADIUS = R.MIN_PROFILE_RADIUS != null ? R.MIN_PROFILE_RADIUS : 0;
 
-    /**
-     * Sanitise les points de profil méridien : (x = rayon, y = hauteur).
-     * Règle : Y(n+1) >= Y(n). Les x sont bornés à MIN_RADIUS si invalides.
-     * @param {Array<{x: number, y: number}>} dataPoints - Points bruts (rayon, hauteur)
-     * @returns {Array<{x: number, y: number}>} Points avec Y monotone, prêts pour B-Rep
-     */
     function computeSectionPoints(dataPoints) {
         if (!dataPoints || dataPoints.length === 0) return [];
 
         var points = [];
-        var n = dataPoints.length;
         var lastY = -Infinity;
-        var i, p, x, y;
 
-        for (i = 0; i < n; i++) {
-            p = dataPoints[i];
-            x = typeof p.x === 'number' && isFinite(p.x) ? Math.max(MIN_RADIUS, p.x) : MIN_RADIUS;
-            y = typeof p.y === 'number' && isFinite(p.y) ? p.y : lastY;
+        for (var i = 0; i < dataPoints.length; i++) {
+            var p = dataPoints[i];
+            // x = rayon horizontal du profil
+            var x = typeof p.x === 'number' && isFinite(p.x) ? Math.max(MIN_RADIUS, p.x) : MIN_RADIUS;
+            // y = hauteur le long de l’axe de la bouteille
+            var y = typeof p.y === 'number' && isFinite(p.y) ? p.y : lastY;
             if (y < lastY) y = lastY;
             lastY = y;
             points.push({ x: x, y: y });

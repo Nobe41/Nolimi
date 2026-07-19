@@ -1,40 +1,61 @@
 /* ==========================================
-   TYPOGRAPHIE ET COULEURS GLOBALES
+   theme.css — aspect visuel de l’atelier SaaS
+   Couleurs, typo, boutons, cartes, sliders, modals.
+   Géométrie / layout → layout/structure.css (pas ici).
+========================================== */
+
+:root {
+    /* Texte & surfaces */
+    --color-text: #333333;
+    --color-text-muted: #666666;
+    --color-text-soft: #555555;
+    --color-surface: #ffffff;
+    --color-page: #f5f5f5;
+    --color-app-bg: #F8F8F8;
+    --color-workspace: #f0f0f0;
+
+    /* Accent (liens, focus, actifs) */
+    --color-accent: #0078d4;
+    --color-accent-soft: #f0f8ff;
+
+    /* Panneaux */
+    --color-sidebar: #E6EBF2;
+    --color-card: #CEDEF2;
+    --color-btn-soft: #BBDDF2;
+    --color-btn-soft-hover: #a8d4ed;
+
+    /* Erreurs / alertes */
+    --color-danger: #c42b1c;
+    --color-danger-alt: #c62828;
+    --color-error-bg: #ffebee;
+
+    /* Cartes rattachement / liaison */
+    --color-rattachement-bg: #f2f3f5;
+    --color-rattachement-header: #eceff2;
+
+    /* Divers UI */
+    --color-input-muted-bg: #f9f9f9;
+    --color-success: #2e7d32;
+}
+
+/* ==========================================
+   TYPOGRAPHIE GLOBALE
 ========================================== */
 * {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
-    background-color: #f5f5f5;
-    color: #333333;
+    background-color: var(--color-page);
+    color: var(--color-text);
     color-scheme: light;
-}
-
-/* ==========================================
-   PAGE LOGIN
-========================================== */
-#Page-login {
-    background-color: #ffffff;
-}
-
-#password-input {
-    background: #f9f9f9;
-    color: #333;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    outline: none;
-}
-
-#password-input:focus {
-    border-color: #0078d4;
 }
 
 /* ==========================================
    PAGE MENU
 ========================================== */
 #Page-menu {
-    background: radial-gradient(circle at 30% 50%, #ffffff 0%, #f0f0f0 100%);
+    background: radial-gradient(circle at 30% 50%, var(--color-surface) 0%, var(--color-workspace) 100%);
 }
 
 .menu-title {
@@ -43,8 +64,8 @@ body {
 }
 
 .menu-big-btn {
-    background-color: #ffffff;
-    color: #555555;
+    background-color: var(--color-surface);
+    color: var(--color-text-soft);
     border: 1px solid #ccc;
     font-weight: bold;
     border-radius: 5px;
@@ -54,9 +75,9 @@ body {
 }
 
 .menu-big-btn:hover {
-    background-color: #f0f8ff;
-    border-color: #0078d4;
-    color: #0078d4;
+    background-color: var(--color-accent-soft);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
     padding-left: 50px; 
 }
 
@@ -66,7 +87,7 @@ body {
 }
 
 .menu-big-btn:hover span {
-    color: #0078d4;
+    color: var(--color-accent);
 }
 
 .menu-big-btn.secondary {
@@ -75,16 +96,16 @@ body {
 }
 
 .menu-big-btn.secondary:hover {
-    background-color: #f9f9f9;
+    background-color: var(--color-input-muted-bg);
     border-color: #999;
-    color: #333;
+    color: var(--color-text);
 }
 
 /* ==========================================
-   INTERFACE LOGICIEL & STYLE GMAIL 
+   INTERFACE ATELIER (fond, sidebar, inspector)
 ========================================== */
 #Page-Bouteille {
-    background-color: #F8F8F8; 
+    background-color: var(--color-app-bg); 
 }
 
 #Panel-gauche {
@@ -93,7 +114,7 @@ body {
 }
 
 .panel-logo-col {
-    background-color: #E6EBF2;
+    background-color: var(--color-sidebar);
     border: none;
     outline: none;
 }
@@ -101,7 +122,7 @@ body {
 /* Fond plein derrière la barre d'onglets du haut de l'inspector
    pour que le contenu scrolle "derrière" proprement */
 #inspector .panel-icons-bar {
-    background-color: #F8F8F8;
+    background-color: var(--color-app-bg);
     width: 100%;
     border-radius: 0;
     margin-left: 0;
@@ -123,11 +144,11 @@ body {
 }
 
 /* ==========================================
-   LES BOUTONS DU HAUT (Fichier & Vues)
+   TOPBAR — boutons Fichier / vues
 ========================================== */
 .btn-fichier {
     background-color: #ececec !important; 
-    color: #333333 !important;      
+    color: var(--color-text) !important;      
     border: none !important; 
     border-radius: 6px;
     font-weight: bold;
@@ -145,13 +166,13 @@ body {
     padding: 0 !important;
     font-weight: normal;
     font-size: 0.8rem !important;
-    color: #333333 !important;
+    color: var(--color-text) !important;
     font-family: inherit;
 }
 
 .panel-haut-bar .btn-fichier:hover {
     background: none !important;
-    color: #333333 !important;
+    color: var(--color-text) !important;
 }
 
 .panel-haut-bar .btn-fichier:disabled {
@@ -161,12 +182,11 @@ body {
 }
 
 /* Fichier et Affichage : même style, même couleur, bien centrés */
-.panel-haut-bar .panel-haut-label,
 .panel-haut-bar .btn-fichier {
     line-height: 1;
     display: flex;
     align-items: center;
-    color: #333333 !important;
+    color: var(--color-text) !important;
 }
 
 .btn-contact-mail {
@@ -180,18 +200,18 @@ body {
     font-weight: normal;
     font-family: inherit;
     line-height: 1;
-    color: #333333;
+    color: var(--color-text);
     cursor: pointer;
     transition: color 0.2s;
     flex-shrink: 0;
 }
 
 .btn-contact-mail:hover {
-    color: #0078d4;
+    color: var(--color-accent);
 }
 
 .btn-contact-mail.is-copied {
-    color: #2e7d32;
+    color: var(--color-success);
 }
 
 .btn-fichier:hover {
@@ -217,7 +237,7 @@ body {
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
-    color: #333333;
+    color: var(--color-text);
     font-size: 0.8rem;
     font-weight: normal;
 }
@@ -225,54 +245,54 @@ body {
 .panel-haut-vues .view-switcher button.active {
     background: none !important;
     box-shadow: none !important;
-    color: #333333;
+    color: var(--color-text);
     font-weight: normal;
 }
 
 .panel-haut-vues .view-switcher button:hover {
-    color: #333333;
+    color: var(--color-text);
 }
 
 .view-switcher button {
     background: transparent !important;
     box-shadow: none !important;
     border: none !important;
-    color: #666666; 
+    color: var(--color-text-muted); 
 }
 
 .view-switcher button.active {
-    background-color: #ffffff !important;
-    color: #333333 !important;
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
 }
 
 .view-switcher button:hover:not(.active) {
-    color: #333333;
+    color: var(--color-text);
 }
 
 /* ==========================================
-   LA CARTE FLOTTANTE (WORKSPACE)
+   VIEWPORT (carte workspace)
 ========================================== */
 #viewport {
-    background-color: #f0f0f0; 
+    background-color: var(--color-workspace); 
     border-radius: 12px; 
     box-shadow: none;
 }
 
 main { 
-    background: #f0f0f0; 
+    background: var(--color-workspace); 
     border-radius: inherit;
 }
-#viewport-3d { background-color: #FFFFFF; } 
-#viewport-2d { background-color: #FFFFFF; }
+#viewport-3d { background-color: var(--color-surface); } 
+#viewport-2d { background-color: var(--color-surface); }
 #canvas-2d { background: transparent; box-shadow: 0 0 20px rgba(0,0,0,0.04); cursor: grab; }
-#viewport-outillage { background-color: #FFFFFF; } 
+
 
 /* ==========================================
    MENU DÉROULANT FICHIER
 ========================================== */
 #fichier-dropdown {
-    background-color: #ffffff; 
+    background-color: var(--color-surface); 
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 6px;
     box-shadow: 0px 4px 12px rgba(0,0,0,0.08); 
@@ -280,7 +300,7 @@ main {
 
 #fichier-dropdown button {
     background-color: transparent !important;
-    color: #333333 !important; 
+    color: var(--color-text) !important; 
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -288,11 +308,11 @@ main {
 
 #fichier-dropdown button:hover {
     background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #0078d4 !important;
+    color: var(--color-accent) !important;
 }
 
 #affichage-dropdown {
-    background-color: #ffffff;
+    background-color: var(--color-surface);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 6px;
     box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
@@ -304,13 +324,13 @@ main {
     justify-content: space-between;
     gap: 12px;
     background-color: transparent !important;
-    color: #333333 !important;
+    color: var(--color-text) !important;
     margin: 0;
 }
 
 #affichage-dropdown label:hover {
     background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #0078d4 !important;
+    color: var(--color-accent) !important;
 }
 
 /* ==========================================
@@ -327,7 +347,7 @@ main {
     border: none;
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.06) !important;
-    color: #555 !important;
+    color: var(--color-text-soft) !important;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
     box-shadow: none !important;
@@ -335,18 +355,18 @@ main {
 
 .btn-realtime:hover {
     background: rgba(0, 0, 0, 0.1) !important;
-    color: #333 !important;
+    color: var(--color-text) !important;
 }
 
 .btn-realtime.realtime-active {
     background: rgba(0, 120, 212, 0.15) !important;
-    color: #0078d4 !important;
+    color: var(--color-accent) !important;
 }
 
 .realtime-panel {
     min-width: 280px;
     padding: 8px;
-    background-color: #ffffff;
+    background-color: var(--color-surface);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -358,7 +378,7 @@ main {
     padding: 8px 12px;
     font-size: 0.8rem;
     background-color: transparent !important;
-    color: #333333 !important;
+    color: var(--color-text) !important;
     border: none !important;
     border-radius: 4px !important;
     box-shadow: none !important;
@@ -367,7 +387,7 @@ main {
 
 .realtime-panel button:hover {
     background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #0078d4 !important;
+    color: var(--color-accent) !important;
 }
 
 .realtime-join-row,
@@ -386,7 +406,7 @@ main {
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 4px;
     background: #fafafa;
-    color: #333;
+    color: var(--color-text);
 }
 
 .realtime-join-row button,
@@ -401,7 +421,7 @@ main {
     margin: 0 0 4px;
     padding: 0 4px;
     font-size: 0.75rem;
-    color: #0078d4;
+    color: var(--color-accent);
     font-weight: 500;
 }
 
@@ -409,16 +429,16 @@ main {
     margin: 8px 0 4px;
     padding: 0 4px;
     font-size: 0.7rem;
-    color: #666;
+    color: var(--color-text-muted);
 }
 
 .realtime-leave-btn {
     margin-top: 4px;
-    color: #c42b1c !important;
+    color: var(--color-danger) !important;
 }
 
 .realtime-leave-btn:hover {
-    color: #c42b1c !important;
+    color: var(--color-danger) !important;
     background-color: rgba(196, 43, 28, 0.08) !important;
 }
 
@@ -459,24 +479,24 @@ main {
     border-radius: 4px;
     font-size: 0.65rem;
     line-height: 1.2;
-    color: #fff;
+    color: var(--color-surface);
     white-space: nowrap;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* ==========================================
-   ACCORDÉONS ET BLOCS PARAMÈTRES (Panel Gauche)
+   CARTES INSPECTEUR (sections, liaisons, gravure)
 ========================================== */
 .setting-card {
-    background-color: #CEDEF2; 
+    background-color: var(--color-card); 
     border: none;
     border-radius: 8px;
     box-shadow: none;
 }
 
 .accordion {
-    background-color: #CEDEF2; 
-    color: #333333;            
+    background-color: var(--color-card); 
+    color: var(--color-text);            
     border: none;
     font-weight: bold;
     cursor: pointer;
@@ -484,39 +504,35 @@ main {
     transition: 0.3s;
 }
 
-.accordion:hover {
-    background-color: #CEDEF2;
-    color: #333333;
-}
 
 .panel-controls {
-    background-color: #CEDEF2; 
+    background-color: var(--color-card); 
     transition: max-height 0.2s ease-out;
 }
 
 .sub-block {
-    background-color: #CEDEF2; 
+    background-color: var(--color-card); 
     border: 1px solid rgba(0, 0, 0, 0.06);
     border-radius: 6px;
 }
 
 .accordion.sub-accordion {
     background-color: transparent;
-    color: #333333;
+    color: var(--color-text);
 }
 
 .accordion.sub-accordion:hover {
-    background-color: #CEDEF2;
-    color: #333333;
+    background-color: var(--color-card);
+    color: var(--color-text);
 }
 
 .accordion.sub-accordion.active {
-    background-color: #CEDEF2;
-    color: #333333;
+    background-color: var(--color-card);
+    color: var(--color-text);
 }
 
 .accordion.sub-accordion:after {
-    color: #555555;
+    color: var(--color-text-soft);
 }
 
 /* Blocs rattachement : style distinct blanc/gris, plus sobre que sections */
@@ -534,7 +550,7 @@ main {
 .setting-card--liaison:not(.gravure-item) .accordion.sub-accordion.active,
 .setting-card--rattachement:not(.gravure-item) .sub-block,
 .setting-card--liaison:not(.gravure-item) .sub-block {
-    background-color: #f2f3f5;
+    background-color: var(--color-rattachement-bg);
 }
 
 .setting-card--rattachement:not(.gravure-item),
@@ -545,7 +561,7 @@ main {
 .setting-card--rattachement:not(.gravure-item) .accordion,
 .setting-card--liaison:not(.gravure-item) .accordion {
     color: #2f2f2f;
-    background-color: #eceff2;
+    background-color: var(--color-rattachement-header);
 }
 
 .setting-card--rattachement:not(.gravure-item) .sub-block,
@@ -555,18 +571,18 @@ main {
 
 /* Courbe S impossible (hauteur / géométrie) : slider en rouge */
 .setting-card.courbe-s-impossible input[type="range"] {
-    --range-fill: #c62828;
-    --range-thumb: #c62828;
+    --range-fill: var(--color-danger-alt);
+    --range-thumb: var(--color-danger-alt);
 }
 .setting-card.courbe-s-impossible input[type="number"] {
-    border-color: #c62828;
-    background-color: #ffebee;
+    border-color: var(--color-danger-alt);
+    background-color: var(--color-error-bg);
 }
 
 /* Rayon impossible (géométrie) : même code couleur que Courbe S */
 .setting-card.rayon-impossible input[type="number"] {
-    border-color: #c62828;
-    background-color: #ffebee;
+    border-color: var(--color-danger-alt);
+    background-color: var(--color-error-bg);
 }
 
 /* Blocs gravure : même couleur que sections (pleine opacité) */
@@ -577,27 +593,23 @@ main {
 .setting-card.gravure-item .accordion.sub-accordion:hover,
 .setting-card.gravure-item .accordion.sub-accordion.active,
 .setting-card.gravure-item .sub-block {
-    background-color: #CEDEF2;
+    background-color: var(--color-card);
 }
 
-.sub-panel {
-    background-color: transparent;
-}
 
 /* ==========================================
-   INPUTS ET TEXTES DE FORMULAIRES
+   FORMULAIRES (inputs, selects, sliders)
 ========================================== */
-.input-label { color: #666666; }
-.badge-fictif { color: #ff9999; font-weight: bold; } 
+.input-label { color: var(--color-text-muted); }
 
-.sub-block .label-row { color: #555555; }
-.sub-block .label-row label { color: #333333; }
-.sub-block .label-simple { color: #333333; }
-.sub-block .unit { color: #666666; }
+.sub-block .label-row { color: var(--color-text-soft); }
+.sub-block .label-row label { color: var(--color-text); }
+.sub-block .label-simple { color: var(--color-text); }
+.sub-block .unit { color: var(--color-text-muted); }
 
 .input-wrapper, input[type="text"], .input-select {
-    background-color: #ffffff; 
-    color: #333333;
+    background-color: var(--color-surface); 
+    color: var(--color-text);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     outline: none;
@@ -605,7 +617,7 @@ main {
 
 .input-wrapper input[type="number"] {
     background: transparent;
-    color: #0078d4; 
+    color: var(--color-accent); 
     font-weight: bold;
     border: none;
     outline: none;
@@ -639,7 +651,7 @@ select.input-select,
     border: none;
     outline: none;
     background-color: transparent;
-    color: #333333;
+    color: var(--color-text);
     font-size: 0.8rem;
     font-family: inherit;
 }
@@ -647,8 +659,8 @@ select.input-select,
 /* Sliders : rendu custom identique Mac / Windows / Linux (--range-pct via ui-controls.js) */
 input[type="range"] {
     --range-track: #d4d4d4;
-    --range-fill: #0078d4;
-    --range-thumb: #0078d4;
+    --range-fill: var(--color-accent);
+    --range-thumb: var(--color-accent);
     --range-pct: 0%;
     width: 100%;
     height: 22px;
@@ -724,17 +736,10 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 
 .input-select option {
-    background-color: #ffffff; 
-    color: #333333;
+    background-color: var(--color-surface); 
+    color: var(--color-text);
 }
 
-.input-select-disabled {
-    background-color: rgba(255, 255, 255, 0.5);
-    color: #555555;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-    cursor: not-allowed;
-}
 
 .checkbox-row input[type="checkbox"], .checkbox-row label {
     cursor: pointer;
@@ -744,17 +749,17 @@ input[type="checkbox"] {
     width: 15px;
     height: 15px;
     margin: 0;
-    accent-color: #0078d4;
+    accent-color: var(--color-accent);
     cursor: pointer;
     flex-shrink: 0;
 }
 
 /* ==========================================
-   DIVERS
+   GRAVURE / AJOUT SECTION / OVERLAYS
 ========================================== */
 .btn-add-gravure {
-    background-color: #BBDDF2;
-    color: #333333;
+    background-color: var(--color-btn-soft);
+    color: var(--color-text);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 5px;
     font-weight: bold;
@@ -764,27 +769,27 @@ input[type="checkbox"] {
 }
 
 .btn-add-gravure:hover {
-    background-color: #a8d4ed;
+    background-color: var(--color-btn-soft-hover);
     border-color: rgba(0, 0, 0, 0.15);
-    color: #333333;
+    color: var(--color-text);
 }
 
 /* Barre sticky ajouter section */
 .inspector-add-section-bar {
-    background-color: #F8F8F8;     /* même ton que le fond */
+    background-color: var(--color-app-bg);     /* même ton que le fond */
     border-top: 1px solid rgba(0, 0, 0, 0.06);
     box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.03);
     backdrop-filter: blur(4px);
 }
 
 .btn-add-section {
-    background-color: #BBDDF2;
-    color: #333333;
+    background-color: var(--color-btn-soft);
+    color: var(--color-text);
     border: 1px solid rgba(0, 0, 0, 0.1);
     transition: 0.2s;
 }
 .btn-add-section:hover {
-    background-color: #a8d4ed;
+    background-color: var(--color-btn-soft-hover);
     border-color: rgba(0, 0, 0, 0.15);
 }
 
@@ -799,7 +804,7 @@ input[type="checkbox"] {
 }
 .setting-card .gravure-file-btn {
     background-color: rgba(0, 0, 0, 0.06);
-    color: #333333;
+    color: var(--color-text);
     border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 4px;
     padding: 6px 10px;
@@ -816,7 +821,7 @@ input[type="checkbox"] {
 }
 .setting-card .gravure-filename {
     font-size: 0.75rem;
-    color: #333333;
+    color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -827,7 +832,7 @@ input[type="checkbox"] {
     outline: 1px dashed rgba(0, 102, 204, 0.45);
 }
 .setting-card .gravure-item .label-row label {
-    color: #333333;
+    color: var(--color-text);
 }
 .setting-card .gravure-item input[type="checkbox"] {
     cursor: pointer;
@@ -838,7 +843,7 @@ input[type="checkbox"] {
     padding: 6px 10px;
     font-size: 0.75rem;
     font-weight: bold;
-    color: #555555;
+    color: var(--color-text-soft);
     background: transparent;
     border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: 4px;
@@ -847,7 +852,7 @@ input[type="checkbox"] {
 }
 .btn-remove-gravure:hover {
     background: rgba(0, 0, 0, 0.06);
-    color: #333333;
+    color: var(--color-text);
     border-color: rgba(0, 0, 0, 0.3);
 }
 
@@ -860,10 +865,6 @@ input[type="checkbox"] {
     background-color: rgba(206, 222, 242, 0.35);
 }
 
-.placeholder-outillage h1 {
-    color: #999999; 
-    font-weight: 900;
-}
 
 .volume-total-overlay {
     color: #1f2d3d;
@@ -873,84 +874,8 @@ input[type="checkbox"] {
 }
 
 /* ==========================================
-   MOBILE — ajustements visuels
+   GUIDE MODAL (menu + diaporama)
 ========================================== */
-@media (max-width: 768px) {
-    #viewport {
-        border-radius: 0;
-        box-shadow: none;
-    }
-
-    #topbar .panel-haut-bar {
-        background-color: rgba(234, 237, 242, 0.92);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-    }
-
-    #topbar .panel-haut-vues .view-switcher button.active {
-        font-weight: 600;
-    }
-
-    #inspector .panel-icons-bar {
-        background-color: #F8F8F8;
-    }
-
-    .panel-logo-col {
-        background-color: #E6EBF2;
-    }
-
-    .mobile-menu-trigger:hover {
-        background: rgba(224, 228, 234, 0.95);
-    }
-
-    .mobile-menu-panel__close:hover {
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    .mobile-menu-nav__trigger:hover {
-        background: #f0f8ff !important;
-        border-color: rgba(0, 120, 212, 0.25) !important;
-    }
-
-    .mobile-menu-subpanel button:hover,
-    .mobile-menu-subpanel label:hover {
-        background: #f0f8ff !important;
-        border-color: rgba(0, 120, 212, 0.25) !important;
-        color: #0078d4 !important;
-    }
-
-    .mobile-menu-subpanel .realtime-leave-btn:hover {
-        color: #c42b1c !important;
-        background: rgba(196, 43, 28, 0.08) !important;
-    }
-
-    #mobile-slot-realtime .realtime-join-row,
-    #mobile-slot-realtime .realtime-link-row {
-        flex-direction: column;
-        margin-top: 8px;
-    }
-
-    #mobile-slot-realtime .realtime-join-row input,
-    #mobile-slot-realtime .realtime-link-row input {
-        width: 100%;
-    }
-
-    #mobile-slot-realtime .realtime-join-row button,
-    #mobile-slot-realtime .realtime-link-row button {
-        width: 100%;
-    }
-
-    .inspector-add-section-fab:hover {
-        background-color: #a8d4ed;
-    }
-
-    .inspector-add-section-fab[aria-expanded="true"] {
-        background-color: #a8d4ed;
-    }
-}
-
-/* Guide modal (menu + diaporama) */
 body.guide-modal-open {
     overflow: hidden;
 }
@@ -982,7 +907,7 @@ body.guide-modal-open {
     flex-direction: column;
     width: min(1080px, 100%);
     max-height: min(90vh, 740px);
-    background: #ffffff;
+    background: var(--color-surface);
     border-radius: 12px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
     overflow: hidden;
@@ -1015,7 +940,7 @@ body.guide-modal-open {
     border-radius: 6px;
     font-size: 1.5rem;
     line-height: 1;
-    color: #555;
+    color: var(--color-text-soft);
     cursor: pointer;
 }
 
@@ -1059,12 +984,12 @@ body.guide-modal-open {
 
 .guide-modal__menu-item:hover {
     background: rgba(0, 120, 212, 0.08);
-    color: #0078d4;
+    color: var(--color-accent);
 }
 
 .guide-modal__menu-item.is-active {
-    background: #0078d4;
-    color: #fff;
+    background: var(--color-accent);
+    color: var(--color-surface);
     font-weight: 600;
 }
 
@@ -1104,7 +1029,7 @@ body.guide-modal-open {
     height: auto;
     object-fit: contain;
     border-radius: 4px;
-    background: #fff;
+    background: var(--color-surface);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
@@ -1118,7 +1043,7 @@ body.guide-modal-open {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: #ffffff;
+    background: var(--color-surface);
     color: #222;
     font-size: 1.4rem;
     line-height: 1;
@@ -1128,14 +1053,14 @@ body.guide-modal-open {
 }
 
 .guide-modal__nav:hover {
-    background: #0078d4;
-    color: #fff;
+    background: var(--color-accent);
+    color: var(--color-surface);
 }
 
 .guide-modal__nav:disabled {
     opacity: 0.35;
     cursor: default;
-    background: #ffffff;
+    background: var(--color-surface);
     color: #222;
 }
 
@@ -1159,7 +1084,7 @@ body.guide-modal-open {
     padding: 12px 18px;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     flex-shrink: 0;
-    background: #fff;
+    background: var(--color-surface);
 }
 
 .guide-modal__dots {
@@ -1187,18 +1112,95 @@ body.guide-modal-open {
 }
 
 .guide-modal__dot.is-active {
-    background: #0078d4;
+    background: var(--color-accent);
     transform: scale(1.15);
 }
 
 .guide-modal__counter {
     margin: 0;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--color-text-muted);
     flex-shrink: 0;
 }
 
+/* ==========================================
+   MOBILE — couleurs / hovers (layout → structure.css)
+========================================== */
 @media (max-width: 768px) {
+    #viewport {
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    #topbar .panel-haut-bar {
+        background-color: rgba(234, 237, 242, 0.92);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    #topbar .panel-haut-vues .view-switcher button.active {
+        font-weight: 600;
+    }
+
+    #inspector .panel-icons-bar {
+        background-color: var(--color-app-bg);
+    }
+
+    .panel-logo-col {
+        background-color: var(--color-sidebar);
+    }
+
+    .mobile-menu-trigger:hover {
+        background: rgba(224, 228, 234, 0.95);
+    }
+
+    .mobile-menu-panel__close:hover {
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .mobile-menu-nav__trigger:hover {
+        background: var(--color-accent-soft) !important;
+        border-color: rgba(0, 120, 212, 0.25) !important;
+    }
+
+    .mobile-menu-subpanel button:hover,
+    .mobile-menu-subpanel label:hover {
+        background: var(--color-accent-soft) !important;
+        border-color: rgba(0, 120, 212, 0.25) !important;
+        color: var(--color-accent) !important;
+    }
+
+    .mobile-menu-subpanel .realtime-leave-btn:hover {
+        color: var(--color-danger) !important;
+        background: rgba(196, 43, 28, 0.08) !important;
+    }
+
+    #mobile-slot-realtime .realtime-join-row,
+    #mobile-slot-realtime .realtime-link-row {
+        flex-direction: column;
+        margin-top: 8px;
+    }
+
+    #mobile-slot-realtime .realtime-join-row input,
+    #mobile-slot-realtime .realtime-link-row input {
+        width: 100%;
+    }
+
+    #mobile-slot-realtime .realtime-join-row button,
+    #mobile-slot-realtime .realtime-link-row button {
+        width: 100%;
+    }
+
+    .inspector-add-section-fab:hover {
+        background-color: var(--color-btn-soft-hover);
+    }
+
+    .inspector-add-section-fab[aria-expanded="true"] {
+        background-color: var(--color-btn-soft-hover);
+    }
+
+    /* Guide modal — mobile */
     .guide-modal {
         padding: 12px;
     }
@@ -1245,3 +1247,4 @@ body.guide-modal-open {
         font-size: 1.25rem;
     }
 }
+

@@ -1,46 +1,78 @@
-// Feature interieur : reglage epaisseur de verre et rendu de la peau interieure.
-var InterieurFeature = (function () {
-    var DEFAULT_STATE = {
-        glassThicknessMm: 3.5
-    };
+// Interieur/function.js — panneau UI « Intérieur » et état utilisateur.
+// Rôle : slider + champ numérique pour l'épaisseur du verre (mm).
+// Constantes → InterieurRules. Géométrie → InterieurMath. Rafraîchit la bouteille via updateBouteille().
 
+var InterieurFeature = (function () {
+    var R = typeof InterieurRules !== 'undefined' ? InterieurRules : {};
+
+    function id(key, fallback) {
+        return (R.IDS && R.IDS[key]) || fallback;
+    }
+
+    function defaultThickness() {
+        return R.DEFAULT_GLASS_THICKNESS_MM != null ? R.DEFAULT_GLASS_THICKNESS_MM : 3.5;
+    }
+
+    function thicknessMin() {
+        return R.THICKNESS_MIN != null ? R.THICKNESS_MIN : 0;
+    }
+
+    function thicknessMax() {
+        return R.THICKNESS_MAX != null ? R.THICKNESS_MAX : 12;
+    }
+
+    function thicknessStep() {
+        return R.THICKNESS_STEP != null ? R.THICKNESS_STEP : 0.1;
+    }
+
+    // État global window.interiorState (épaisseur mm), initialisé au défaut rules.
     function getState() {
-        if (typeof window === 'undefined') return { glassThicknessMm: DEFAULT_STATE.glassThicknessMm };
-        if (!window.interiorState) window.interiorState = { glassThicknessMm: DEFAULT_STATE.glassThicknessMm };
+        var def = defaultThickness();
+        if (typeof window === 'undefined') return { glassThicknessMm: def };
+        if (!window.interiorState) window.interiorState = { glassThicknessMm: def };
         return window.interiorState;
     }
 
     function clampThickness(v) {
-        if (!isFinite(v)) return DEFAULT_STATE.glassThicknessMm;
-        return Math.max(0, Math.min(12, v));
+        if (!isFinite(v)) return defaultThickness();
+        return Math.max(thicknessMin(), Math.min(thicknessMax(), v));
     }
 
+    // HTML injecté dans panel-content-interieur (accordion + slider épaisseur).
     function buildPanelHtml() {
         var st = getState();
+        var lo = thicknessMin();
+        var hi = thicknessMax();
+        var step = thicknessStep();
+        var numId = id('epaisseur', 'interieur-epaisseur');
+        var sliderId = id('epaisseurSlider', 'interieur-epaisseur-slider');
         return ''
             + '<div class="setting-card">'
             + '  <button class="accordion main-accordion">Intérieur</button>'
             + '  <div class="panel-controls">'
             + '    <div class="control-group">'
-            + '      <div class="label-row"><label>Épaisseur du verre (mm)</label><div class="input-wrapper"><input type="number" id="interieur-epaisseur" value="' + st.glassThicknessMm + '" min="0" max="12" step="0.1"><span class="unit">mm</span></div></div>'
-            + '      <input type="range" id="interieur-epaisseur-slider" min="0" max="12" step="0.1" value="' + st.glassThicknessMm + '">'
+            + '      <div class="label-row"><label>Épaisseur du verre (mm)</label>'
+            + '<div class="input-wrapper"><input type="number" id="' + numId + '" value="' + st.glassThicknessMm + '" min="' + lo + '" max="' + hi + '" step="' + step + '"><span class="unit">mm</span></div></div>'
+            + '      <input type="range" id="' + sliderId + '" min="' + lo + '" max="' + hi + '" step="' + step + '" value="' + st.glassThicknessMm + '">'
             + '    </div>'
             + '  </div>'
             + '</div>';
     }
 
     function syncInputs(value) {
-        var num = document.getElementById('interieur-epaisseur');
-        var rng = document.getElementById('interieur-epaisseur-slider');
+        var num = document.getElementById(id('epaisseur', 'interieur-epaisseur'));
+        var rng = document.getElementById(id('epaisseurSlider', 'interieur-epaisseur-slider'));
         if (num) num.value = value;
         if (rng) rng.value = value;
     }
 
+    // Lie slider, input et accordion ; chaque changement relance updateBouteille().
     function wirePanelEvents() {
-        var num = document.getElementById('interieur-epaisseur');
-        var rng = document.getElementById('interieur-epaisseur-slider');
-        var acc = document.querySelector('#panel-content-interieur .accordion.main-accordion');
-        var panel = document.querySelector('#panel-content-interieur .panel-controls');
+        var num = document.getElementById(id('epaisseur', 'interieur-epaisseur'));
+        var rng = document.getElementById(id('epaisseurSlider', 'interieur-epaisseur-slider'));
+        var panelRoot = document.getElementById(id('panel', 'panel-content-interieur'));
+        var acc = panelRoot ? panelRoot.querySelector('.accordion.main-accordion') : null;
+        var panel = panelRoot ? panelRoot.querySelector('.panel-controls') : null;
         if (!num || !rng) return;
         if (num.dataset.boundInterieur === '1') return;
 
@@ -51,7 +83,7 @@ var InterieurFeature = (function () {
             if (typeof updateBouteille === 'function') updateBouteille();
         }
 
-        // Le bloc est rendu dynamiquement, il a besoin de son propre toggle d'accordeon.
+        // Accordion du bloc rendu dynamiquement
         if (acc && panel && acc.dataset.boundInterieurAccordion !== '1') {
             acc.dataset.boundInterieurAccordion = '1';
             panel.style.maxHeight = '0px';
@@ -83,19 +115,19 @@ var InterieurFeature = (function () {
     }
 
     function render() {
-        var container = document.getElementById('panel-content-interieur');
+        var container = document.getElementById(id('panel', 'panel-content-interieur'));
         if (!container) return;
         container.innerHTML = buildPanelHtml();
         wirePanelEvents();
     }
 
+    // API publique : épaisseur courante (mm), bornée selon rules.
     function getGlassThicknessMm() {
         return clampThickness(getState().glassThicknessMm);
     }
 
     return {
         render: render,
-        wirePanelEvents: wirePanelEvents,
         getGlassThicknessMm: getGlassThicknessMm
     };
 })();

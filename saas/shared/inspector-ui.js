@@ -1,8 +1,13 @@
-// État UI de l'inspecteur — accordéons, scroll, menus (sync session partagée).
+// saas/shared/inspector-ui.js
+// État UI inspecteur : accordéons, scroll, menus dropdown (sync session partagée / realtime).
+// API : collectState, applyState, notifyChange, bindScrollSync
+
 var InspectorUISync = (function () {
     var isApplying = false;
     var scrollRaf = 0;
     var scrollDebounceTimer = null;
+
+    // --- Accordéons : clés stables pour sync distant ---
 
     function accordionPanelFor(btn) {
         var card = btn.closest ? btn.closest('.setting-card') : null;
@@ -13,6 +18,7 @@ var InspectorUISync = (function () {
         return btn.nextElementSibling;
     }
 
+    // Clé unique : id DOM, gravure, section, liaison, ou libellé
     function accordionKeyFor(btn) {
         if (!btn || !btn.classList.contains('accordion')) return null;
         if (btn.id) return 'id:' + btn.id;
@@ -83,6 +89,8 @@ var InspectorUISync = (function () {
             panel.style.maxHeight = panel.scrollHeight + 'px';
         }
     }
+
+    // --- Collecte / application état UI ---
 
     function collectOpenAccordions() {
         var keys = [];
@@ -192,6 +200,8 @@ var InspectorUISync = (function () {
         }
     }
 
+    // --- Scroll inspecteur → sync realtime ---
+
     function notifyChange() {
         if (isApplying) return;
         if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.isApplying && RealtimeViewSync.isApplying()) return;
@@ -224,7 +234,6 @@ var InspectorUISync = (function () {
         collectState: collectState,
         applyState: applyState,
         notifyChange: notifyChange,
-        bindScrollSync: bindScrollSync,
-        isApplying: function () { return isApplying; }
+        bindScrollSync: bindScrollSync
     };
 })();

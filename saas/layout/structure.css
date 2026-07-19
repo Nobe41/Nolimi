@@ -1,4 +1,11 @@
 /* ==========================================
+   structure.css — squelette de l’app SaaS
+   Pages login / menu / atelier, sidebar, inspector,
+   topbar, viewport, accordéons, mobile.
+   Thème couleurs → style/theme.css (pas ici).
+========================================== */
+
+/* ==========================================
    RESET GLOBAL
 ========================================== */
 * {
@@ -21,23 +28,6 @@ body {
     --saas-viewport-bottom-gap: 1.85rem;
     --mobile-sidebar-height: 56px;
     --mobile-breakpoint: 768px;
-}
-
-/* ==========================================
-   PAGE LOGIN
-========================================== */
-#Page-login {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-#password-input {
-    padding: 10px 15px;
-    font-size: 1.2rem;
-    width: 250px;
-    text-align: center;
 }
 
 /* ==========================================
@@ -358,12 +348,6 @@ body {
     gap: 4px;
 }
 
-.panel-haut-label {
-    font-size: 0.8rem;
-    font-weight: normal;
-    color: #333333 !important;
-}
-
 .header-left-group {
     display: flex;
     gap: 10px;
@@ -547,10 +531,6 @@ main {
     font-size: 0.8rem;
 }
 
-.badge-fictif {
-    font-size: 0.7rem;
-}
-
 .input-wrapper { 
     display: flex; 
     align-items: center; 
@@ -572,7 +552,7 @@ input[type="range"] {
     width: 100%; 
 }
 
-input[type="text"], .input-select, .input-select-disabled { 
+input[type="text"], .input-select { 
     width: 100%; 
     padding: 6px; 
     margin-top: 4px; 
@@ -592,7 +572,7 @@ input[type="text"], .input-select, .input-select-disabled {
 }
 
 /* ==========================================
-   DIVERS
+   GRAVURE (bouton « ajouter »)
 ========================================== */
 .engraving-btn-container {
     padding: 6px 0;
@@ -648,12 +628,9 @@ input[type="text"], .input-select, .input-select-disabled {
     border-radius: 6px;
 }
 
-.placeholder-outillage h1 {
-    font-size: 3rem;
-    text-transform: uppercase;
-    letter-spacing: 5px;
-}
-
+/* ==========================================
+   OVERLAYS / FOOTER LÉGAL
+========================================== */
 .volume-total-overlay {
     position: absolute;
     left: 12px;
@@ -714,10 +691,10 @@ input[type="text"], .input-select, .input-select-disabled {
 }
 
 /* ==========================================
-   LAYOUT MOBILE (téléphone)
-   Haut : viewport 3D/2D + bouton vue en haut à droite
-   Milieu : inspector centré (moitié basse de l'écran)
-   Bas : sidebar horizontale (S, G, P, R, C)
+   LAYOUT MOBILE (≤ 768px)
+   Haut : viewport 3D/2D
+   Milieu : inspector
+   Bas : sidebar horizontale (onglets)
 ========================================== */
 @media (max-width: 768px) {
     :root {

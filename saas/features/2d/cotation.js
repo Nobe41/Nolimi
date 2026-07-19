@@ -1,20 +1,27 @@
+// saas/features/2d/cotation.js
+// Libellés de cotation du plan (Ø, R, courbe S…).
+// Le tracé des cotes est dans canvas/2d/tools.js.
+//
+// L = diamètre section, P = profondeur (ovale). Égal → cylindrique → préfixe Ø.
+
 var Plans2DCotation = (function () {
     function formatValue(v) {
-        if (typeof Plans2DMath !== 'undefined' && Plans2DMath.formatText) return Plans2DMath.formatText(v);
         return Number.isInteger(v) ? v : v.toFixed(1);
     }
 
+    // Cylindrique si L ≈ P (tolérance 0,05 mm)
     function isSectionRound(L, P) {
-        if (!Number.isFinite(L)) return true;
-        if (!Number.isFinite(P)) return true;
+        if (!Number.isFinite(L) || !Number.isFinite(P)) return true;
         return Math.abs(L - P) < 0.05;
     }
 
+    // Texte cote diamètre : « Ø 71 » ou valeur seule si ovale
     function getDiameterLabel(L, P, diameter) {
         var text = formatValue(diameter);
         return isSectionRound(L, P) ? ('Ø ' + text) : text;
     }
 
+    // rattId = ex. r12 (liaison s1→s2) : lit {id}-type et {id}-rho
     function getRattachementLabel(rattId) {
         var typeEl = document.getElementById(rattId + '-type');
         var rhoEl = document.getElementById(rattId + '-rho');
@@ -31,7 +38,6 @@ var Plans2DCotation = (function () {
 
     return {
         formatValue: formatValue,
-        isSectionRound: isSectionRound,
         getDiameterLabel: getDiameterLabel,
         getRattachementLabel: getRattachementLabel
     };

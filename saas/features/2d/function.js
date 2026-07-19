@@ -1,33 +1,83 @@
+// saas/features/2d/function.js
+// Façade plan : lit le DOM (papier, échelle, vue dessous) + bind contrôles.
+// Constantes → Plans2DRules. Rendu / caméra → canvas/2d (pas ici).
+
 var Plans2DFeature = (function () {
-    function getPaperFormats() {
-        if (typeof Plans2DRules !== 'undefined' && Plans2DRules.PAPER_FORMATS) return Plans2DRules.PAPER_FORMATS;
-        return { A4_P: { w: 210, h: 297 } };
+    function ids() {
+        return Plans2DRules.IDS;
     }
 
-    function getPaperFormatValue() {
-        var id = (Plans2DRules && Plans2DRules.IDS && Plans2DRules.IDS.paperFormat) || 'paper-format-select';
-        var el = document.getElementById(id);
-        return el ? el.value : ((Plans2DRules && Plans2DRules.DEFAULT_PAPER_FORMAT) || 'A4_P');
+    // --- Papier (dimensions = Plans2DRules.PAPER_FORMATS uniquement) ---
+
+    function getFormats() {
+        return Plans2DRules.PAPER_FORMATS;
     }
 
+    function getDefaultFormat() {
+        return Plans2DRules.DEFAULT_PAPER_FORMAT;
+    }
+
+    function getSelectedFormat() {
+        var el = document.getElementById(ids().paperFormat);
+        return el && el.value ? el.value : getDefaultFormat();
+    }
+
+    // Dimensions feuille courante (mm) selon le <select> papier
     function getPaperInfo() {
-        var formats = getPaperFormats();
-        var fmt = getPaperFormatValue();
-        return formats[fmt] || formats[(Plans2DRules && Plans2DRules.DEFAULT_PAPER_FORMAT) || 'A4_P'];
+        var formats = getFormats();
+        return formats[getSelectedFormat()] || formats[getDefaultFormat()];
     }
 
-    function init() {
-        window.paperFormats = getPaperFormats();
+    // --- Options d’affichage ---
+
+    function getScaleValue() {
+        var el = document.getElementById(ids().drawingScale);
+        return el && el.value ? el.value : Plans2DRules.DEFAULT_DRAWING_SCALE;
+    }
+
+    function getScaleLabel() {
+        var el = document.getElementById(ids().drawingScale);
+        var def = Plans2DRules.DEFAULT_DRAWING_SCALE;
+        if (!el || !el.options || el.selectedIndex < 0) return def;
+        return el.options[el.selectedIndex].text || el.value || def;
+    }
+
+    // Facteur numérique pour le rendu (ex. 1:2 → 0.5)
+    function getDrawingScale() {
+        var factor = Plans2DRules.DRAWING_SCALE_FACTORS[getScaleValue()];
+        return typeof factor === 'number' ? factor : 1;
+    }
+
+    function getShowBottomView() {
+        var el = document.getElementById(ids().showBottom);
+        return !!(el && el.checked);
+    }
+
+    // --- Panneau Plan → redessiner le canvas ---
+    // drawFn = draw2D (canvas/2d). Cartouche inclus : tout changement relance le plan.
+
+    function bindControlRedraw(drawFn) {
+        var i = ids();
+        var list = [
+            i.paperFormat, i.drawingScale, i.showBottom,
+            i.projectTitle, i.planNumber, i.date, i.drafter, i.checker, i.index
+        ];
+        for (var n = 0; n < list.length; n++) {
+            var el = document.getElementById(list[n]);
+            if (!el) continue;
+            var ev = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+            el.addEventListener(ev, function () {
+                if (typeof drawFn === 'function') drawFn();
+            });
+        }
     }
 
     return {
-        init: init,
-        getPaperFormats: getPaperFormats,
-        getPaperFormatValue: getPaperFormatValue,
-        getPaperInfo: getPaperInfo
+        getFormats: getFormats,
+        getPaperInfo: getPaperInfo,
+        getScaleLabel: getScaleLabel,
+        getDrawingScale: getDrawingScale,
+        getShowBottomView: getShowBottomView,
+        bindControlRedraw: bindControlRedraw
     };
-})();
-
-(function () {
-    if (typeof Plans2DFeature !== 'undefined' && Plans2DFeature.init) Plans2DFeature.init();
 })();

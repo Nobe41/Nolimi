@@ -1,14 +1,16 @@
-// js/state/validator.js
-// Règles de validation globales côté UI (hauteurs, largeurs, profondeurs).
+// saas/store/validator.js
+// Contraintes UI : hauteurs monotones + plafonds diamètres (piqûre / bague).
+// Appelé par layout (saisie), sections (ajout), storage (restore), canvas 3D.
+// API : validateSectionHeights, validatePiqureHeight, applyAllUserConstraints
 
 var Validator = (function () {
-    // ====== CONSTANTES ======
     var MIN_HEIGHT = 0;
     var MIN_DIMENSION = 10;
 
-    // ====== GRAPHE DES HAUTEURS ======
-    // Chaque ID : below = section du dessous (min), above = section du dessus (max).
-    // fixedToBelow : la valeur est forcée égale à below (ex. sb4-h = sb3-h).
+    // Graphe historique (s1–s5, piqûre, bague).
+    // Les sb* sont ignorés dans applyHeightConstraints (bague gérée dynamiquement).
+    // Sections ajoutées (s6…) : clamp voisin dans validateSectionHeights / boucle dynamique.
+    // below = plancher, above = plafond. fixedToBelow = collé à below (legacy sb4).
     var HEIGHT_GRAPH = {
         's1-h':  { below: null,    above: 's2-h' },
         's2-h':  { below: 's1-h',   above: 's3-h' },
@@ -25,6 +27,8 @@ var Validator = (function () {
         'sb5-h': { below: 'sb4-h',  above: 'sb3-h' }
     };
 
+    // --- Lecture DOM ---
+
     function getHeightById(id) {
         var input = document.getElementById(id);
         if (!input) return null;
@@ -40,6 +44,7 @@ var Validator = (function () {
         return getSectionHeight(1);
     }
 
+    // Dernière section corps (sN-h) — la bague s’accroche dessus
     function getLastMainSectionHeightId() {
         var inputs = document.querySelectorAll('input[id^="s"][id$="-h"]');
         var maxIdx = 0;
@@ -53,7 +58,24 @@ var Validator = (function () {
         return 's' + maxIdx + '-h';
     }
 
-    // ====== VALIDATION HAUTEUR (valeur corrigée) ======
+    function uniqueSortedIndexes(inputs, regex) {
+        var idxs = [];
+        for (var i = 0; i < inputs.length; i++) {
+            var m = (inputs[i].id || '').match(regex);
+            if (!m) continue;
+            var k = parseInt(m[1], 10);
+            if (isFinite(k)) idxs.push(k);
+        }
+        idxs.sort(function (a, b) { return a - b; });
+        var clean = [];
+        for (var j = 0; j < idxs.length; j++) {
+            if (j === 0 || idxs[j] !== idxs[j - 1]) clean.push(idxs[j]);
+        }
+        return clean;
+    }
+
+    // --- Validation hauteur (retourne valeur corrigée) ---
+
     function validateHeight(id, newHeight) {
         var h = parseFloat(newHeight);
         if (!isFinite(h)) h = MIN_HEIGHT;
@@ -61,7 +83,7 @@ var Validator = (function () {
         var links = HEIGHT_GRAPH[id];
         if (!links) return h;
 
-        // Bague : toujours accrochée à la dernière section principale (pas forcément s5).
+        // Bague bas : toujours ≥ dernière section corps (pas forcément s5)
         var belowId = links.below;
         if (id === 'sb1-h') belowId = getLastMainSectionHeightId();
 
@@ -78,10 +100,9 @@ var Validator = (function () {
 
     function validateSectionHeights(sectionIndex, newHeight) {
         var id = 's' + sectionIndex + '-h';
-        // Si la section est dans le graphe (historique), appliquer exactement les mêmes règles.
         if (HEIGHT_GRAPH[id]) return validateHeight(id, newHeight);
 
-        // Sinon (sections ajoutées dynamiquement), clamp générique : entre section précédente et suivante si elles existent.
+        // Section ajoutée dynamiquement : entre voisine bas et haute
         var h = parseFloat(newHeight);
         if (!isFinite(h)) h = MIN_HEIGHT;
         var belowId = 's' + (sectionIndex - 1) + '-h';
@@ -97,19 +118,19 @@ var Validator = (function () {
         var h = parseFloat(newHeight);
         if (!isFinite(h)) h = MIN_HEIGHT;
         var piedH = getPiedHeight();
-        // La piqûre doit rester au-dessus (ou au niveau) du pied.
         if (piedH != null && h < piedH) h = piedH;
         return h;
     }
 
-    // ====== APPLICATION DES CONTRAINTES HAUTEUR (min/max + valeur) ======
+    // --- Applique min/max + clamp sur tous les champs hauteur ---
+
     function applyHeightConstraints() {
         var id, links, input, slider, minH, maxH, v;
         var lastMainId = getLastMainSectionHeightId();
 
         for (id in HEIGHT_GRAPH) {
             if (!HEIGHT_GRAPH.hasOwnProperty(id)) continue;
-            // Bague dynamique (sb1..sbN) : entièrement gérée plus bas, évite sb4-h=sb3-h après renumérotation.
+            // Bague : boucle dynamique plus bas (évite legacy sb4 = sb3)
             if (/^sb\d+-h$/.test(id)) continue;
             links = HEIGHT_GRAPH[id];
             input = document.getElementById(id);
@@ -157,21 +178,11 @@ var Validator = (function () {
             }
         }
 
-        // Sections principales dynamiques : assurer min/max selon les sections voisines (monotone croissant)
-        var mainInputs = document.querySelectorAll('input[id^="s"][id$="-h"]');
-        var idxs = [];
-        for (var i = 0; i < mainInputs.length; i++) {
-            var mid = (mainInputs[i].id || '').match(/^s(\d+)-h$/);
-            if (mid) {
-                var k = parseInt(mid[1], 10);
-                if (isFinite(k)) idxs.push(k);
-            }
-        }
-        idxs.sort(function (a, b) { return a - b; });
-        // Dédupe
-        var clean = [];
-        for (var j = 0; j < idxs.length; j++) if (j === 0 || idxs[j] !== idxs[j - 1]) clean.push(idxs[j]);
-
+        // Corps dynamique s1…sN
+        var clean = uniqueSortedIndexes(
+            document.querySelectorAll('input[id^="s"][id$="-h"]'),
+            /^s(\d+)-h$/
+        );
         for (var t = 0; t < clean.length; t++) {
             var k2 = clean[t];
             var sid = 's' + k2 + '-h';
@@ -201,20 +212,11 @@ var Validator = (function () {
             }
         }
 
-        // Sections PIQÛRE dynamiques : sp2, sp3 et sections ajoutées (sp4, sp5, ...)
-        var piqInputs = document.querySelectorAll('input[id^="sp"][id$="-h"]');
-        var pIdxs = [];
-        for (var ip = 0; ip < piqInputs.length; ip++) {
-            var mp = (piqInputs[ip].id || '').match(/^sp(\d+)-h$/);
-            if (mp) {
-                var kp = parseInt(mp[1], 10);
-                if (isFinite(kp)) pIdxs.push(kp);
-            }
-        }
-        pIdxs.sort(function (a, b) { return a - b; });
-        var pClean = [];
-        for (var jp = 0; jp < pIdxs.length; jp++) if (jp === 0 || pIdxs[jp] !== pIdxs[jp - 1]) pClean.push(pIdxs[jp]);
-
+        // Piqûre dynamique sp2… + pointe rp3-h
+        var pClean = uniqueSortedIndexes(
+            document.querySelectorAll('input[id^="sp"][id$="-h"]'),
+            /^sp(\d+)-h$/
+        );
         for (var tp = 0; tp < pClean.length; tp++) {
             var kp2 = pClean[tp];
             var pid = 'sp' + kp2 + '-h';
@@ -244,20 +246,11 @@ var Validator = (function () {
             }
         }
 
-        // Sections BAGUE dynamiques : sb1..sbN (bague ajoutée)
-        var bagInputs = document.querySelectorAll('input[id^="sb"][id$="-h"]');
-        var bIdxs = [];
-        for (var ib = 0; ib < bagInputs.length; ib++) {
-            var mb = (bagInputs[ib].id || '').match(/^sb(\d+)-h$/);
-            if (mb) {
-                var kb = parseInt(mb[1], 10);
-                if (isFinite(kb)) bIdxs.push(kb);
-            }
-        }
-        bIdxs.sort(function (a, b) { return a - b; });
-        var bClean = [];
-        for (var jb = 0; jb < bIdxs.length; jb++) if (jb === 0 || bIdxs[jb] !== bIdxs[jb - 1]) bClean.push(bIdxs[jb]);
-
+        // Bague dynamique sb1…sbN
+        var bClean = uniqueSortedIndexes(
+            document.querySelectorAll('input[id^="sb"][id$="-h"]'),
+            /^sb(\d+)-h$/
+        );
         for (var tb = 0; tb < bClean.length; tb++) {
             var kb2 = bClean[tb];
             var bid = 'sb' + kb2 + '-h';
@@ -293,8 +286,8 @@ var Validator = (function () {
         }
     }
 
-    // ====== RÈGLES DIMENSIONS (L/P) ======
-    // Piqûre : chaînage diamètre. Bague : dernière section plafonnée par celle du dessous.
+    // --- Dimensions L/P (piqûre chaînée, haut de bague plafonné) ---
+
     var DIMENSION_RULES = [
         { sourceL: 's1-L',  sourceP: 's1-P',  targetL: 'sp-L',  targetP: 'sp-P',  min: MIN_DIMENSION, defaultSourceL: 70, defaultSourceP: 70 },
         { sourceL: 'sp-L',  sourceP: 'sp-P',  targetL: 'sp2-L', targetP: 'sp2-P', min: MIN_DIMENSION, defaultSourceL: 55, defaultSourceP: 55 },
@@ -347,18 +340,9 @@ var Validator = (function () {
             if (fromState.length) return fromState;
         }
         var inputs = document.querySelectorAll('input[id^="sb"][id$="-L"]');
-        var idxs = [];
-        for (var i = 0; i < inputs.length; i++) {
-            var m = (inputs[i].id || '').match(/^sb(\d+)-L$/);
-            if (!m) continue;
-            var k = parseInt(m[1], 10);
-            if (isFinite(k)) idxs.push(k);
-        }
-        idxs.sort(function (a, b) { return a - b; });
+        var idxs = uniqueSortedIndexes(inputs, /^sb(\d+)-L$/);
         var keys = [];
-        for (var j = 0; j < idxs.length; j++) {
-            if (j === 0 || idxs[j] !== idxs[j - 1]) keys.push('sb' + idxs[j]);
-        }
+        for (var j = 0; j < idxs.length; j++) keys.push('sb' + idxs[j]);
         return keys;
     }
 
@@ -415,6 +399,7 @@ var Validator = (function () {
         applyTopBagueDimensionConstraint();
     }
 
+    // Point d’entrée : hauteurs + diamètres + indicateur Courbe S
     function applyAllUserConstraints() {
         applyHeightConstraints();
         applyDimensionRules();
@@ -424,7 +409,6 @@ var Validator = (function () {
     }
 
     return {
-        validateHeight: validateHeight,
         validateSectionHeights: validateSectionHeights,
         validatePiqureHeight: validatePiqureHeight,
         applyAllUserConstraints: applyAllUserConstraints

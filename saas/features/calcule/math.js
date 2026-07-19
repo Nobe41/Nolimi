@@ -1,12 +1,39 @@
-// Calcul du volume interne de la bouteille (mm3), incluant la piqure et bague fermee.
+// calcule/math.js — calculs de volume et dérivés (mm³, mm, cl).
+// Rôle : volume intérieur (cavité liquide), volume extérieur (verre), dégarnie, Ø brochage.
+// Sections piqûre/bague → Bottle3DData. Épaisseur verre → InterieurMath.
+// Résultats affichés par function.js (overlay 3D + panneau).
+
 var CalculeVolumeMath = (function () {
-    var THETA_SAMPLES = 360;
-    var MERIDIAN_RESOLUTION = 128;
-    var EPS = 1e-9;
+    function rules() {
+        return typeof CalculeRules !== 'undefined' ? CalculeRules : {};
+    }
 
-    function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+    function eps() {
+        return rules().EPS != null ? rules().EPS : 1e-9;
+    }
 
-    function getPanelValue(id, def) {
+    function clamp01(v) {
+        return Math.max(0, Math.min(1, v));
+    }
+
+    function getPiqureSections() {
+        if (typeof Bottle3DData !== 'undefined' && Bottle3DData.collectPiqureSectionsFromPanel) {
+            return Bottle3DData.collectPiqureSectionsFromPanel();
+        }
+        return [];
+    }
+
+    function getBagueSections() {
+        if (typeof Bottle3DData !== 'undefined' && Bottle3DData.collectBagueSectionsFromPanel) {
+            return Bottle3DData.collectBagueSectionsFromPanel();
+        }
+        return [];
+    }
+
+    function panelValue(id, def) {
+        if (typeof Bottle3DData !== 'undefined' && Bottle3DData.getPanelValue) {
+            return Bottle3DData.getPanelValue(id, def);
+        }
         if (typeof document === 'undefined') return def;
         var el = document.getElementById(id);
         if (!el) return def;
@@ -14,41 +41,39 @@ var CalculeVolumeMath = (function () {
         return isNaN(v) ? def : v;
     }
 
-    function getPanelSelectValue(id, def) {
-        if (typeof document === 'undefined') return def;
-        var el = document.getElementById(id);
-        if (!el || !el.value) return def;
-        return el.value;
+    function tipHeightId() {
+        return (typeof Bottle3DRules !== 'undefined' && Bottle3DRules.PIQURE_TIP_HEIGHT_ID)
+            ? Bottle3DRules.PIQURE_TIP_HEIGHT_ID
+            : 'rp3-h';
     }
 
-    function readSectionDimensions(formKey, LKey, PKey, defaults) {
-        var shape = getPanelSelectValue(formKey, 'cylindrique');
-        var L = getPanelValue(LKey, defaults.L);
-        var P = getPanelValue(PKey, defaults.P);
-        if (typeof SectionsRules !== 'undefined' && SectionsRules.resolveSectionDimensions) {
-            var resolved = SectionsRules.resolveSectionDimensions(shape, L, P);
-            shape = resolved.shape;
-            L = resolved.L;
-            P = resolved.P;
-        }
-        return {
-            a: Math.max(0, L / 2),
-            b: Math.max(0, P / 2),
-            shape: shape
-        };
+    function tipHeightDefault() {
+        return (typeof Bottle3DRules !== 'undefined' && Bottle3DRules.PIQURE_TIP_HEIGHT_DEFAULT != null)
+            ? Bottle3DRules.PIQURE_TIP_HEIGHT_DEFAULT
+            : 30;
     }
+
+    function thicknessMm() {
+        return (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
+            ? InterieurMath.getThicknessMm()
+            : 3.5;
+    }
+
+    // --- Aires de section et intégration le long de l'axe Y ---
 
     function normalizeShape(shape) {
         if (!shape || shape === 'rond') return 'cylindrique';
         return shape;
     }
 
+    // Aire au plan d'une section : ellipse (cylindrique/ovale) ou rectangle arrondi (carré).
     function getShapeArea(section) {
         if (!section) return 0;
         var a = Math.max(0, section.a || 0);
         var b = Math.max(0, section.b || 0);
-        if (a <= EPS || b <= EPS) return 0;
-        if ((normalizeShape(section.shape)) === 'carre') {
+        var e = eps();
+        if (a <= e || b <= e) return 0;
+        if (normalizeShape(section.shape) === 'carre') {
             var carreNiveau = Math.max(0, Math.min(100, section.carreNiveau || 0));
             var r = (1 - carreNiveau / 100) * Math.min(a, b);
             r = Math.max(0, Math.min(r, Math.min(a, b)));
@@ -59,14 +84,15 @@ var CalculeVolumeMath = (function () {
 
     function lerpSection(s0, s1, t) {
         t = clamp01(t);
+        var sh0 = normalizeShape(s0.shape);
+        var sh1 = normalizeShape(s1.shape);
         return {
             H: (1 - t) * (s0.H || 0) + t * (s1.H || 0),
             a: (1 - t) * (s0.a || 0) + t * (s1.a || 0),
             b: (1 - t) * (s0.b || 0) + t * (s1.b || 0),
-            // Blend "carreNiveau" and force square mode if one of the two is square.
-            shape: (normalizeShape(s0.shape) === 'carre' || normalizeShape(s1.shape) === 'carre')
+            shape: (sh0 === 'carre' || sh1 === 'carre')
                 ? 'carre'
-                : ((normalizeShape(s0.shape) === 'ovale' || normalizeShape(s1.shape) === 'ovale') ? 'ovale' : 'cylindrique'),
+                : ((sh0 === 'ovale' || sh1 === 'ovale') ? 'ovale' : 'cylindrique'),
             carreNiveau: (1 - t) * (s0.carreNiveau || 0) + t * (s1.carreNiveau || 0)
         };
     }
@@ -75,14 +101,13 @@ var CalculeVolumeMath = (function () {
         var y0 = s0.H || 0;
         var y1 = s1.H || 0;
         var dy = y1 - y0;
-        if (dy <= EPS) return 0;
-        var steps = 160;
+        var e = eps();
+        if (dy <= e) return 0;
+        var steps = rules().AREA_INTEGRATION_STEPS || 160;
         var h = dy / steps;
         var acc = 0;
         for (var i = 0; i <= steps; i++) {
-            var t = i / steps;
-            var sec = lerpSection(s0, s1, t);
-            var A = getShapeArea(sec);
+            var A = getShapeArea(lerpSection(s0, s1, i / steps));
             var w = (i === 0 || i === steps) ? 1 : (i % 2 === 0 ? 2 : 4);
             acc += w * A;
         }
@@ -90,217 +115,133 @@ var CalculeVolumeMath = (function () {
     }
 
     function integrateRadiusSquaredOnSegment(x0, y0, x1, y1, yMin, yMax) {
+        var e = eps();
         var dy = y1 - y0;
-        if (Math.abs(dy) <= EPS) return 0;
-
+        if (Math.abs(dy) <= e) return 0;
         var ya = Math.max(Math.min(y0, y1), yMin);
         var yb = Math.min(Math.max(y0, y1), yMax);
-        if (yb <= ya + EPS) return 0;
-
+        if (yb <= ya + e) return 0;
         var m = (x1 - x0) / dy;
         var c = x0 - m * y0;
-        var intVal = (m * m / 3) * (yb * yb * yb - ya * ya * ya)
+        return Math.max(0,
+            (m * m / 3) * (yb * yb * yb - ya * ya * ya)
             + (m * c) * (yb * yb - ya * ya)
-            + (c * c) * (yb - ya);
-        return Math.max(0, intVal);
+            + (c * c) * (yb - ya)
+        );
     }
 
+    // Volume corps principal : intégration ∫ r² dy sur 360 méridien (révolution).
     function integrateMainBodyVolume(sectionsData, yStartOpt, yEndOpt) {
         if (typeof BottleMaths === 'undefined' || typeof GeomKernel === 'undefined') return 0;
         if (!sectionsData || !sectionsData.sections || sectionsData.sections.length < 2) return 0;
 
+        var e = eps();
         var yMinBase = sectionsData.sections[0].H || 0;
         var yMaxBase = sectionsData.sections[sectionsData.sections.length - 1].H || yMinBase;
         var yMin = (typeof yStartOpt === 'number') ? Math.max(yMinBase, yStartOpt) : yMinBase;
         var yMax = (typeof yEndOpt === 'number') ? Math.min(yMaxBase, yEndOpt) : yMaxBase;
-        if (yMax <= yMin + EPS) return 0;
+        if (yMax <= yMin + e) return 0;
 
+        var thetaN = rules().THETA_SAMPLES || 360;
+        var merRes = rules().MERIDIAN_RESOLUTION || 128;
         var sumOverTheta = 0;
-        for (var ti = 0; ti < THETA_SAMPLES; ti++) {
-            var theta = (ti / THETA_SAMPLES) * 2 * Math.PI;
+        for (var ti = 0; ti < thetaN; ti++) {
+            var theta = (ti / thetaN) * 2 * Math.PI;
             var entities = BottleMaths.buildExteriorProfile(theta, sectionsData);
-            if (!entities || entities.length === 0) continue;
-            var pts = GeomKernel.tessellateProfile(entities, MERIDIAN_RESOLUTION);
+            if (!entities || !entities.length) continue;
+            var pts = GeomKernel.tessellateProfile(entities, merRes);
             if (!pts || pts.length < 2) continue;
-
             var intR2dy = 0;
             for (var i = 0; i < pts.length - 1; i++) {
-                var p0 = pts[i];
-                var p1 = pts[i + 1];
                 intR2dy += integrateRadiusSquaredOnSegment(
-                    Math.max(0, p0.x), p0.y,
-                    Math.max(0, p1.x), p1.y,
+                    Math.max(0, pts[i].x), pts[i].y,
+                    Math.max(0, pts[i + 1].x), pts[i + 1].y,
                     yMin, yMax
                 );
             }
             sumOverTheta += intR2dy;
         }
-
-        var dTheta = (2 * Math.PI) / THETA_SAMPLES;
-        return 0.5 * dTheta * sumOverTheta;
+        return 0.5 * ((2 * Math.PI) / thetaN) * sumOverTheta;
     }
 
     function integrateSectionAreaLinearClipped(s0, s1, yStart, yEnd) {
+        var e = eps();
         var lo = Math.max(Math.min(s0.H, s1.H), yStart);
         var hi = Math.min(Math.max(s0.H, s1.H), yEnd);
-        if (hi <= lo + EPS) return 0;
+        if (hi <= lo + e) return 0;
         var dy = (s1.H - s0.H);
-        if (Math.abs(dy) <= EPS) return 0;
-        var t0 = (lo - s0.H) / dy;
-        var t1 = (hi - s0.H) / dy;
-        var c0 = lerpSection(s0, s1, t0);
-        var c1 = lerpSection(s0, s1, t1);
+        if (Math.abs(dy) <= e) return 0;
+        var c0 = lerpSection(s0, s1, (lo - s0.H) / dy);
+        var c1 = lerpSection(s0, s1, (hi - s0.H) / dy);
         c0.H = lo;
         c1.H = hi;
         return integrateSectionAreaLinear(c0, c1);
     }
 
-    function getDynamicPiqureSections() {
-        var out = [];
-        if (typeof document === 'undefined') return out;
-        var inputs = document.querySelectorAll('input[id^="sp"][id$="-h"]');
-        var idxs = [];
-        for (var i = 0; i < inputs.length; i++) {
-            var m = (inputs[i].id || '').match(/^sp(\d+)-h$/);
-            if (!m) continue;
-            var k = parseInt(m[1], 10);
-            if (isFinite(k)) idxs.push(k);
+    function enforceAscending(sections) {
+        for (var k = 1; k < sections.length; k++) {
+            if (sections[k].H < sections[k - 1].H) sections[k].H = sections[k - 1].H;
         }
-        idxs.sort(function (a, b) { return a - b; });
-        var unique = [];
-        for (var j = 0; j < idxs.length; j++) {
-            if (j === 0 || idxs[j] !== idxs[j - 1]) unique.push(idxs[j]);
-        }
-        for (var u = 0; u < unique.length; u++) {
-            var ksp = unique[u];
-            var dims = readSectionDimensions('sp' + ksp + '-forme', 'sp' + ksp + '-L', 'sp' + ksp + '-P', { L: 45, P: 45 });
-            out.push({
-                H: Math.max(0, getPanelValue('sp' + ksp + '-h', 0)),
-                a: dims.a,
-                b: dims.b,
-                shape: dims.shape,
-                carreNiveau: Math.max(0, Math.min(100, getPanelValue('sp' + ksp + '-carre-niveau', 0)))
-            });
-        }
-        return out;
     }
 
-    function getDynamicBagueSections() {
-        var out = [];
-        if (typeof document === 'undefined') return out;
-        var inputs = document.querySelectorAll('input[id^="sb"][id$="-h"]');
-        var idxs = [];
-        for (var i = 0; i < inputs.length; i++) {
-            var m = (inputs[i].id || '').match(/^sb(\d+)-h$/);
-            if (!m) continue;
-            var k = parseInt(m[1], 10);
-            if (isFinite(k)) idxs.push(k);
-        }
-        idxs.sort(function (a, b) { return a - b; });
-        var unique = [];
-        for (var j = 0; j < idxs.length; j++) {
-            if (j === 0 || idxs[j] !== idxs[j - 1]) unique.push(idxs[j]);
-        }
-        for (var u = 0; u < unique.length; u++) {
-            var ksb = unique[u];
-            var dimsB = readSectionDimensions('sb' + ksb + '-forme', 'sb' + ksb + '-L', 'sb' + ksb + '-P', { L: 35, P: 35 });
-            out.push({
-                H: Math.max(0, getPanelValue('sb' + ksb + '-h', 0)),
-                a: dimsB.a,
-                b: dimsB.b,
-                shape: dimsB.shape,
-                carreNiveau: Math.max(0, Math.min(100, getPanelValue('sb' + ksb + '-carre-niveau', 0)))
-            });
-        }
-        return out;
-    }
+    // --- Volumes annexes côté extérieur (piqûre soustraite, bague ajoutée) ---
 
+    // Cône/piqûre du bas : volume à retirer du corps extérieur.
     function computePiqureSubtractedVolume(sectionsData) {
-        if (!sectionsData || !sectionsData.sections || sectionsData.sections.length < 1) return 0;
-        var s1H = sectionsData.sections[0].H || 0;
-        var piqDims = readSectionDimensions('sp-forme', 'sp-L', 'sp-P', { L: 55, P: 55 });
-        var piq = [{
-            H: s1H,
-            a: piqDims.a,
-            b: piqDims.b,
-            shape: piqDims.shape,
-            carreNiveau: Math.max(0, Math.min(100, getPanelValue('sp-carre-niveau', 0)))
-        }];
-        var more = getDynamicPiqureSections();
-        for (var i = 0; i < more.length; i++) piq.push(more[i]);
-        if (piq.length < 1) return 0;
-
-        for (var k = 1; k < piq.length; k++) {
-            if (piq[k].H < piq[k - 1].H) piq[k].H = piq[k - 1].H;
-        }
+        if (!sectionsData || !sectionsData.sections || !sectionsData.sections.length) return 0;
+        var piq = getPiqureSections();
+        if (!piq.length) return 0;
+        enforceAscending(piq);
 
         var v = 0;
         for (var j = 0; j < piq.length - 1; j++) {
             v += integrateSectionAreaLinear(piq[j], piq[j + 1]);
         }
-
         var last = piq[piq.length - 1];
-        var apexH = Math.max(last.H, getPanelValue('rp3-h', 30));
+        var apexH = Math.max(last.H, panelValue(tipHeightId(), tipHeightDefault()));
         var dy = apexH - last.H;
-        if (dy > EPS) {
-            var Alast = getShapeArea(last);
-            v += (Alast * dy) / 3;
-        }
+        if (dy > eps()) v += getShapeArea(last) * dy / 3;
         return Math.max(0, v);
     }
 
+    // Bague du col : volume ajouté au-dessus de la dernière section corps.
     function computeBagueAddedVolume(sectionsData) {
-        if (!sectionsData || !sectionsData.sections || sectionsData.sections.length < 1) return 0;
+        if (!sectionsData || !sectionsData.sections || !sectionsData.sections.length) return 0;
         var sTop = sectionsData.sections[sectionsData.sections.length - 1];
-        var bague = getDynamicBagueSections();
-        if (!bague.length) {
-            function fallbackBagueSection(prefix, defaultL, defaultP) {
-                var dims = readSectionDimensions(prefix + '-forme', prefix + '-L', prefix + '-P', { L: defaultL, P: defaultP });
-                return {
-                    H: Math.max(0, getPanelValue(prefix + '-h', sTop.H || 0)),
-                    a: dims.a,
-                    b: dims.b,
-                    shape: dims.shape,
-                    carreNiveau: Math.max(0, Math.min(100, getPanelValue(prefix + '-carre-niveau', 0)))
-                };
-            }
-            bague = [
-                fallbackBagueSection('sb1', 29.5, 29.5),
-                fallbackBagueSection('sb2', 29.5, 29.5),
-                fallbackBagueSection('sb3', 25.5, 25.5)
-            ];
-        }
+        var bague = getBagueSections();
+        if (!bague.length) return 0;
 
         for (var i = 0; i < bague.length; i++) {
             if (bague[i].H < sTop.H) bague[i].H = sTop.H;
             if (i > 0 && bague[i].H < bague[i - 1].H) bague[i].H = bague[i - 1].H;
         }
 
-        var v = 0;
-        if (bague.length) v += integrateSectionAreaLinear(sTop, bague[0]);
-        for (var j = 0; j < bague.length - 1; j++) v += integrateSectionAreaLinear(bague[j], bague[j + 1]);
+        var v = integrateSectionAreaLinear(sTop, bague[0]);
+        for (var j = 0; j < bague.length - 1; j++) {
+            v += integrateSectionAreaLinear(bague[j], bague[j + 1]);
+        }
         return Math.max(0, v);
     }
 
-    function buildInteriorContext(sectionsData) {
-        var thicknessMm = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
-            ? InterieurMath.getThicknessMm()
-            : 3.5;
+    // --- Cavité intérieure : sections inset + piqûre/bague adaptées à l'épaisseur ---
 
+    // Prépare toutes les sections « liquide » (corps, bague, piqûre) pour l'intégration.
+    function buildInteriorContext(sectionsData) {
+        var t = thicknessMm();
         var innerSectionsData = (typeof InterieurMath !== 'undefined' && InterieurMath.buildInteriorSectionsDataFromThickness)
-            ? InterieurMath.buildInteriorSectionsDataFromThickness(sectionsData, thicknessMm, thicknessMm)
+            ? InterieurMath.buildInteriorSectionsDataFromThickness(sectionsData, t, t)
             : sectionsData;
 
-        // Bague interieure: exception metier, sb2 cale sur sb3.
         var sTopInner = innerSectionsData && innerSectionsData.sections && innerSectionsData.sections.length
             ? innerSectionsData.sections[innerSectionsData.sections.length - 1]
             : null;
-        var bague = getDynamicBagueSections();
-        for (var b = 0; b < bague.length; b++) {
-            bague[b] = (typeof InterieurMath !== 'undefined' && InterieurMath.insetSection)
-                ? InterieurMath.insetSection(bague[b], thicknessMm)
-                : bague[b];
-        }
+
+        // Bague intérieure : sb2 calé sur sb3 (règle métier)
+        var bague = getBagueSections().map(function (sec) {
+            return (typeof InterieurMath !== 'undefined' && InterieurMath.insetSection)
+                ? InterieurMath.insetSection(sec, t)
+                : sec;
+        });
         if (bague.length >= 3) {
             bague[1].a = bague[2].a;
             bague[1].b = bague[2].b;
@@ -312,43 +253,47 @@ var CalculeVolumeMath = (function () {
             if (bague[bm + 1].H < bague[bm].H) bague[bm + 1].H = bague[bm].H;
         }
 
-        // Piqure interieure: meme regle que l'affichage interieur (decalage vers exterieur).
+        // Piqûre intérieure : outset + décalage H
+        var piqOuter = getPiqureSections();
         var piq = [];
-        if (sectionsData && sectionsData.sections && sectionsData.sections.length) {
-            var s1H = (sectionsData.sections[0].H || 0) + thicknessMm;
-            var p0Dims = readSectionDimensions('sp-forme', 'sp-L', 'sp-P', { L: 55, P: 55 });
-            var p0 = {
-                H: s1H,
-                a: p0Dims.a,
-                b: p0Dims.b,
-                shape: p0Dims.shape,
-                carreNiveau: Math.max(0, Math.min(100, getPanelValue('sp-carre-niveau', 0)))
-            };
-            p0 = (typeof InterieurMath !== 'undefined' && InterieurMath.outsetSection)
-                ? InterieurMath.outsetSection(p0, thicknessMm)
-                : p0;
-            piq.push(p0);
-        }
-        var more = getDynamicPiqureSections();
-        for (var i = 0; i < more.length; i++) {
-            var sec = more[i];
+        for (var i = 0; i < piqOuter.length; i++) {
+            var sec = piqOuter[i];
+            if (i === 0) {
+                var p0 = {
+                    H: (sec.H || 0) + t,
+                    a: sec.a,
+                    b: sec.b,
+                    shape: sec.shape,
+                    carreNiveau: sec.carreNiveau
+                };
+                p0 = (typeof InterieurMath !== 'undefined' && InterieurMath.outsetSection)
+                    ? InterieurMath.outsetSection(p0, t)
+                    : p0;
+                // Pied : H = s1 + épaisseur (comme avant)
+                if (sectionsData && sectionsData.sections && sectionsData.sections.length) {
+                    p0.H = (sectionsData.sections[0].H || 0) + t;
+                }
+                piq.push(p0);
+                continue;
+            }
             var outerAtH = (typeof InterieurMath !== 'undefined' && InterieurMath.getOuterSectionAtHeight)
                 ? InterieurMath.getOuterSectionAtHeight(innerSectionsData.sections, sec.H || 0)
                 : null;
-            var maxTa = outerAtH ? Math.max(0, (outerAtH.a || 0) - (sec.a || 0) - 0.2) : thicknessMm;
-            var maxTb = outerAtH ? Math.max(0, (outerAtH.b || 0) - (sec.b || 0) - 0.2) : thicknessMm;
-            var tPiq = Math.min(thicknessMm, maxTa, maxTb);
+            var maxTa = outerAtH ? Math.max(0, (outerAtH.a || 0) - (sec.a || 0) - 0.2) : t;
+            var maxTb = outerAtH ? Math.max(0, (outerAtH.b || 0) - (sec.b || 0) - 0.2) : t;
+            var tPiq = Math.min(t, maxTa, maxTb);
             var outSec = (typeof InterieurMath !== 'undefined' && InterieurMath.outsetSection)
                 ? InterieurMath.outsetSection(sec, tPiq)
                 : sec;
-            outSec.H = (sec.H || 0) + thicknessMm;
+            outSec.H = (sec.H || 0) + t;
             piq.push(outSec);
         }
-        for (var k = 1; k < piq.length; k++) if (piq[k].H < piq[k - 1].H) piq[k].H = piq[k - 1].H;
+        enforceAscending(piq);
+
         var rp3HInner = null;
         if (piq.length) {
             var last = piq[piq.length - 1];
-            rp3HInner = Math.max(last.H, getPanelValue('rp3-h', 30) + thicknessMm);
+            rp3HInner = Math.max(last.H, panelValue(tipHeightId(), tipHeightDefault()) + t);
         }
 
         return {
@@ -360,14 +305,15 @@ var CalculeVolumeMath = (function () {
         };
     }
 
+    // Volume intérieur cumulé du pied jusqu'à yTop (corps + bague − piqûre intérieure).
     function computeVolumeUpToHeightMm3(ctx, yTop) {
-        if (!ctx || !ctx.innerSectionsData || !ctx.innerSectionsData.sections || !ctx.innerSectionsData.sections.length) return 0;
+        if (!ctx || !ctx.innerSectionsData || !ctx.innerSectionsData.sections || !ctx.innerSectionsData.sections.length) {
+            return 0;
+        }
         var yBottom = ctx.innerSectionsData.sections[0].H || 0;
         var y = Math.max(yBottom, yTop);
         var mainTop = ctx.sTopInner ? ctx.sTopInner.H : yBottom;
-        var v = 0;
-
-        v += integrateMainBodyVolume(ctx.innerSectionsData, yBottom, Math.min(y, mainTop));
+        var v = integrateMainBodyVolume(ctx.innerSectionsData, yBottom, Math.min(y, mainTop));
 
         if (ctx.sTopInner && ctx.bagueInner && ctx.bagueInner.length && y > mainTop) {
             v += integrateSectionAreaLinearClipped(ctx.sTopInner, ctx.bagueInner[0], mainTop, y);
@@ -400,52 +346,57 @@ var CalculeVolumeMath = (function () {
         return 0;
     }
 
+    // Capacité ras bord : volume intérieur total jusqu'au sommet de la bague.
     function computeTotalInteriorVolumeMm3(sectionsData) {
         var ctx = buildInteriorContext(sectionsData);
         return computeVolumeUpToHeightMm3(ctx, getTopBagueHeight(ctx));
     }
 
+    // Enveloppe extérieure verre : corps + bague − piqûre (mm³).
     function computeTotalOuterVolumeMm3(sectionsData) {
         if (!sectionsData) return 0;
-        var bodyMain = integrateMainBodyVolume(sectionsData);
-        var bagueAdd = computeBagueAddedVolume(sectionsData);
-        var piqureSubtract = computePiqureSubtractedVolume(sectionsData);
-        return Math.max(0, bodyMain + bagueAdd - piqureSubtract);
+        return Math.max(0,
+            integrateMainBodyVolume(sectionsData)
+            + computeBagueAddedVolume(sectionsData)
+            - computePiqureSubtractedVolume(sectionsData)
+        );
     }
 
+    // Diamètre intérieur du col (brochage) = 2 × min(a, b) de la bague inset.
     function computeCanuleDiameterMm() {
-        var bague = getDynamicBagueSections();
-        if (!bague || !bague.length) return 0;
+        var bague = getBagueSections();
+        if (!bague.length) return 0;
         var top = bague[bague.length - 1];
-        var thicknessMm = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
-            ? InterieurMath.getThicknessMm()
-            : 3.5;
+        var t = thicknessMm();
         var topInner = (typeof InterieurMath !== 'undefined' && InterieurMath.insetSection)
-            ? InterieurMath.insetSection(top, thicknessMm)
+            ? InterieurMath.insetSection(top, t)
             : top;
         return Math.max(0, 2 * Math.min(topInner.a || 0, topInner.b || 0));
     }
 
+    // Dégarnie (mm) : hauteur vide sous le col pour une capacité utile cible (cl), par bisection.
     function computeDegarnieMmFromUsefulCapacityCl(sectionsData, usefulCl) {
         var ctx = buildInteriorContext(sectionsData);
+        var e = eps();
         var yBottom = (ctx.innerSectionsData && ctx.innerSectionsData.sections && ctx.innerSectionsData.sections.length)
             ? (ctx.innerSectionsData.sections[0].H || 0)
             : 0;
         var yTop = getTopBagueHeight(ctx);
         var vTop = computeVolumeUpToHeightMm3(ctx, yTop);
-        var targetMm3 = Math.max(0, Math.min(vTop, (usefulCl || 0) * 10000));
-        if (targetMm3 <= EPS) return Math.max(0, yTop - yBottom);
-        if (targetMm3 >= vTop - EPS) return 0;
+        var mm3PerCl = rules().MM3_PER_CL || 10000;
+        var targetMm3 = Math.max(0, Math.min(vTop, (usefulCl || 0) * mm3PerCl));
+        if (targetMm3 <= e) return Math.max(0, yTop - yBottom);
+        if (targetMm3 >= vTop - e) return 0;
 
         var lo = yBottom;
         var hi = yTop;
-        for (var it = 0; it < 36; it++) {
+        var iters = rules().DEGARNIE_BISECT_ITERS || 36;
+        for (var it = 0; it < iters; it++) {
             var mid = (lo + hi) * 0.5;
-            var vmid = computeVolumeUpToHeightMm3(ctx, mid);
-            if (vmid < targetMm3) lo = mid; else hi = mid;
+            if (computeVolumeUpToHeightMm3(ctx, mid) < targetMm3) lo = mid;
+            else hi = mid;
         }
-        var yFill = (lo + hi) * 0.5;
-        return Math.max(0, yTop - yFill);
+        return Math.max(0, yTop - ((lo + hi) * 0.5));
     }
 
     return {

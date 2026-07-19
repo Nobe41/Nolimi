@@ -1,17 +1,24 @@
+// saas/shared/history/function.js
+// Undo / redo UI : snapshots des champs input/select (debounce 120 ms).
+// Limite pile : 120 états. Ignore les inputs type=file.
+// API : HistoryShared.init()
+
 var HistoryShared = (function () {
     var undoStack = [];
     var redoStack = [];
     var isApplyingHistoryState = false;
     var historyPushTimer = null;
+    var MAX_STACK = 120;
+    var DEBOUNCE_MS = 120;
 
     function captureUIState() {
         var controls = document.querySelectorAll('input[id], select[id], textarea[id]');
         var state = {};
-        controls.forEach(function (el) {
-            if (!el.id) return;
-            if (el.type === 'file') return;
+        for (var i = 0; i < controls.length; i++) {
+            var el = controls[i];
+            if (!el.id || el.type === 'file') continue;
             state[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? !!el.checked : el.value;
-        });
+        }
         return state;
     }
 
@@ -26,7 +33,9 @@ var HistoryShared = (function () {
             else el.value = state[id];
         }
         isApplyingHistoryState = false;
-        if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) SceneSetup3D.applyDisplayOptions();
+        if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) {
+            SceneSetup3D.applyDisplayOptions();
+        }
         if (typeof updateBouteille === 'function') updateBouteille();
         if (typeof draw2D === 'function') draw2D();
     }
@@ -51,7 +60,7 @@ var HistoryShared = (function () {
             var last = undoStack.length ? undoStack[undoStack.length - 1] : null;
             if (!last || !statesEqual(last, snap)) {
                 undoStack.push(snap);
-                if (undoStack.length > 120) undoStack.shift();
+                if (undoStack.length > MAX_STACK) undoStack.shift();
                 redoStack = [];
                 updateUndoRedoButtons();
             }
@@ -60,7 +69,7 @@ var HistoryShared = (function () {
         function scheduleHistorySnapshot() {
             if (isApplyingHistoryState) return;
             if (historyPushTimer) clearTimeout(historyPushTimer);
-            historyPushTimer = setTimeout(pushHistorySnapshot, 120);
+            historyPushTimer = setTimeout(pushHistorySnapshot, DEBOUNCE_MS);
         }
 
         if (!btnUndo.dataset.bound) {
@@ -69,8 +78,7 @@ var HistoryShared = (function () {
                 if (undoStack.length <= 1) return;
                 var current = undoStack.pop();
                 redoStack.push(current);
-                var previous = undoStack[undoStack.length - 1];
-                applyUIState(previous);
+                applyUIState(undoStack[undoStack.length - 1]);
                 updateUndoRedoButtons();
             });
         }
@@ -85,8 +93,8 @@ var HistoryShared = (function () {
             });
         }
 
-        document.addEventListener('input', function () { scheduleHistorySnapshot(); });
-        document.addEventListener('change', function () { scheduleHistorySnapshot(); });
+        document.addEventListener('input', scheduleHistorySnapshot);
+        document.addEventListener('change', scheduleHistorySnapshot);
         if (!undoStack.length) undoStack.push(captureUIState());
         updateUndoRedoButtons();
     }

@@ -1,4 +1,9 @@
-// EXPORT — orchestration 3D (STL) et 2D (PDF)
+// saas/features/export/function.js
+// Point d’entrée du module export.
+// export3D → STL : maillage bouteille tessellé, fichier binaire pour la CAO.
+// export2D → PDF : capture haute résolution du canvas plan, page au format choisi.
+// Géométrie STL → BottleView3D.buildStlExportMesh. Helpers → ExportMath.
+
 var ExportFeature = (function () {
     var RULES = (typeof ExportRules !== 'undefined') ? ExportRules : null;
     if (!RULES) return { init: function () { } };
@@ -27,6 +32,7 @@ var ExportFeature = (function () {
         return true;
     }
 
+    // --- Export STL (3D) : build mesh → STLExporter → fichier .stl ---
     async function export3D() {
         var refs = ExportState.getRefs();
         hideDropdown(refs);
@@ -50,7 +56,10 @@ var ExportFeature = (function () {
             if (exportMesh.geometry) exportMesh.geometry.dispose();
 
             var blob = new Blob([stlData], { type: 'application/octet-stream' });
-            var baseName = ExportMath.safeFileName(refs.projectTitle && refs.projectTitle.value, RULES.DEFAULTS.file3D);
+            var baseName = ExportMath.safeFileName(
+                refs.projectTitle && refs.projectTitle.value,
+                RULES.DEFAULTS.file3D
+            );
             var finalName = baseName + '.stl';
 
             await saveBlob(
@@ -71,6 +80,7 @@ var ExportFeature = (function () {
         }
     }
 
+    // --- Export PDF (2D) : agrandit le canvas → JPEG → page jsPDF ---
     async function export2D() {
         var refs = ExportState.getRefs();
         hideDropdown(refs);
@@ -83,21 +93,22 @@ var ExportFeature = (function () {
             alert("Le plan 2D n'est pas affiché. Veuillez d'abord cliquer sur l'onglet 2D.");
             return;
         }
+        if (typeof cam2D === 'undefined' || typeof draw2D !== 'function') {
+            alert("Le moteur 2D n'est pas disponible pour l'export.");
+            return;
+        }
 
         var paper = ExportMath.resolvePaperInfo(
-            refs.paperFormat ? refs.paperFormat.value : RULES.DEFAULTS.paperFormat,
-            typeof paperFormats !== 'undefined' ? paperFormats : null,
+            refs.paperFormat ? refs.paperFormat.value : null,
             RULES
         );
 
         try {
-            var savedW = canvas.width, savedH = canvas.height;
-            if (typeof cam2D === 'undefined' || typeof draw2D !== 'function') {
-                alert("Le moteur 2D n'est pas disponible pour l'export.");
-                return;
-            }
+            var savedW = canvas.width;
+            var savedH = canvas.height;
             var savedCam = { x: cam2D.x, y: cam2D.y, zoom: cam2D.zoom };
             var scaleFactor = RULES.DEFAULTS.exportScaleFactor;
+
             canvas.width = paper.w * scaleFactor;
             canvas.height = paper.h * scaleFactor;
             cam2D.x = canvas.width / 2;
@@ -106,20 +117,29 @@ var ExportFeature = (function () {
             draw2D();
             var imgData = canvas.toDataURL('image/jpeg', RULES.DEFAULTS.jpegQuality);
 
-            canvas.width = savedW; canvas.height = savedH;
-            cam2D.x = savedCam.x; cam2D.y = savedCam.y; cam2D.zoom = savedCam.zoom;
+            canvas.width = savedW;
+            canvas.height = savedH;
+            cam2D.x = savedCam.x;
+            cam2D.y = savedCam.y;
+            cam2D.zoom = savedCam.zoom;
             draw2D();
 
             var JsPDFClass = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jspdf;
-            var pdf = new JsPDFClass({ orientation: paper.orientation, unit: 'mm', format: paper.format });
+            var pdf = new JsPDFClass({
+                orientation: paper.orientation,
+                unit: 'mm',
+                format: paper.format
+            });
             pdf.addImage(imgData, 'JPEG', 0, 0, paper.w, paper.h);
 
-            var baseName = ExportMath.safeFileName(refs.projectTitle && refs.projectTitle.value, RULES.DEFAULTS.file2D);
+            var baseName = ExportMath.safeFileName(
+                refs.projectTitle && refs.projectTitle.value,
+                RULES.DEFAULTS.file2D
+            );
             var finalName = baseName + '.pdf';
-            var pdfBlob = pdf.output('blob');
 
             await saveBlob(
-                pdfBlob,
+                pdf.output('blob'),
                 finalName,
                 { description: 'Plan 2D PDF', accept: { 'application/pdf': ['.pdf'] } },
                 function () { pdf.save(finalName); }

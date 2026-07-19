@@ -1,11 +1,24 @@
-// Gestion des événements de la feature sections.
+// saas/features/sections/events.js
+// Événements sections : sync DOM → state, ajout / suppression.
+//
+// syncAllFromDom : appelé avant save (store/storage.js)
+// Ajout section : insère entre 2 sections + split la liaison, puis remap les IDs DOM
+// Suppression : uniquement si userAdded === true
+// Modes : main | piqure | bague (selon panneau visible)
+
 var SectionsEvents = (function () {
+    var R = typeof SectionsRules !== 'undefined' ? SectionsRules : {};
+    var IDS = R.IDS || {};
+    var DEF_MAIN = R.DEFAULT_LIAISON_MAIN || { rho: 10, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+    var DEF = R.DEFAULT_LIAISON || { rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+
     function getState() {
         return (typeof SectionsState !== 'undefined' && SectionsState.getState)
             ? SectionsState.getState()
             : null;
     }
 
+    // Panneau visible → mode actif (pour savoir quoi sync / où ajouter)
     function getActiveMode(ids) {
         var contentPiqure = document.getElementById(ids.piqure);
         var contentBague = document.getElementById(ids.bague);
@@ -21,6 +34,32 @@ var SectionsEvents = (function () {
         return isFinite(v) ? v : fallback;
     }
 
+    // Lit un <select> (ex. type de profil liaison)
+    function getSelect(id, fallback) {
+        var el = document.getElementById(id);
+        if (!el || el.value == null || el.value === '') return fallback;
+        return el.value;
+    }
+
+    // Copie une liaison en préservant type / id
+    function cloneLiaison(base, overrides) {
+        var out = {
+            rho: base.rho,
+            rhoMin: base.rhoMin,
+            rhoMax: base.rhoMax,
+            rhoStep: base.rhoStep
+        };
+        if (base.type) out.type = base.type;
+        if (base.id) out.id = base.id;
+        if (overrides) {
+            for (var k in overrides) {
+                if (overrides.hasOwnProperty(k)) out[k] = overrides[k];
+            }
+        }
+        return out;
+    }
+
+    // Corps : s*-h/L/P + r{from}{to}-rho/type → sectionsMain / liaisonsMain
     function syncMainFromDom(state) {
         var currentCount = 0;
         var hInputs = document.querySelectorAll('input[id^="s"][id$="-h"]');
@@ -54,17 +93,19 @@ var SectionsEvents = (function () {
         var newLiaisons = [];
         for (var r = 1; r < currentCount; r++) {
             var rid = 'r' + r + (r + 1);
-            var baseR = state.liaisonsMain[r - 1] || { rho: 10, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+            var baseR = state.liaisonsMain[r - 1] || DEF_MAIN;
             newLiaisons.push({
                 rho: getNum(rid + '-rho', baseR.rho),
                 rhoMin: baseR.rhoMin,
                 rhoMax: baseR.rhoMax,
-                rhoStep: baseR.rhoStep
+                rhoStep: baseR.rhoStep,
+                type: getSelect(rid + '-type', baseR.type || 'ligne')
             });
         }
         state.liaisonsMain = newLiaisons;
     }
 
+    // Piqûre : sp*/rp* → piqureSections / piqureLiaisons (rp3-h reste hors state)
     function syncPiqureFromDom(state) {
         var list = [];
         for (var i = 0; i < state.piqureSections.length; i++) {
@@ -97,12 +138,14 @@ var SectionsEvents = (function () {
                 rho: getNum(rhoObj.id + '-rho', rhoObj.rho),
                 rhoMin: rhoObj.rhoMin,
                 rhoMax: rhoObj.rhoMax,
-                rhoStep: rhoObj.rhoStep
+                rhoStep: rhoObj.rhoStep,
+                type: getSelect(rhoObj.id + '-type', rhoObj.type || 'ligne')
             });
         }
         state.piqureLiaisons = liaisons;
     }
 
+    // Bague : sb*/rb* → bagueSections / bagueLiaisons
     function syncBagueFromDom(state) {
         var list = [];
         for (var i = 0; i < state.bagueSections.length; i++) {
@@ -133,12 +176,14 @@ var SectionsEvents = (function () {
                 rho: getNum(rhoObj.id + '-rho', rhoObj.rho),
                 rhoMin: rhoObj.rhoMin,
                 rhoMax: rhoObj.rhoMax,
-                rhoStep: rhoObj.rhoStep
+                rhoStep: rhoObj.rhoStep,
+                type: getSelect(rhoObj.id + '-type', rhoObj.type || 'ligne')
             });
         }
         state.bagueLiaisons = liaisons;
     }
 
+    // Après insert/delete : réattribue sp, sp2… et rp1, rp2…
     function renumberPiqureKeys(state) {
         for (var pi = 0; pi < state.piqureSections.length; pi++) {
             state.piqureSections[pi].key = pi === 0 ? 'sp' : ('sp' + (pi + 1));
@@ -148,6 +193,7 @@ var SectionsEvents = (function () {
         }
     }
 
+    // Idem bague : sb1… / rb1…
     function renumberBagueKeys(state) {
         for (var bi = 0; bi < state.bagueSections.length; bi++) {
             state.bagueSections[bi].key = 'sb' + (bi + 1);
@@ -157,15 +203,11 @@ var SectionsEvents = (function () {
         }
     }
 
+    // Fusionne les 2 liaisons adjacentes en gardant celle de gauche (type inclus)
     function mergeLiaisonsAfterRemove(liaisons, index) {
         if (index > 0 && index < liaisons.length) {
             var left = liaisons[index - 1];
-            liaisons.splice(index - 1, 2, {
-                rho: left.rho,
-                rhoMin: left.rhoMin,
-                rhoMax: left.rhoMax,
-                rhoStep: left.rhoStep
-            });
+            liaisons.splice(index - 1, 2, cloneLiaison(left));
         } else if (index > 0) {
             liaisons.splice(index - 1, 1);
         } else if (liaisons.length > 0) {
@@ -173,6 +215,7 @@ var SectionsEvents = (function () {
         }
     }
 
+    // Supprime une section userAdded ; refuse les sections d’usine
     function removeSectionAt(mode, index, state) {
         if (mode === 'bague') {
             syncBagueFromDom(state);
@@ -200,8 +243,13 @@ var SectionsEvents = (function () {
         return true;
     }
 
+    function elId(key, fallback) {
+        return IDS[key] || fallback;
+    }
+
+    // Délégation clic sur × (.btn-remove-section)
     function wireRemoveSectionButtons(config) {
-        var inspector = document.getElementById('inspector');
+        var inspector = document.getElementById(elId('inspector', 'inspector'));
         if (!inspector || inspector.dataset.removeSectionBound === '1') return;
         inspector.dataset.removeSectionBound = '1';
 
@@ -231,17 +279,19 @@ var SectionsEvents = (function () {
         });
     }
 
+    // Ferme le panneau « + » mobile
     function closeAddSectionPanel() {
-        var panel = document.getElementById('inspector-add-section-panel');
-        var fab = document.getElementById('btn-add-section-fab');
+        var panel = document.getElementById(elId('addSectionPanel', 'inspector-add-section-panel'));
+        var fab = document.getElementById(elId('addSectionFab', 'btn-add-section-fab'));
         if (!panel) return;
         panel.classList.remove('is-open');
         if (fab) fab.setAttribute('aria-expanded', 'false');
     }
 
+    // FAB « + » : ouvre le panneau d’ajout (mobile ≤ 768px)
     function wireAddSectionFab() {
-        var fab = document.getElementById('btn-add-section-fab');
-        var panel = document.getElementById('inspector-add-section-panel');
+        var fab = document.getElementById(elId('addSectionFab', 'btn-add-section-fab'));
+        var panel = document.getElementById(elId('addSectionPanel', 'inspector-add-section-panel'));
         if (!fab || !panel || fab.dataset.fabBound) return;
 
         fab.dataset.fabBound = '1';
@@ -256,8 +306,8 @@ var SectionsEvents = (function () {
         if (!document.documentElement.dataset.addSectionFabDismissBound) {
             document.documentElement.dataset.addSectionFabDismissBound = '1';
             document.addEventListener('click', function (e) {
-                var p = document.getElementById('inspector-add-section-panel');
-                var f = document.getElementById('btn-add-section-fab');
+                var p = document.getElementById(elId('addSectionPanel', 'inspector-add-section-panel'));
+                var f = document.getElementById(elId('addSectionFab', 'btn-add-section-fab'));
                 if (!p || !p.classList.contains('is-open')) return;
                 if (p.contains(e.target) || (f && f.contains(e.target))) return;
                 closeAddSectionPanel();
@@ -265,12 +315,13 @@ var SectionsEvents = (function () {
         }
     }
 
+    // Bouton « Ajouter une section » : insert + split liaison + remap IDs DOM
     function wireAddSectionButton(config) {
         var ids = config && config.containerIds ? config.containerIds : {};
         var onRefresh = config && config.onRefresh ? config.onRefresh : function () { };
 
-        var btn = document.getElementById('btn-add-section');
-        var sel = document.getElementById('add-section-between');
+        var btn = document.getElementById(elId('addSectionBtn', 'btn-add-section'));
+        var sel = document.getElementById(elId('addSectionBetween', 'add-section-between'));
         if (!btn || !sel || btn.dataset.bound) return;
 
         btn.dataset.bound = '1';
@@ -314,9 +365,9 @@ var SectionsEvents = (function () {
                     userAdded: true
                 };
                 state.bagueSections.splice(between, 0, newB);
-                var baseRb = state.bagueLiaisons[between - 1] || { rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
-                var rbSplit1 = { id: '_new', rho: baseRb.rho, rhoMin: baseRb.rhoMin, rhoMax: baseRb.rhoMax, rhoStep: baseRb.rhoStep };
-                var rbSplit2 = { id: '_new', rho: baseRb.rho, rhoMin: baseRb.rhoMin, rhoMax: baseRb.rhoMax, rhoStep: baseRb.rhoStep };
+                var baseRb = state.bagueLiaisons[between - 1] || DEF;
+                var rbSplit1 = cloneLiaison(baseRb, { id: '_new' });
+                var rbSplit2 = cloneLiaison(baseRb, { id: '_new' });
                 state.bagueLiaisons.splice(between - 1, 1, rbSplit1, rbSplit2);
                 renumberBagueKeys(state);
             } else if (mode === 'piqure') {
@@ -339,9 +390,9 @@ var SectionsEvents = (function () {
                     userAdded: true
                 };
                 state.piqureSections.splice(between, 0, newP);
-                var baseRp = state.piqureLiaisons[between - 1] || { rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
-                var rpSplit1 = { id: '_new', rho: baseRp.rho, rhoMin: baseRp.rhoMin, rhoMax: baseRp.rhoMax, rhoStep: baseRp.rhoStep };
-                var rpSplit2 = { id: '_new', rho: baseRp.rho, rhoMin: baseRp.rhoMin, rhoMax: baseRp.rhoMax, rhoStep: baseRp.rhoStep };
+                var baseRp = state.piqureLiaisons[between - 1] || DEF;
+                var rpSplit1 = cloneLiaison(baseRp, { id: '_new' });
+                var rpSplit2 = cloneLiaison(baseRp, { id: '_new' });
                 state.piqureLiaisons.splice(between - 1, 1, rpSplit1, rpSplit2);
                 renumberPiqureKeys(state);
             } else {
@@ -362,14 +413,18 @@ var SectionsEvents = (function () {
                     userAdded: true
                 };
                 state.sectionsMain.splice(between, 0, newS);
-                var baseR = state.liaisonsMain[between - 1] || { rho: 10, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
-                var r1 = { rho: baseR.rho, rhoMin: baseR.rhoMin, rhoMax: baseR.rhoMax, rhoStep: baseR.rhoStep };
-                var r2 = { rho: baseR.rho, rhoMin: baseR.rhoMin, rhoMax: baseR.rhoMax, rhoStep: baseR.rhoStep };
+                var baseR = state.liaisonsMain[between - 1] || DEF_MAIN;
+                var r1 = cloneLiaison(baseR);
+                var r2 = cloneLiaison(baseR);
                 state.liaisonsMain.splice(between - 1, 1, r1, r2);
             }
 
             onRefresh();
             if (typeof setupListeners === 'function') setupListeners();
+
+            // Après re-render : décalage des IDs pour les champs au-dessus de l’insertion
+            var tipH = elId('piqureTipHeight', 'rp3-h');
+            var tipHs = elId('piqureTipHeightSlider', 'rp3-h-slider');
 
             function remapId(oldId) {
                 if (mode === 'bague') {
@@ -393,7 +448,7 @@ var SectionsEvents = (function () {
                     return oldId;
                 }
                 if (mode === 'piqure') {
-                    if (oldId === 'rp3-h' || oldId === 'rp3-h-slider') return oldId;
+                    if (oldId === tipH || oldId === tipHs) return oldId;
                     var msp = oldId.match(/^sp(\d+)-(h|L|P|forme|carre-niveau)(-slider)?$/);
                     if (msp) {
                         var ksp = parseInt(msp[1], 10);
@@ -458,6 +513,7 @@ var SectionsEvents = (function () {
         });
     }
 
+    // Sync complète DOM → state (avant persistance)
     function syncAllFromDom() {
         var state = getState();
         if (!state) return;

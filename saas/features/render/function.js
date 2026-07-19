@@ -1,11 +1,15 @@
-// Orchestration du mode rendu (matériaux + scène).
+// saas/features/render/function.js
+// Point d’entrée du mode rendu : toggle, matériau verre, étiquettes PNG.
+// Branche les contrôles DOM, persiste l’état (autosave) et rafraîchit la bouteille.
+// Pas de scène décorative — uniquement verre + étiquettes sur le viewport existant.
+
 var RenderFeature = (function () {
     var RULES = (typeof RenderRules !== 'undefined') ? RenderRules : {};
     var IDS = RULES.IDS || {};
     var labelRefreshRaf = 0;
 
     function refreshLabelsInView() {
-        if (typeof BottleView3D !== 'undefined' && BottleView3D.refreshLabelsOnly && BottleView3D.refreshLabelsOnly()) {
+        if (typeof RenderLabels !== 'undefined' && RenderLabels.refreshLabelsOnly && RenderLabels.refreshLabelsOnly()) {
             return true;
         }
         if (typeof updateBouteille === 'function') updateBouteille();
@@ -33,9 +37,9 @@ var RenderFeature = (function () {
             id: id,
             imageUrl: null,
             texture: null,
-            height: 40,
-            size: 100,
-            rotation: 0,
+            height: RULES.LABEL_HEIGHT_DEFAULT != null ? RULES.LABEL_HEIGHT_DEFAULT : 40,
+            size: RULES.LABEL_SIZE_DEFAULT != null ? RULES.LABEL_SIZE_DEFAULT : 100,
+            rotation: RULES.LABEL_ROTATION_DEFAULT != null ? RULES.LABEL_ROTATION_DEFAULT : 0,
             flipX: false,
             flipY: false
         };
@@ -56,9 +60,9 @@ var RenderFeature = (function () {
             var migrated = createLabel('label-1');
             migrated.imageUrl = legacy.imageUrl || null;
             migrated.texture = legacy.texture || null;
-            migrated.height = (legacy.height !== undefined) ? legacy.height : 40;
-            migrated.size = (legacy.size !== undefined) ? legacy.size : 100;
-            migrated.rotation = (legacy.rotation !== undefined) ? legacy.rotation : 0;
+            migrated.height = (legacy.height !== undefined) ? legacy.height : (RULES.LABEL_HEIGHT_DEFAULT != null ? RULES.LABEL_HEIGHT_DEFAULT : 40);
+            migrated.size = (legacy.size !== undefined) ? legacy.size : (RULES.LABEL_SIZE_DEFAULT != null ? RULES.LABEL_SIZE_DEFAULT : 100);
+            migrated.rotation = (legacy.rotation !== undefined) ? legacy.rotation : (RULES.LABEL_ROTATION_DEFAULT != null ? RULES.LABEL_ROTATION_DEFAULT : 0);
             migrated.flipX = !!legacy.flipX;
             migrated.flipY = !!legacy.flipY;
             window.renderLabelState = {
@@ -82,32 +86,29 @@ var RenderFeature = (function () {
     }
 
     function applyMaterialMode(mode) {
-        if (typeof BottleMaterials !== 'undefined' && BottleMaterials.setRenderMaterialMode) {
+        if (typeof RenderMaterials !== 'undefined' && RenderMaterials.setMaterialMode) {
+            RenderMaterials.setMaterialMode(mode);
+        } else if (typeof BottleMaterials !== 'undefined' && BottleMaterials.setRenderMaterialMode) {
             BottleMaterials.setRenderMaterialMode(mode);
         }
         if (typeof updateBouteille === 'function') updateBouteille();
     }
 
+    /** Rafraîchit le viewport (fond base + pipeline ACES). Le nom est ignoré par RenderScene.setActive. */
     function applyBackgroundScene(sceneName) {
         if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.setBackgroundScene) {
-            SceneSetup3D.setBackgroundScene(sceneName);
+            SceneSetup3D.setBackgroundScene(sceneName || 'none');
         }
     }
 
-    function syncSceneAvailabilityFromDom() {
+    function syncCardDisabledFromDom() {
         var modeToggle = document.getElementById(IDS.modeToggle || 'render-mode-toggle');
         var radioGlass = document.getElementById(IDS.materialGlass || 'render-material-glass');
         var materialCard = radioGlass ? radioGlass.closest('.setting-card') : null;
-        var sceneCard = document.getElementById(IDS.sceneCard || 'render-scene-card');
         var labelCard = document.getElementById(IDS.labelCard || 'render-label-card');
-        var scene1 = document.getElementById(IDS.scene1 || 'render-scene-1');
-        var scene2 = document.getElementById(IDS.scene2 || 'render-scene-2');
         if (!modeToggle) return;
         var enabled = !!modeToggle.checked;
-        if (scene1) scene1.disabled = !enabled;
-        if (scene2) scene2.disabled = !enabled;
         if (materialCard) materialCard.classList.toggle('is-disabled', !enabled);
-        if (sceneCard) sceneCard.classList.toggle('is-disabled', !enabled);
         if (labelCard) labelCard.classList.toggle('is-disabled', !enabled);
     }
 
@@ -129,12 +130,13 @@ var RenderFeature = (function () {
 
     function updateLabelHeightLimits(options) {
         options = options || {};
-        var limits = { min: -120, max: 400 };
+        var fallback = RULES.LABEL_HEIGHT_FALLBACK || { min: -120, max: 400 };
+        var limits = { min: fallback.min, max: fallback.max };
         if (typeof Plans2DData !== 'undefined' && Plans2DData.getBottleVerticalExtents) {
             limits = Plans2DData.getBottleVerticalExtents();
         }
         var labelHeight = document.getElementById(IDS.labelHeight || 'render-label-height');
-        var labelHeightNumber = document.getElementById('render-label-height-number');
+        var labelHeightNumber = document.getElementById(IDS.labelHeightNumber || 'render-label-height-number');
         if (labelHeight) {
             labelHeight.min = String(limits.min);
             labelHeight.max = String(limits.max);
@@ -159,37 +161,24 @@ var RenderFeature = (function () {
         if (changed) syncActiveLabelInputsToDom();
     }
 
+    // Lie toggle mode rendu, radio verre, sliders étiquettes et upload PNG
     function initModeRenduControls() {
         var state = ensureLabelState();
         var modeToggle = document.getElementById(IDS.modeToggle || 'render-mode-toggle');
         var radioGlass = document.getElementById(IDS.materialGlass || 'render-material-glass');
         var materialCard = radioGlass ? radioGlass.closest('.setting-card') : null;
-        var sceneCard = document.getElementById(IDS.sceneCard || 'render-scene-card');
         var labelCard = document.getElementById(IDS.labelCard || 'render-label-card');
-        var labelList = document.getElementById('render-label-list');
+        var labelList = document.getElementById(IDS.labelList || 'render-label-list');
         var labelInput = document.getElementById(IDS.labelImage || 'render-label-image');
         var labelHeight = document.getElementById(IDS.labelHeight || 'render-label-height');
-        var labelHeightNumber = document.getElementById('render-label-height-number');
+        var labelHeightNumber = document.getElementById(IDS.labelHeightNumber || 'render-label-height-number');
         var labelSize = document.getElementById(IDS.labelSize || 'render-label-size');
-        var labelSizeNumber = document.getElementById('render-label-size-number');
+        var labelSizeNumber = document.getElementById(IDS.labelSizeNumber || 'render-label-size-number');
         var labelRotation = document.getElementById(IDS.labelRotation || 'render-label-rotation');
-        var labelRotationNumber = document.getElementById('render-label-rotation-number');
-        var labelFlipX = document.getElementById('render-label-flip-x');
-        var labelFlipY = document.getElementById('render-label-flip-y');
-        var sceneBase = document.getElementById(IDS.sceneBase || 'render-scene-base');
-        var scene1 = document.getElementById(IDS.scene1 || 'render-scene-1');
-        var scene2 = document.getElementById(IDS.scene2 || 'render-scene-2');
-        if (!state || !modeToggle || !radioGlass || !sceneBase) return;
-
-        function clampToInputRange(inputEl, value, fallback) {
-            if (!inputEl) return (isNaN(value) ? fallback : value);
-            var v = isNaN(value) ? fallback : value;
-            var min = parseFloat(inputEl.min);
-            var max = parseFloat(inputEl.max);
-            if (!isNaN(min) && v < min) v = min;
-            if (!isNaN(max) && v > max) v = max;
-            return v;
-        }
+        var labelRotationNumber = document.getElementById(IDS.labelRotationNumber || 'render-label-rotation-number');
+        var labelFlipX = document.getElementById(IDS.labelFlipX || 'render-label-flip-x');
+        var labelFlipY = document.getElementById(IDS.labelFlipY || 'render-label-flip-y');
+        if (!state || !modeToggle || !radioGlass) return;
 
         function setLabelControlsDisabled(disabled) {
             if (labelHeight) labelHeight.disabled = disabled;
@@ -243,15 +232,10 @@ var RenderFeature = (function () {
             if (labelFlipY) labelFlipY.checked = !!active.flipY;
         }
 
-        function syncSceneAvailability() {
+        function syncModeAvailability() {
             var enabled = !!modeToggle.checked;
-            if (scene1) scene1.disabled = !enabled;
-            if (scene2) scene2.disabled = !enabled;
             if (materialCard) materialCard.classList.toggle('is-disabled', !enabled);
-            if (sceneCard) sceneCard.classList.toggle('is-disabled', !enabled);
-            if (labelCard) {
-                labelCard.classList.toggle('is-disabled', !enabled);
-            }
+            if (labelCard) labelCard.classList.toggle('is-disabled', !enabled);
             // En mode rendu, on repart à zéro à l'activation puis on autorise de nouvelles étiquettes.
             state.enabled = enabled;
             if (enabled && state.labels && state.labels.length) {
@@ -264,23 +248,10 @@ var RenderFeature = (function () {
                 renderLabelList();
                 syncLabelInputsFromActive();
             }
-            if (!enabled) sceneBase.checked = true;
-            if (typeof updateBouteille === 'function') updateBouteille();
         }
 
-        function applySceneFromChecks() {
-            // Mode rendu simplifié: aucun décor de scène, bouteille seule.
-            if (modeToggle.checked) {
-                applyBackgroundScene(RenderRules.SCENE_NONE || 'none');
-                if (typeof updateBouteille === 'function') updateBouteille();
-                return;
-            }
-            var sceneName = RenderMath.sceneFromInputs(
-                !!modeToggle.checked,
-                !!(scene1 && scene1.checked),
-                !!(scene2 && scene2.checked)
-            );
-            applyBackgroundScene(sceneName);
+        function refreshViewport() {
+            applyBackgroundScene('none');
             if (typeof updateBouteille === 'function') updateBouteille();
         }
 
@@ -293,8 +264,8 @@ var RenderFeature = (function () {
             modeToggle.dataset.bound = '1';
             modeToggle.addEventListener('change', function () {
                 applyMaterialFromMode();
-                syncSceneAvailability();
-                applySceneFromChecks();
+                syncModeAvailability();
+                refreshViewport();
             });
         }
         if (!radioGlass.dataset.bound) {
@@ -302,18 +273,6 @@ var RenderFeature = (function () {
             radioGlass.addEventListener('change', function () {
                 if (radioGlass.checked && modeToggle.checked) applyMaterialMode(RULES.MODE_GLASS || 'glass');
             });
-        }
-        if (!sceneBase.dataset.bound) {
-            sceneBase.dataset.bound = '1';
-            sceneBase.addEventListener('change', function () { if (sceneBase.checked) applySceneFromChecks(); });
-        }
-        if (scene1 && !scene1.dataset.bound) {
-            scene1.dataset.bound = '1';
-            scene1.addEventListener('change', applySceneFromChecks);
-        }
-        if (scene2 && !scene2.dataset.bound) {
-            scene2.dataset.bound = '1';
-            scene2.addEventListener('change', applySceneFromChecks);
         }
         if (labelInput && !labelInput.dataset.bound) {
             labelInput.dataset.bound = '1';
@@ -344,6 +303,7 @@ var RenderFeature = (function () {
                 reader.readAsDataURL(file);
             });
         }
+
         function bindLabelNumberOnEnter(numberEl, rangeEl, fallback, applyToActive) {
             if (!numberEl || !rangeEl) return;
             var apply = function () {
@@ -494,13 +454,13 @@ var RenderFeature = (function () {
         refreshLabelAccordionHeight();
         updateLabelHeightLimits();
         applyMaterialFromMode();
-        syncSceneAvailability();
-        applySceneFromChecks();
+        syncModeAvailability();
+        refreshViewport();
     }
 
     function renderLabelListUi() {
         var state = ensureLabelState();
-        var labelList = document.getElementById('render-label-list');
+        var labelList = document.getElementById(IDS.labelList || 'render-label-list');
         if (!state || !labelList) return;
         var html = '';
         for (var i = 0; i < state.labels.length; i++) {
@@ -518,13 +478,13 @@ var RenderFeature = (function () {
         var state = ensureLabelState();
         var active = getActiveLabel(state);
         var labelHeight = document.getElementById(IDS.labelHeight || 'render-label-height');
-        var labelHeightNumber = document.getElementById('render-label-height-number');
+        var labelHeightNumber = document.getElementById(IDS.labelHeightNumber || 'render-label-height-number');
         var labelSize = document.getElementById(IDS.labelSize || 'render-label-size');
-        var labelSizeNumber = document.getElementById('render-label-size-number');
+        var labelSizeNumber = document.getElementById(IDS.labelSizeNumber || 'render-label-size-number');
         var labelRotation = document.getElementById(IDS.labelRotation || 'render-label-rotation');
-        var labelRotationNumber = document.getElementById('render-label-rotation-number');
-        var labelFlipX = document.getElementById('render-label-flip-x');
-        var labelFlipY = document.getElementById('render-label-flip-y');
+        var labelRotationNumber = document.getElementById(IDS.labelRotationNumber || 'render-label-rotation-number');
+        var labelFlipX = document.getElementById(IDS.labelFlipX || 'render-label-flip-x');
+        var labelFlipY = document.getElementById(IDS.labelFlipY || 'render-label-flip-y');
         if (!active) return;
         if (labelHeight) labelHeight.value = String(active.height || 0);
         if (labelSize) labelSize.value = String(active.size || 100);
@@ -538,26 +498,14 @@ var RenderFeature = (function () {
 
     function applyControlsFromDom() {
         var modeToggle = document.getElementById(IDS.modeToggle || 'render-mode-toggle');
-        var sceneBase = document.getElementById(IDS.sceneBase || 'render-scene-base');
-        var scene1 = document.getElementById(IDS.scene1 || 'render-scene-1');
-        var scene2 = document.getElementById(IDS.scene2 || 'render-scene-2');
         var state = ensureLabelState();
         if (!modeToggle || !state) return;
         state.enabled = !!modeToggle.checked;
         applyMaterialMode(RenderMath.materialModeFromToggle(!!modeToggle.checked));
-        if (modeToggle.checked) {
-            applyBackgroundScene(RULES.SCENE_NONE || 'none');
-        } else {
-            var sceneName = RenderMath.sceneFromInputs(
-                !!modeToggle.checked,
-                !!(scene1 && scene1.checked),
-                !!(scene2 && scene2.checked)
-            );
-            applyBackgroundScene(sceneName);
-        }
+        applyBackgroundScene('none');
         renderLabelListUi();
         syncActiveLabelInputsToDom();
-        syncSceneAvailabilityFromDom();
+        syncCardDisabledFromDom();
     }
 
     function collectSaveState() {
@@ -661,4 +609,3 @@ var RenderFeature = (function () {
         applyControlsFromDom: applyControlsFromDom
     };
 })();
-

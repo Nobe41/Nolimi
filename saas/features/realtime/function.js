@@ -1,4 +1,9 @@
-// Session partagée via Supabase Realtime (broadcast + présence).
+// saas/features/realtime/function.js
+// Cœur de la session partagée : connexion Supabase Realtime (broadcast + présence).
+// Synchronise le projet (payload autosave), les curseurs (cursor.js) et la caméra/vue (view.js).
+// Rôles : hôte (crée la session, envoie l’état) et invité (reçoit et suit).
+// UI du menu → events.js. Variables persistantes → state.js.
+
 var RealtimeFeature = (function () {
     var channel = null;
     var userId = null;
@@ -48,6 +53,22 @@ var RealtimeFeature = (function () {
         window.history.replaceState({}, '', url.href);
     }
 
+    function refreshUI() {
+        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
+            RealtimeEvents.refreshUI();
+        }
+    }
+
+    function stopPeerServices() {
+        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
+            RealtimeViewSync.stop();
+        }
+        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
+            RealtimeCursors.stop();
+        }
+    }
+
+    // Envoie tout le projet au canal (hôte ou sur demande request-state)
     function sendFullPayload() {
         if (!channel || typeof WorkspaceAutosave === 'undefined' || !WorkspaceAutosave.collectPayload) return;
         var payload = WorkspaceAutosave.collectPayload();
@@ -59,6 +80,7 @@ var RealtimeFeature = (function () {
         });
     }
 
+    // Applique un projet reçu seulement s’il est plus récent que le local
     function handleRemotePayload(payload) {
         if (!payload || !payload.savedAt) return;
         if (payload.savedAt <= RealtimeState.getLastLocalSavedAt()) return;
@@ -110,29 +132,25 @@ var RealtimeFeature = (function () {
             var total = countConnectedPeers(channel);
             RealtimeState.setPeerCount(Math.max(0, total - 1));
         }
-        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
-            RealtimeEvents.refreshUI();
-        }
+        refreshUI();
     }
 
-    function abortJoinAttempt() {
-        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
-            RealtimeViewSync.stop();
-        }
-        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
-            RealtimeCursors.stop();
-        }
+    function teardownSessionLocal() {
+        stopPeerServices();
         if (channel) {
             channel.unsubscribe();
             channel = null;
         }
+        if (broadcastTimer) {
+            clearTimeout(broadcastTimer);
+            broadcastTimer = null;
+        }
         RealtimeState.reset();
         updateUrlSession(null);
-        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
-            RealtimeEvents.refreshUI();
-        }
+        refreshUI();
     }
 
+    // Après abonnement réussi : présence, curseurs, sync caméra, premier envoi d’état
     function completeSessionJoin(sessionId, displayName, role) {
         channel.track({
             user_id: userId,
@@ -168,9 +186,7 @@ var RealtimeFeature = (function () {
             channel.send({ type: 'broadcast', event: 'request-state', payload: {} });
         }
 
-        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
-            RealtimeEvents.refreshUI();
-        }
+        refreshUI();
     }
 
     function isActiveSessionGuest() {
@@ -199,28 +215,6 @@ var RealtimeFeature = (function () {
         hostLeftHandled = false;
     }
 
-    function teardownSessionLocal() {
-        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
-            RealtimeViewSync.stop();
-        }
-        if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
-            RealtimeCursors.stop();
-        }
-        if (channel) {
-            channel.unsubscribe();
-            channel = null;
-        }
-        if (broadcastTimer) {
-            clearTimeout(broadcastTimer);
-            broadcastTimer = null;
-        }
-        RealtimeState.reset();
-        updateUrlSession(null);
-        if (typeof RealtimeEvents !== 'undefined' && RealtimeEvents.refreshUI) {
-            RealtimeEvents.refreshUI();
-        }
-    }
-
     function handleHostLeft() {
         handleSessionEnded('Le créateur de la session a quitté. La session est fermée.');
     }
@@ -235,17 +229,13 @@ var RealtimeFeature = (function () {
         return false;
     }
 
+    // Ouvre le canal Supabase et branche payload / curseur / vue / présence
     function subscribe(sessionId) {
         var sb = (typeof NolimiAuth !== 'undefined' && NolimiAuth.getClient) ? NolimiAuth.getClient() : null;
         if (!sb) return Promise.reject(new Error('supabase_not_configured'));
 
         if (channel) {
-            if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.stop) {
-                RealtimeViewSync.stop();
-            }
-            if (typeof RealtimeCursors !== 'undefined' && RealtimeCursors.stop) {
-                RealtimeCursors.stop();
-            }
+            stopPeerServices();
             channel.unsubscribe();
             channel = null;
         }
@@ -269,7 +259,7 @@ var RealtimeFeature = (function () {
                     joinCompleted = true;
                     if (hostWaitTimer) clearTimeout(hostWaitTimer);
                     var err = new Error(errorCode || 'join_failed');
-                    abortJoinAttempt();
+                    teardownSessionLocal();
                     if (typeof NolimiAuth !== 'undefined' && NolimiAuth.exitGuestAccess) {
                         if (NolimiAuth.isSessionGuestAccess && NolimiAuth.isSessionGuestAccess()) {
                             NolimiAuth.exitGuestAccess(getJoinErrorMessage(err));
@@ -430,14 +420,11 @@ var RealtimeFeature = (function () {
         teardownSessionLocal();
     }
 
-    function scheduleBroadcast() {
+    // Debounce : envoie le projet après chaque modification du panneau gauche
+    function onLocalChange() {
         if (isApplyingRemote || !RealtimeState.isConnected() || !channel) return;
         if (broadcastTimer) clearTimeout(broadcastTimer);
         broadcastTimer = setTimeout(sendFullPayload, RealtimeRules.DEBOUNCE_MS);
-    }
-
-    function onLocalChange() {
-        scheduleBroadcast();
     }
 
     function bindSyncListeners() {
@@ -487,11 +474,8 @@ var RealtimeFeature = (function () {
         createSession: createSession,
         joinSession: joinSession,
         leaveSession: leaveSession,
-        scheduleBroadcast: scheduleBroadcast,
         onLocalChange: onLocalChange,
         getSessionUrl: getSessionUrl,
-        parseSessionInput: parseSessionInput,
-        getJoinErrorMessage: getJoinErrorMessage,
-        isApplyingRemote: function () { return isApplyingRemote; }
+        getJoinErrorMessage: getJoinErrorMessage
     };
 })();

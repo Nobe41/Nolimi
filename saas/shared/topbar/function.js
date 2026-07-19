@@ -1,4 +1,10 @@
+// saas/shared/topbar/function.js
+// Topbar atelier : menus Fichier/Affichage/Realtime, undo/redo slots, mobile hamburger.
+// Guide modal + contact mail. API : TopbarShared.init()
+
 var TopbarShared = (function () {
+    // --- Menu mobile (layout + hamburger) ---
+
     var MOBILE_MQ = window.matchMedia('(max-width: 768px)');
 
     var mobileSlots = null;
@@ -46,6 +52,7 @@ var TopbarShared = (function () {
         return mobileAnchors;
     }
 
+    // Déplace dropdown / historique desktop vers le slot mobile correspondant.
     function moveNodeToSlot(key) {
         var anchors = getMobileAnchors();
         var slots = getMobileSlots();
@@ -58,6 +65,7 @@ var TopbarShared = (function () {
         }
     }
 
+    // Remet le nœud dans son parent desktop (sortie du drawer mobile).
     function restoreNodeToDesktop(key) {
         var anchors = getMobileAnchors();
         var anchor = anchors[key];
@@ -68,6 +76,7 @@ var TopbarShared = (function () {
         }
     }
 
+    // Affiche le contenu du groupe mobile actif (accordéon drawer).
     function updateMobileSectionUI() {
         var groups = document.querySelectorAll('.mobile-menu-group[data-mobile-section]');
         var anchors = getMobileAnchors();
@@ -96,6 +105,7 @@ var TopbarShared = (function () {
         updateMobileSectionUI();
     }
 
+    // Bascule slots mobile ↔ desktop selon le breakpoint.
     function syncMobileMenuLayout() {
         if (isMobileLayout()) {
             moveNodeToSlot('fichier');
@@ -207,6 +217,8 @@ var TopbarShared = (function () {
         syncMobileMenuLayout();
     }
 
+    // --- Init dropdowns desktop (Fichier / Affichage / Realtime) ---
+
     function init() {
         var btnFichierMenu = document.getElementById('btn-fichier-menu');
         var fichierDropdown = document.getElementById('fichier-dropdown');
@@ -275,6 +287,8 @@ var TopbarShared = (function () {
         initContactMail();
         initGuideModal();
     }
+
+    // --- Modal guide ---
 
     function initGuideModal() {
         var GUIDE_SECTIONS = [
@@ -540,6 +554,8 @@ var TopbarShared = (function () {
         render();
     }
 
+    // --- Contact mail ---
+
     function initContactMail() {
         var btn = document.getElementById('btn-contact-mail');
         if (!btn || btn.dataset.bound === '1') return;
@@ -590,7 +606,6 @@ var TopbarShared = (function () {
     }
 
     return {
-        init: init,
-        closeMobileMenu: closeMobileMenu
+        init: init
     };
 })();

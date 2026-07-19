@@ -1,60 +1,62 @@
-// js/3d/bottleMesh.js
-// Maillage de révolution du corps de bouteille (sectionsData → profil → rotation → Mesh).
-// Dépend : BottleMaths, GeomKernel, Three.js. Optionnel : BottleMaterials, N_SEGMENTS, MERIDIAN_RESOLUTION.
+// saas/canvas/3d/bottle/ — maillage corps (profil tourné autour de l’axe).
+// Utilisé par build / export / highlight ; pas d’UI ici.
 
 var BottleMesh3D = (function () {
     var DEFAULT_N_SEGMENTS = 128;
     var DEFAULT_MERIDIAN_RES = 64;
 
+    // Matériau verre par défaut
     function getDefaultMaterial() {
         if (typeof BottleMaterials !== 'undefined' && BottleMaterials.getGlassMaterial) {
             return BottleMaterials.getGlassMaterial();
         }
         var color = (typeof BottleMaterials !== 'undefined' && BottleMaterials.DEFAULT_GLASS_COLOR !== undefined)
-            ? BottleMaterials.DEFAULT_GLASS_COLOR : 0x99bbdd;
+            ? BottleMaterials.DEFAULT_GLASS_COLOR
+            : 0x99bbdd;
         return new THREE.MeshPhongMaterial({ color: color, side: THREE.DoubleSide });
     }
 
-    function buildRevolvedMeshInternal(sectionsData, material, tessOverride) {
-        if (typeof THREE === 'undefined' || typeof GeomKernel === 'undefined' || typeof BottleMaths === 'undefined') return null;
+    // Crée le mesh : sections → profils → rotation → triangles
+    function createBottleMesh(sectionsData, material, tessOverride) {
+        if (typeof THREE === 'undefined' || typeof GeomKernel === 'undefined' || typeof BottleMaths === 'undefined') {
+            return null;
+        }
 
-        var tess = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.TESSELLATION) ? Canvas3DRules.TESSELLATION : {};
+        var tess = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.TESSELLATION)
+            ? Canvas3DRules.TESSELLATION
+            : {};
         var nTheta = (tessOverride && tessOverride.nTheta) || tess.N_SEGMENTS || DEFAULT_N_SEGMENTS;
         var meridianRes = (tessOverride && tessOverride.meridianRes) || tess.MERIDIAN_RESOLUTION || DEFAULT_MERIDIAN_RES;
 
+        // Un profil par angle autour de la bouteille
         var meridians = [];
+        var cosTheta = [];
+        var sinTheta = [];
         for (var t = 0; t < nTheta; t++) {
             var theta = (t / nTheta) * 2 * Math.PI;
+            cosTheta.push(Math.cos(theta));
+            sinTheta.push(Math.sin(theta));
             var entities = BottleMaths.buildExteriorProfile(theta, sectionsData);
             meridians.push(GeomKernel.tessellateProfile(entities, meridianRes));
         }
 
+        // Même nombre de points sur chaque profil
         var nMeridian = meridians[0].length;
         for (var ti = 1; ti < nTheta; ti++) {
             if (meridians[ti].length < nMeridian) nMeridian = meridians[ti].length;
         }
 
-        var cosTheta = [];
-        var sinTheta = [];
-        for (var t = 0; t < nTheta; t++) {
-            var angle = (t / nTheta) * 2 * Math.PI;
-            cosTheta.push(Math.cos(angle));
-            sinTheta.push(Math.sin(angle));
-        }
-
+        // Vertices (x, y, z)
         var vertices = [];
-        var indices = [];
-        var t, m, p, x, y, z;
         for (t = 0; t < nTheta; t++) {
-            for (m = 0; m < nMeridian; m++) {
-                p = meridians[t][m];
-                x = p.x * cosTheta[t];
-                z = p.x * sinTheta[t];
-                y = p.y;
-                vertices.push(x, y, z);
+            for (var m = 0; m < nMeridian; m++) {
+                var p = meridians[t][m];
+                vertices.push(p.x * cosTheta[t], p.y, p.x * sinTheta[t]);
             }
         }
 
+        // Triangles entre deux profils voisins
+        var indices = [];
         for (t = 0; t < nTheta; t++) {
             var tNext = (t + 1) % nTheta;
             for (m = 0; m < nMeridian - 1; m++) {
@@ -76,13 +78,10 @@ var BottleMesh3D = (function () {
         return new THREE.Mesh(geom, mat);
     }
 
-    function createBottleMesh(sectionsData, material, tessOverride) {
-        return buildRevolvedMeshInternal(sectionsData, material, tessOverride);
-    }
-
+    // Met à jour un mesh existant (réutilise le matériau)
     function updateBottleMesh(mesh, sectionsData, tessOverride) {
         if (!mesh) return createBottleMesh(sectionsData, null, tessOverride);
-        var newMesh = buildRevolvedMeshInternal(sectionsData, mesh.material, tessOverride);
+        var newMesh = createBottleMesh(sectionsData, mesh.material, tessOverride);
         if (mesh.geometry) mesh.geometry.dispose();
         mesh.geometry = newMesh.geometry;
         return mesh;

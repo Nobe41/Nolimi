@@ -1,10 +1,13 @@
+// saas/layout/function.js
+// Câblage UI de l’atelier : inputs inspector, accordéons, highlights, sync col↔bague.
+// API globales : setupListeners, scheduleViewRefresh, bindInspectorWheelScroll, viewport3D.
+// updateBouteille / draw2D viennent du canvas (pas ici).
+// Restore autosave → app/main.js (après chargement de tous les scripts).
+
 viewport3D = document.getElementById('viewport-3d');
 const view2D = document.getElementById('viewport-2d');
 
-// ==========================================
-// GESTION DES INPUTS ET ACCORDEONS
-// ==========================================
-
+// --- Rafraîchissement vues (3D + 2D si visible) ---
 let viewRefreshRaf = 0;
 
 function scheduleViewRefresh() {
@@ -60,31 +63,61 @@ function setupListeners() {
         return isFinite(v) ? v : 0;
     }
 
-    function shiftBagueHeights(delta) {
-        if (!isFinite(delta) || Math.abs(delta) < 1e-9) return;
-        var bagueInputs = document.querySelectorAll('input[id^="sb"][id$="-h"]');
-        for (var i = 0; i < bagueInputs.length; i++) {
-            var input = bagueInputs[i];
-            var v = parseFloat(input.value);
-            if (!isFinite(v)) continue;
-            // Appliquer le décalage brut à toutes les sections pour conserver la forme,
-            // puis laisser Validator recaler les bornes une fois l'ensemble déplacé.
-            var next = v + delta;
-            input.value = next;
-            var slider = document.getElementById(input.id + '-slider');
+    // --- Bague suit le col ---
+    // Écarts fixes col → sections bague (évite les deltas cumulés pendant un drag rapide).
+    var bagueHeightOffsetsFromTop = null;
+
+    function getSortedBagueHeightInputs() {
+        var inputs = document.querySelectorAll('input[id^="sb"][id$="-h"]');
+        var list = [];
+        for (var i = 0; i < inputs.length; i++) {
+            var m = (inputs[i].id || '').match(/^sb(\d+)-h$/);
+            if (!m) continue;
+            var k = parseInt(m[1], 10);
+            if (!isFinite(k)) continue;
+            list.push({ k: k, el: inputs[i] });
+        }
+        list.sort(function (a, b) { return a.k - b.k; });
+        return list;
+    }
+
+    function captureBagueHeightOffsetsFromTop() {
+        var top = getMainTopHeight();
+        var list = getSortedBagueHeightInputs();
+        var offsets = [];
+        for (var i = 0; i < list.length; i++) {
+            var v = parseFloat(list[i].el.value);
+            offsets.push(isFinite(v) ? (v - top) : 0);
+        }
+        bagueHeightOffsetsFromTop = offsets;
+    }
+
+    function applyBagueHeightOffsetsFromTop() {
+        var list = getSortedBagueHeightInputs();
+        if (!bagueHeightOffsetsFromTop || !bagueHeightOffsetsFromTop.length
+            || bagueHeightOffsetsFromTop.length !== list.length) {
+            captureBagueHeightOffsetsFromTop();
+            return;
+        }
+        var top = getMainTopHeight();
+        for (var i = 0; i < list.length; i++) {
+            var next = top + bagueHeightOffsetsFromTop[i];
+            list[i].el.value = next;
+            var slider = document.getElementById(list[i].el.id + '-slider');
             if (slider) slider.value = next;
         }
     }
 
-    var lastMainTopHeight = getMainTopHeight();
+    captureBagueHeightOffsetsFromTop();
 
+    // --- Liaisons corps + spline max ---
     var sectionCount = getMainSectionCount() || 5;
     const MAIN_RATTACHEMENTS = [];
     for (var si = 1; si < sectionCount; si++) {
         MAIN_RATTACHEMENTS.push({ id: 'r' + si + (si + 1), fromSection: si, toSection: si + 1 });
     }
 
-    /** Pour la spline (Bézier quadratique, amp = R * 0.3), retourne le max R dans [0, 250] tel que la courbe reste à au moins 10 mm de l'axe (x >= 10). */
+    // Spline (Bézier quadratique, amp = R * 0.3) : max R dans [0, 250] avec courbe à ≥ 5 mm de l’axe (x ≥ 5).
     var SPLINE_MARGIN_AXIS_MM = 5;
     function computeSplineMaxR(p0, p1) {
         var dx = p1.x - p0.x;
@@ -118,6 +151,7 @@ function setupListeners() {
         return Math.max(0, (low + high) * 0.5);
     }
 
+    // --- Bind inputs ---
     const inputs = document.querySelectorAll('input[type=range], input[type=number], select, input[type=checkbox]');
     
     inputs.forEach(input => {
@@ -208,6 +242,7 @@ function setupListeners() {
         });
     }
 
+    // --- Visibilité forme / carré / rho ---
     function toggleFormeDimensionsVisibility() {
         document.querySelectorAll('select[id$="-forme"]').forEach(sel => {
             if (sel.value === 'rond') sel.value = 'cylindrique';
@@ -310,21 +345,11 @@ function setupListeners() {
         });
         updateCourbeSSliderLimits();
         updateCourbeSAutoValues();
-        // Recalculer la hauteur des panneaux ouverts pour que le groupe Rayon (ex. Courbe S) ne soit pas coupé.
-        document.querySelectorAll('.panel-controls').forEach(panel => {
-            if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
-                panel.style.maxHeight = panel.scrollHeight + 'px';
-            }
-        });
-        requestAnimationFrame(function () {
-            document.querySelectorAll('.panel-controls').forEach(panel => {
-                if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
-                    panel.style.maxHeight = panel.scrollHeight + 'px';
-                }
-            });
-        });
+        refreshOpenAccordionPanels();
+        requestAnimationFrame(refreshOpenAccordionPanels);
     }
-    // --- Mise à jour auto des valeurs de rayon (mode "rayon") sur le corps principal ---
+
+    // --- Courbe S / rayon auto ---
     function getNumberValue(id, fallback) {
         const el = document.getElementById(id);
         if (!el) return fallback;
@@ -347,16 +372,16 @@ function setupListeners() {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /** Rapport ρ/d stocké par rattachement pour maintenir la forme de la Courbe S quand la distance change. */
+    // Rapport ρ/d par rattachement (forme Courbe S stable quand la distance change).
     var courbeSRatios = {};
 
-    /** Quand l'utilisateur change le ρ en mode Courbe S, on enregistre le rapport ρ/d pour mise à jour ultérieure. */
+    // Mémorise ρ/d quand l’utilisateur édite le ρ en mode Courbe S.
     function storeCourbeSRatio(rattId, rho, d) {
         if (!rattId || d < 1e-6) return;
         courbeSRatios[rattId] = rho / d;
     }
 
-    /** Calcule le min et max R0 valides pour la Courbe S entre deux points. */
+    // Min / max R0 valides pour la Courbe S entre deux points.
     function getCourbeSRange(p0, p1, pPrev, pNext) {
         var dx = p1.x - p0.x;
         var dy = p1.y - p0.y;
@@ -378,7 +403,7 @@ function setupListeners() {
         return { min: Math.round(sliderMin * 10) / 10, max: Math.round(sliderMax * 10) / 10 };
     }
 
-    /** Met à jour les min/max du slider Courbe S pour qu'ils correspondent à la plage valide (géométrie actuelle). */
+    // Met à jour min/max du slider Courbe S selon la géométrie actuelle.
     function updateCourbeSSliderLimits() {
         MAIN_RATTACHEMENTS.forEach(function (cfg) {
             var typeSelect = document.getElementById(cfg.id + '-type');
@@ -416,7 +441,7 @@ function setupListeners() {
         });
     }
 
-    /** Quand les sections bougent, mettre à jour les ρ en Courbe S pour garder le même rapport ρ/d (même forme de courbe). */
+    // Sections déplacées : recalcule ρ Courbe S pour garder le même rapport ρ/d.
     function updateCourbeSRhosFromDistance() {
         MAIN_RATTACHEMENTS.forEach(function (cfg) {
             var typeSelect = document.getElementById(cfg.id + '-type');
@@ -444,7 +469,7 @@ function setupListeners() {
         });
     }
 
-    /** Met à jour le max du slider ρ pour les rattachements en mode spline (limite quand les surfaces se touchent). */
+    // Max ρ spline (surfaces qui se touchent).
     function updateSplineMaxLimits(clampValues) {
         MAIN_RATTACHEMENTS.forEach(function (cfg) {
             var typeSelect = document.getElementById(cfg.id + '-type');
@@ -473,7 +498,7 @@ function setupListeners() {
         });
     }
 
-    /** Centre le ρ (R0) sur la liaison Courbe S indiquée. */
+    // Centre ρ (R0) sur la liaison Courbe S indiquée.
     function setCourbeSRhoToMid(rattId) {
         var cfg = MAIN_RATTACHEMENTS.find(function (c) { return c.id === rattId; });
         if (!cfg) return;
@@ -494,7 +519,7 @@ function setupListeners() {
         if (d >= 1e-6) storeCourbeSRatio(rattId, val, d);
     }
 
-    /** Met à jour le ρ affiché (R0 du 1er arc) pour les rattachements en mode Courbe S. */
+    // Valeur ρ par défaut (R0 du 1er arc) en mode Courbe S.
     function updateCourbeSAutoValues() {
         MAIN_RATTACHEMENTS.forEach(function (cfg) {
             var typeSelect = document.getElementById(cfg.id + '-type');
@@ -558,6 +583,7 @@ function setupListeners() {
         });
     }
 
+    // --- Heavy update (validator + refresh) ---
     var inputHeavyRaf = 0;
     var pendingHeavyInputId = '';
     var activeRhoSliderDragId = '';
@@ -635,6 +661,8 @@ function setupListeners() {
             }
         }
 
+        // Si on bouge le col (dernière section), la bague suit via des écarts absolus
+        // (pas de delta cumulé → stable même en drag rapide).
         var isTopMainHeightEdit = false;
         var topMatch = id.match(/^s(\d+)-h(?:-slider)?$/);
         if (topMatch) {
@@ -642,18 +670,18 @@ function setupListeners() {
             var mainCountNow = getMainSectionCount();
             isTopMainHeightEdit = isFinite(editedSectionIndex) && editedSectionIndex === mainCountNow;
             if (isTopMainHeightEdit) {
-                var currentTop = getMainTopHeight();
-                var deltaTop = currentTop - lastMainTopHeight;
-                shiftBagueHeights(deltaTop);
+                applyBagueHeightOffsetsFromTop();
             }
         }
+        var isBagueHeightEdit = /^sb\d+-h(?:-slider)?$/.test(id || '');
 
         var isRhoOnlyEdit = /^(r\d+|rp\d+|rb\d+)-rho(?:-slider)?$/.test(id);
         if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints && !isRhoOnlyEdit) {
             Validator.applyAllUserConstraints();
         }
-        if (isTopMainHeightEdit) {
-            lastMainTopHeight = getMainTopHeight();
+        // Mémoriser les écarts seulement quand l’utilisateur édite la bague elle-même.
+        if (isBagueHeightEdit) {
+            captureBagueHeightOffsetsFromTop();
         }
 
         if (/^s\d+-(h|L|P)(?:-slider)?$/.test(id)) {
@@ -694,6 +722,7 @@ function setupListeners() {
         scheduleViewRefresh();
     }
 
+    // --- Accordéons + highlights ---
     toggleFormeDimensionsVisibility();
     toggleCarreNiveauVisibility();
     toggleRhoVisibility();
@@ -832,10 +861,6 @@ function setupListeners() {
 
     var SECTION_HIGHLIGHT_PANELS = ['panel-content-sections', 'panel-content-piqure', 'panel-content-bague'];
 
-    function getMainAccordionIndex(btn) {
-        return getSectionIndexInPanel(btn);
-    }
-
     for (let i = 0; i < allAccordions.length; i++) {
         if (allAccordions[i].dataset.nolimiAccordionBound === '1') continue;
         allAccordions[i].dataset.nolimiAccordionBound = '1';
@@ -940,18 +965,14 @@ function setupListeners() {
     bindLiaisonHoverHighlight();
 }
 
+// --- Boot ---
+// Restore autosave dans app/main.js (après tous les scripts).
 bindInspectorWheelScroll();
-if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.prepareRestoreFromStorage) {
-    WorkspaceAutosave.prepareRestoreFromStorage();
-}
 if (typeof UIInspector !== 'undefined' && UIInspector.renderSections) {
     UIInspector.renderSections();
 }
 if (typeof RenderFeature !== 'undefined' && RenderFeature.initModeRenduControls) {
     RenderFeature.initModeRenduControls();
-}
-if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.applyRestoredValues) {
-    WorkspaceAutosave.applyRestoredValues();
 }
 if (typeof UIControls !== 'undefined' && UIControls.syncAllRangeSliders) {
     UIControls.syncAllRangeSliders();

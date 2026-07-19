@@ -1,3 +1,9 @@
+// saas/features/export/math.js
+// Utilitaires partagés par les deux exports.
+// PDF : résolution format papier (mm + options jsPDF).
+// STL : préparation / fusion de géométries Three.js avant export binaire.
+// Dimensions mm du plan → Plans2DFeature / Plans2DRules (pas de copie ici).
+
 var ExportMath = (function () {
     function safeFileName(name, fallback) {
         var base = (name || '').trim();
@@ -5,13 +11,35 @@ var ExportMath = (function () {
         return base.replace(/[\\/:*?"<>|]/g, '_');
     }
 
-    function resolvePaperInfo(formatVal, paperFormats, rules) {
-        var selected = formatVal || rules.DEFAULTS.paperFormat;
-        var dims = (paperFormats && paperFormats[selected]) ? paperFormats[selected] : { w: 210, h: 297 };
-        var map = (rules.PAPER_MAP && rules.PAPER_MAP[selected]) ? rules.PAPER_MAP[selected] : { orientation: 'p', format: 'a4' };
-        return { w: dims.w, h: dims.h, orientation: map.orientation, format: map.format };
+    function paperFormats() {
+        if (typeof Plans2DFeature !== 'undefined' && Plans2DFeature.getFormats) {
+            return Plans2DFeature.getFormats();
+        }
+        if (typeof Plans2DRules !== 'undefined' && Plans2DRules.PAPER_FORMATS) {
+            return Plans2DRules.PAPER_FORMATS;
+        }
+        return {};
     }
 
+    // PDF uniquement : convertit la clé plan (A2_P…) en taille mm + orientation jsPDF
+    function resolvePaperInfo(formatVal, rules) {
+        rules = rules || (typeof ExportRules !== 'undefined' ? ExportRules : {});
+        var defaults = rules.DEFAULTS || {};
+        var selected = formatVal || defaults.paperFormat || 'A2_P';
+        var formats = paperFormats();
+        var dims = formats[selected] || formats[defaults.paperFormat] || { w: 210, h: 297 };
+        var map = (rules.PAPER_MAP && rules.PAPER_MAP[selected])
+            ? rules.PAPER_MAP[selected]
+            : { orientation: 'p', format: 'a4' };
+        return {
+            w: dims.w,
+            h: dims.h,
+            orientation: map.orientation,
+            format: map.format
+        };
+    }
+
+    // STL uniquement : applique la matrice monde et corrige le sens des faces
     function prepareMeshGeometryForExport(mesh) {
         if (!mesh || !mesh.geometry || typeof THREE === 'undefined') return null;
         var geo = mesh.geometry;
@@ -33,6 +61,7 @@ var ExportMath = (function () {
         return prepared;
     }
 
+    // STL uniquement : fusionne plusieurs morceaux de maillage en une seule géométrie
     function mergeBufferGeometries(geometries) {
         if (!geometries || !geometries.length || typeof THREE === 'undefined') return null;
 

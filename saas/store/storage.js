@@ -1,6 +1,8 @@
-// ==========================================
-// STORAGE — Sauvegarde et chargement projet (JSON)
-// ==========================================
+// saas/store/storage.js
+// Persistance projet :
+//   1) WorkspaceAutosave — localStorage (debounce + intervalle), restore au boot via app/main.js
+//   2) Fichier JSON — File System Access API / download (menu Fichier)
+// Globals utiles : clearProjectFileBinding, currentFileHandle (state.js)
 
 var WorkspaceAutosave = (function () {
     var AUTOSAVE_KEY = 'nolimi-workspace-v1';
@@ -11,6 +13,8 @@ var WorkspaceAutosave = (function () {
     var intervalId = null;
     var listenersBound = false;
     var isApplyingRestore = false;
+
+    // --- Collecte / restore payload ---
 
     function collectProjectInputs() {
         var projectData = {};
@@ -97,14 +101,15 @@ var WorkspaceAutosave = (function () {
             }
             if (normalized.displayOptions && typeof window !== 'undefined') {
                 if (!window.displayOptions) {
-                    window.displayOptions = {
-                        showAxes: true,
-                        showGrid: true,
-                        showSectionRings: true,
-                        showMoldJoint: true
-                    };
+                    window.displayOptions = (typeof createDefaultDisplayOptions === 'function')
+                        ? createDefaultDisplayOptions()
+                        : { showAxes: true, showGrid: true, showSectionRings: true, showMoldJoint: true };
                 }
                 Object.assign(window.displayOptions, normalized.displayOptions);
+                // Resync checkboxes Affichage (DisplayShared.init a déjà tourné avec les défauts)
+                if (typeof DisplayShared !== 'undefined' && DisplayShared.syncTogglesFromOptions) {
+                    DisplayShared.syncTogglesFromOptions();
+                }
             }
             if (normalized.interiorState && typeof window !== 'undefined') {
                 window.interiorState = {
@@ -178,6 +183,8 @@ var WorkspaceAutosave = (function () {
         } catch (e) { /* ignore */ }
     }
 
+    // --- Restore boot (appelé par app/main.js AVANT le 1er saveNow) ---
+
     function prepareRestoreFromStorage() {
         pendingRestore = null;
         try {
@@ -211,6 +218,7 @@ var WorkspaceAutosave = (function () {
         intervalId = setInterval(saveNow, AUTOSAVE_INTERVAL_MS);
     }
 
+    // Bind save seulement — le restore est déclenché par app/main.js
     function init() {
         bindListeners();
     }
@@ -226,6 +234,8 @@ var WorkspaceAutosave = (function () {
         init: init
     };
 })();
+
+// --- Fichier projet (File System Access + fallback download) ---
 
 var PROJECT_HANDLE_DB = 'nolimi-project-files';
 var PROJECT_HANDLE_STORE = 'handles';
@@ -373,9 +383,10 @@ function getKnownProjectFileName(fallback) {
 }
 
 async function initProjectFileHandleRestore() {
-    var handle = await restoreProjectFileHandle();
-    if (isFileSystemHandle(handle)) currentFileHandle = handle;
+    await resolveLinkedProjectFileHandle();
 }
+
+// --- UI menu Fichier (ouvrir / enregistrer) ---
 
 var btnOpenProject = document.getElementById('btn-open-project');
 var btnOpenWorkspace = document.getElementById('btn-open-workspace');
@@ -406,11 +417,9 @@ function loadProjectData(jsonString) {
                     if (typeof draw2D === 'function' && viewport2DEl && !viewport2DEl.classList.contains('hidden')) draw2D();
                     if (typeof WorkspaceAutosave !== 'undefined') WorkspaceAutosave.saveNow();
                 });
-                return;
+            } else {
+                alert("Impossible de charger le projet (module de sauvegarde absent).");
             }
-            if (typeof updateBouteille === 'function') updateBouteille();
-            if (typeof draw2D === 'function' && viewport2DEl && !viewport2DEl.classList.contains('hidden')) draw2D();
-            if (typeof WorkspaceAutosave !== 'undefined') WorkspaceAutosave.saveNow();
         }, 50);
     } catch (err) {
         alert("Erreur : Le fichier de sauvegarde n'est pas valide.");
@@ -444,10 +453,6 @@ async function writeProjectToHandle(handle, jsonString) {
     await writable.write(jsonString);
     await writable.close();
     return true;
-}
-
-async function initProjectFileHandleRestore() {
-    await resolveLinkedProjectFileHandle();
 }
 
 async function saveProject(isSaveAs) {
@@ -546,5 +551,6 @@ if (fileLoader) {
 if (btnSave) btnSave.addEventListener('click', function () { saveProject(false); });
 if (btnSaveAs) btnSaveAs.addEventListener('click', function () { saveProject(true); });
 
+// Boot : restaure le handle fichier si présent ; démarre l’autosave (listeners seulement)
 initProjectFileHandleRestore();
 if (typeof WorkspaceAutosave !== 'undefined') WorkspaceAutosave.init();

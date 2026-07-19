@@ -1,3 +1,8 @@
+// saas/features/gravure/events.js
+// Couche UI : création/suppression de cartes, chargement PNG, save/restore projet.
+// Chaque changement appelle updateBouteille() → regénère le mesh 3D (mesh.js).
+// getEngravingsData() expose les paramètres actifs au moteur de relief.
+
 var GravureEvents = (function () {
     function triggerUpdate() {
         if (typeof updateBouteille === 'function') updateBouteille();
@@ -134,6 +139,7 @@ var GravureEvents = (function () {
         triggerUpdate();
     }
 
+    // Données lues par mesh.js : uniquement les gravures activées
     function getEngravingsData() {
         var items = document.querySelectorAll('.gravure-item');
         var data = [];
@@ -172,6 +178,7 @@ var GravureEvents = (function () {
         slider.addEventListener('input', applyFromSlider);
     }
 
+    // Charge le PNG en mémoire (GravureState) — le mesh 3D l’utilise ensuite
     function bindFileCard(card, id) {
         var fileInput = card.querySelector('.gravure-file');
         var fileBtn = card.querySelector('.gravure-file-btn');
@@ -275,3 +282,5 @@ var GravureEvents = (function () {
         clearAllGravures: clearAllGravures
     };
 })();
+
+if (typeof GravureEvents !== 'undefined' && GravureEvents.init) GravureEvents.init();

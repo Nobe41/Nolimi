@@ -1,4 +1,8 @@
-// Bindings UI — bouton partage et panneau session.
+// saas/features/realtime/events.js
+// Boutons et panneaux du menu « Partager la session ».
+// Créer une session, rejoindre via code/lien, copier l’URL, quitter.
+// Met à jour l’affichage selon RealtimeState ; la logique réseau est dans function.js.
+
 var RealtimeEvents = (function () {
     var bound = false;
 
@@ -33,10 +37,12 @@ var RealtimeEvents = (function () {
         var btn = getEl(RealtimeRules.IDS.btnCopy);
         if (!btn) return;
         var prev = btn.textContent;
+        var ms = RealtimeRules.COPY_FEEDBACK_MS != null ? RealtimeRules.COPY_FEEDBACK_MS : 1500;
         btn.textContent = 'Copié ✓';
-        setTimeout(function () { btn.textContent = prev; }, 1500);
+        setTimeout(function () { btn.textContent = prev; }, ms);
     }
 
+    // Bascule panneaux idle / actif et affiche le lien + statut hôte/invité
     function refreshUI() {
         var btnMenu = getEl(RealtimeRules.IDS.btnMenu);
         var idlePanel = getEl(RealtimeRules.IDS.idlePanel);
@@ -139,13 +145,8 @@ var RealtimeEvents = (function () {
         refreshUI();
     }
 
-    function init() {
-        bind();
-    }
-
     return {
-        init: init,
-        refreshUI: refreshUI,
-        hideDropdown: hideDropdown
+        init: bind,
+        refreshUI: refreshUI
     };
 })();

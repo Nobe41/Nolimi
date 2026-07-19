@@ -1,8 +1,25 @@
-// Orchestration UI des sections (rendu + branchement événements).
+// saas/features/sections/function.js
+// Orchestration UI sections — API globale : UIInspector.
+//
+// Rôle :
+//   renderSections()           → remplit les 3 panneaux (corps / piqûre / bague)
+//   refreshAddSectionFooter()  → met à jour la barre « + » selon le panneau actif
+//
+// Dépend de : SectionsState, SectionsBloc, SectionsEvents, SectionsRules
+// Appelé par : layout/function.js (init), store/storage.js (restore), navigation
+
 var UIInspector = (function () {
-    var CONTAINER_SECTIONS = 'panel-content-sections';
-    var CONTAINER_PIQURE = 'panel-content-piqure';
-    var CONTAINER_BAGUE = 'panel-content-bague';
+    var R = typeof SectionsRules !== 'undefined' ? SectionsRules : {};
+    var IDS = R.IDS || {};
+    var DEF_MAIN = R.DEFAULT_LIAISON_MAIN || { rho: 10, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+    var DEF = R.DEFAULT_LIAISON || { rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+
+    var CONTAINER_SECTIONS = IDS.panelSections || 'panel-content-sections';
+    var CONTAINER_PIQURE = IDS.panelPiqure || 'panel-content-piqure';
+    var CONTAINER_BAGUE = IDS.panelBague || 'panel-content-bague';
+    var CONTAINER_INTERIEUR = IDS.panelInterieur || 'panel-content-interieur';
+    var INSPECTOR_ID = IDS.inspector || 'inspector';
+    var ADD_BAR_ID = IDS.addSectionBar || 'inspector-add-section-bar';
 
     function getState() {
         return (typeof SectionsState !== 'undefined' && SectionsState.getState)
@@ -17,10 +34,11 @@ var UIInspector = (function () {
             };
     }
 
+    // Quel panneau est visible ? (interieur → pas de barre « + »)
     function getActiveMode() {
         var contentPiqure = document.getElementById(CONTAINER_PIQURE);
         var contentBague = document.getElementById(CONTAINER_BAGUE);
-        var contentInterieur = document.getElementById('panel-content-interieur');
+        var contentInterieur = document.getElementById(CONTAINER_INTERIEUR);
         if (contentPiqure && !contentPiqure.classList.contains('hidden')) return 'piqure';
         if (contentBague && !contentBague.classList.contains('hidden')) return 'bague';
         if (contentInterieur && !contentInterieur.classList.contains('hidden')) return 'interieur';
@@ -39,6 +57,7 @@ var UIInspector = (function () {
         return SectionsBloc.buildAddSectionFooter(mode, n);
     }
 
+    // Panneau corps : sections s* + liaisons r*
     function renderMainSections(container) {
         if (!container || typeof SectionsBloc === 'undefined') return;
         var state = getState();
@@ -47,7 +66,12 @@ var UIInspector = (function () {
             html += SectionsBloc.buildSectionCard(state.sectionsMain[i], i);
             if (i < state.sectionsMain.length - 1) {
                 if (!state.liaisonsMain[i]) {
-                    state.liaisonsMain[i] = { rho: 10, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+                    state.liaisonsMain[i] = {
+                        rho: DEF_MAIN.rho,
+                        rhoMin: DEF_MAIN.rhoMin,
+                        rhoMax: DEF_MAIN.rhoMax,
+                        rhoStep: DEF_MAIN.rhoStep
+                    };
                 }
                 html += SectionsBloc.buildLiaisonCard(state.liaisonsMain[i], i);
             }
@@ -55,6 +79,7 @@ var UIInspector = (function () {
         container.innerHTML = html;
     }
 
+    // Panneau piqûre : sections sp* + liaisons rp* + pointe rp3-h
     function renderPiqure(container) {
         if (!container || typeof SectionsBloc === 'undefined') return;
         var state = getState();
@@ -62,17 +87,24 @@ var UIInspector = (function () {
         for (var i = 0; i < state.piqureSections.length; i++) {
             html += SectionsBloc.buildPiqureSectionCard(state.piqureSections[i], i);
             if (i < state.piqureSections.length - 1) {
-                var r = state.piqureLiaisons[i] || { id: 'rp' + (i + 1), rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+                var r = state.piqureLiaisons[i] || {
+                    id: 'rp' + (i + 1),
+                    rho: DEF.rho,
+                    rhoMin: DEF.rhoMin,
+                    rhoMax: DEF.rhoMax,
+                    rhoStep: DEF.rhoStep
+                };
                 state.piqureLiaisons[i] = r;
                 html += SectionsBloc.buildSimpleLiaisonCard(r.id, i + 1, r);
             }
         }
-        html += '<div class="setting-card setting-card--liaison"><button class="accordion sub-accordion">Liaison ' + (state.piqureSections.length) + '</button><div class="panel-controls">' +
-            '<div class="control-group"><div class="label-row"><label>Hauteur (mm)</label><div class="input-wrapper"><input type="number" id="rp3-h" value="30" min="0" max="100"><span class="unit">mm</span></div></div><input type="range" id="rp3-h-slider" min="0" max="100" step="0.5" value="30"></div>' +
-            '</div></div>';
+        if (SectionsBloc.buildPiqureTipCard) {
+            html += SectionsBloc.buildPiqureTipCard(state.piqureSections.length);
+        }
         container.innerHTML = html;
     }
 
+    // Panneau bague : sections sb* + liaisons rb*
     function renderBague(container) {
         if (!container || typeof SectionsBloc === 'undefined') return;
         var state = getState();
@@ -80,7 +112,13 @@ var UIInspector = (function () {
         for (var i = 0; i < state.bagueSections.length; i++) {
             html += SectionsBloc.buildBagueSectionCard(state.bagueSections[i], i);
             if (i < state.bagueSections.length - 1) {
-                var r = state.bagueLiaisons[i] || { id: 'rb' + (i + 1), rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 };
+                var r = state.bagueLiaisons[i] || {
+                    id: 'rb' + (i + 1),
+                    rho: DEF.rho,
+                    rhoMin: DEF.rhoMin,
+                    rhoMax: DEF.rhoMax,
+                    rhoStep: DEF.rhoStep
+                };
                 state.bagueLiaisons[i] = r;
                 html += SectionsBloc.buildSimpleLiaisonCard(r.id, i + 1, r);
             }
@@ -89,9 +127,9 @@ var UIInspector = (function () {
     }
 
     function mountAddSectionFooter() {
-        var host = document.getElementById('inspector');
+        var host = document.getElementById(INSPECTOR_ID);
         if (!host) return;
-        var existing = document.getElementById('inspector-add-section-bar');
+        var existing = document.getElementById(ADD_BAR_ID);
         var html = buildAddSectionFooter();
         if (!html) {
             if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
@@ -116,6 +154,7 @@ var UIInspector = (function () {
         if (SectionsEvents.wireRemoveSectionButtons) SectionsEvents.wireRemoveSectionButtons(eventConfig);
     }
 
+    // Point d’entrée : rendu complet + rebranchement événements
     function renderSections() {
         renderMainSections(document.getElementById(CONTAINER_SECTIONS));
         renderPiqure(document.getElementById(CONTAINER_PIQURE));
@@ -124,6 +163,7 @@ var UIInspector = (function () {
         bindEvents();
     }
 
+    // Après changement d’onglet navigation (corps ↔ piqûre ↔ bague)
     function refreshAddSectionFooter() {
         mountAddSectionFooter();
         bindEvents();

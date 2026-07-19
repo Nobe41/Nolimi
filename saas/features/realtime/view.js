@@ -1,4 +1,8 @@
-// Synchronisation des vues (caméra 3D, pan/zoom 2D, onglet actif).
+// saas/features/realtime/view.js
+// Synchronisation de la vue entre participants (caméra 3D, pan/zoom 2D).
+// Inclut aussi onglets actifs, options d’affichage et état de l’inspecteur.
+// Broadcast throttlé ; ignore les messages plus anciens que le local.
+
 var RealtimeViewSync = (function () {
     var channel = null;
     var throttleTimer = null;
@@ -25,11 +29,17 @@ var RealtimeViewSync = (function () {
     }
 
     function collect2D() {
-        if (typeof Plans2DState === 'undefined' || !Plans2DState.getCamera) return null;
-        var cam = Plans2DState.getCamera();
-        return { x: cam.x, y: cam.y, zoom: cam.zoom };
+        if (typeof Canvas2DView !== 'undefined' && Canvas2DView.getCamera) {
+            var cam = Canvas2DView.getCamera();
+            return { x: cam.x, y: cam.y, zoom: cam.zoom };
+        }
+        if (typeof cam2D !== 'undefined' && cam2D) {
+            return { x: cam2D.x, y: cam2D.y, zoom: cam2D.zoom };
+        }
+        return null;
     }
 
+    // Instantané complet de ce que voit l’utilisateur local
     function collectViewState() {
         var nav = (typeof NavigationState !== 'undefined' && NavigationState.getState)
             ? NavigationState.getState()
@@ -63,34 +73,44 @@ var RealtimeViewSync = (function () {
     }
 
     function apply2D(view2d) {
-        if (!view2d || typeof Plans2DState === 'undefined' || !Plans2DState.setCamera) return;
-        Plans2DState.setCamera(view2d);
+        if (!view2d) return;
+        if (typeof Canvas2DView !== 'undefined' && Canvas2DView.setCamera) {
+            Canvas2DView.setCamera(view2d);
+        } else if (typeof cam2D !== 'undefined' && cam2D) {
+            if (typeof view2d.x === 'number') cam2D.x = view2d.x;
+            if (typeof view2d.y === 'number') cam2D.y = view2d.y;
+            if (typeof view2d.zoom === 'number') cam2D.zoom = view2d.zoom;
+        } else {
+            return;
+        }
         if (typeof draw2D === 'function') draw2D();
     }
 
     function applyDisplayOptions(opts) {
         if (!opts || typeof window === 'undefined') return;
         if (!window.displayOptions) {
-            window.displayOptions = {
-                showAxes: true,
-                showGrid: true,
-                showSectionRings: true,
-                showMoldJoint: true
-            };
+            window.displayOptions = (typeof createDefaultDisplayOptions === 'function')
+                ? createDefaultDisplayOptions()
+                : { showAxes: true, showGrid: true, showSectionRings: true, showMoldJoint: true };
         }
         Object.assign(window.displayOptions, opts);
-        var axesToggle = document.getElementById('display-axes-toggle');
-        var gridToggle = document.getElementById('display-grid-toggle');
-        var ringsToggle = document.getElementById('display-rings-toggle');
-        var moldJointToggle = document.getElementById('display-mold-joint-toggle');
-        if (axesToggle) axesToggle.checked = opts.showAxes !== false;
-        if (gridToggle) gridToggle.checked = opts.showGrid !== false;
-        if (ringsToggle) ringsToggle.checked = opts.showSectionRings !== false;
-        if (moldJointToggle) moldJointToggle.checked = opts.showMoldJoint !== false;
+        if (typeof DisplayShared !== 'undefined' && DisplayShared.syncTogglesFromOptions) {
+            DisplayShared.syncTogglesFromOptions();
+        } else {
+            var axesToggle = document.getElementById('display-axes-toggle');
+            var gridToggle = document.getElementById('display-grid-toggle');
+            var ringsToggle = document.getElementById('display-rings-toggle');
+            var moldJointToggle = document.getElementById('display-mold-joint-toggle');
+            if (axesToggle) axesToggle.checked = opts.showAxes !== false;
+            if (gridToggle) gridToggle.checked = opts.showGrid !== false;
+            if (ringsToggle) ringsToggle.checked = opts.showSectionRings !== false;
+            if (moldJointToggle) moldJointToggle.checked = opts.showMoldJoint !== false;
+        }
         if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) SceneSetup3D.applyDisplayOptions();
         if (typeof updateBouteille === 'function') updateBouteille();
     }
 
+    // Reproduit la vue distante sans reboucler le broadcast
     function applyViewState(view, options) {
         if (!view) return;
         options = options || {};
@@ -131,6 +151,7 @@ var RealtimeViewSync = (function () {
         pendingView = null;
     }
 
+    // Appelé quand l’utilisateur bouge la caméra 3D (controls change)
     function scheduleBroadcast() {
         if (!channel || isApplyingRemote || !RealtimeState.isConnected()) return;
         pendingView = collectViewState();

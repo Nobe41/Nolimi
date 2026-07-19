@@ -1,22 +1,38 @@
-// Calculs geometriques de l'epaisseur interieure.
+// Interieur/math.js — géométrie de la cavité intérieure (peau de verre).
+// Rôle : rétrécir le profil extérieur selon l'épaisseur (inset), ou l'élargir (outset).
+// Constantes → InterieurRules. Épaisseur courante → InterieurFeature.getGlassThicknessMm().
+// Utilisé par le canvas 3D et calcule/math.js (volumes intérieurs).
+
 var InterieurMath = (function () {
+    var R = typeof InterieurRules !== 'undefined' ? InterieurRules : {};
+
+    function defThickness() {
+        return R.DEFAULT_GLASS_THICKNESS_MM != null ? R.DEFAULT_GLASS_THICKNESS_MM : 3.5;
+    }
+
+    function minHalf() {
+        return R.MIN_HALF_AXIS != null ? R.MIN_HALF_AXIS : 0.1;
+    }
+
     function getThicknessMm() {
         return (typeof InterieurFeature !== 'undefined' && InterieurFeature.getGlassThicknessMm)
             ? InterieurFeature.getGlassThicknessMm()
-            : 3.5;
+            : defThickness();
     }
 
+    // Réduit chaque section (a, b) de l'épaisseur ; la 1re section remonte aussi de bottomLiftMm (pied).
     function buildInteriorSectionsDataFromThickness(sectionsData, thicknessMm, bottomLiftMm) {
         if (!sectionsData || !sectionsData.sections || !sectionsData.sections.length) return null;
         var t = Math.max(0, thicknessMm || 0);
         var lift = Math.max(0, bottomLiftMm || 0);
+        var floor = minHalf();
         var innerSections = [];
         for (var i = 0; i < sectionsData.sections.length; i++) {
             var s = sectionsData.sections[i];
             innerSections.push({
                 H: (i === 0 ? (s.H + lift) : s.H),
-                a: Math.max(0.1, (s.a || 0) - t),
-                b: Math.max(0.1, (s.b || 0) - t),
+                a: Math.max(floor, (s.a || 0) - t),
+                b: Math.max(floor, (s.b || 0) - t),
                 shape: s.shape,
                 carreNiveau: s.carreNiveau
             });
@@ -28,6 +44,7 @@ var InterieurMath = (function () {
         };
     }
 
+    // Déplace un sommet vers l'intérieur, perpendiculairement au méridien (XZ), sans toucher à Y.
     function insetPointRadial(p, thicknessMm) {
         var t = Math.max(0, thicknessMm || 0);
         if (t <= 0) return { x: p.x, y: p.y, z: p.z };
@@ -37,6 +54,7 @@ var InterieurMath = (function () {
         return { x: p.x * k, y: p.y, z: p.z * k };
     }
 
+    // Duplique un mesh Three.js en insettant tous les sommets ; supprime les triangles retournés.
     function createInsetMeshFromMesh(sourceMesh, thicknessMm, material) {
         if (!sourceMesh || !sourceMesh.geometry || typeof THREE === 'undefined') return null;
         var src = sourceMesh.geometry;
@@ -90,28 +108,34 @@ var InterieurMath = (function () {
         return mesh;
     }
 
+    // Inset d'une section 2D : retire t mm sur a et b, avec marge et plancher minHalf().
     function insetSection(section, thicknessMm) {
         var t = Math.max(0, thicknessMm || 0);
-        var tSafe = Math.min(t, Math.max(0, Math.min((section.a || 0), (section.b || 0)) - 0.2));
+        var margin = R.INSET_SECTION_MARGIN != null ? R.INSET_SECTION_MARGIN : 0.2;
+        var floor = minHalf();
+        var tSafe = Math.min(t, Math.max(0, Math.min((section.a || 0), (section.b || 0)) - margin));
         return {
             H: section.H,
-            a: Math.max(0.1, (section.a || 0) - tSafe),
-            b: Math.max(0.1, (section.b || 0) - tSafe),
+            a: Math.max(floor, (section.a || 0) - tSafe),
+            b: Math.max(floor, (section.b || 0) - tSafe),
             shape: section.shape,
             carreNiveau: section.carreNiveau
         };
     }
 
+    // Outset inverse : agrandit a et b (piqûre intérieure, bord interne).
     function outsetSection(section, thicknessMm) {
+        var floor = minHalf();
         return {
             H: section.H,
-            a: Math.max(0.1, (section.a || 0) + Math.max(0, thicknessMm || 0)),
-            b: Math.max(0.1, (section.b || 0) + Math.max(0, thicknessMm || 0)),
+            a: Math.max(floor, (section.a || 0) + Math.max(0, thicknessMm || 0)),
+            b: Math.max(floor, (section.b || 0) + Math.max(0, thicknessMm || 0)),
             shape: section.shape,
             carreNiveau: section.carreNiveau
         };
     }
 
+    // Interpolation linéaire entre deux sections extérieures à une hauteur H donnée.
     function getOuterSectionAtHeight(mainSections, H) {
         if (!mainSections || !mainSections.length) return null;
         if (H <= mainSections[0].H) return mainSections[0];

@@ -1,5 +1,11 @@
-// Synchronise --range-pct pour les sliders (piste remplie identique WebKit / Firefox).
+// saas/layout/ui-controls.js
+// Helpers UI génériques (pas de métier bouteille).
+// - sync des sliders range (--range-pct = piste remplie WebKit/Firefox)
+// - Entrée → appliquer + blur sur les champs number
+// API : window.UIControls
+
 (function (global) {
+    // Met à jour --range-pct (0–100 %) pour le style de la piste
     function syncRangeSlider(el) {
         if (!el || el.type !== 'range') return;
         var min = parseFloat(el.min);
@@ -30,6 +36,7 @@
         });
     }
 
+    // Quand l’inspector recrée des sliders (sections), on les rebranche auto
     function observeRanges() {
         if (typeof MutationObserver === 'undefined') return;
         var root = document.getElementById('inspector') || document.body;

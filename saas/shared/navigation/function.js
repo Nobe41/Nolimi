@@ -1,13 +1,34 @@
+// saas/shared/navigation/function.js
+// Navigation atelier : pages menu↔projet, onglets sidebar/inspector, vue 3D/2D.
+// Constantes → NavigationRules. État → NavigationState.
+// API : UIEvents.init, UIEvents.applyFromState (restore / realtime).
+
 var UIEvents = (function () {
     var IDS = (typeof NavigationRules !== 'undefined' && NavigationRules.IDS) ? NavigationRules.IDS : {};
     var applyingRemoteNav = false;
 
     function get(id) { return document.getElementById(id); }
-    function setAddSectionBarVisibility(show) {
-        var bar = get('inspector-add-section-bar');
-        if (!bar) return;
-        if (show) bar.classList.remove('hidden'); else bar.classList.add('hidden');
+
+    // Click + clavier (Entrée / Espace) pour les onglets
+    function bindNav(el, handler) {
+        if (!el || !handler) return;
+        el.addEventListener('click', handler);
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler();
+            }
+        });
     }
+
+    function setAddSectionBarVisibility(show) {
+        var bar = get(IDS.addSectionBar || 'inspector-add-section-bar');
+        if (!bar) return;
+        if (show) bar.classList.remove('hidden');
+        else bar.classList.add('hidden');
+    }
+
+    // --- Navigation pages (menu ↔ projet) ---
 
     function initPageNavigation() {
         var pageMenu = get(IDS.pageMenu);
@@ -44,6 +65,8 @@ var UIEvents = (function () {
         }
     }
 
+    // --- Bascule vue 3D / 2D ---
+
     function notifyViewSync() {
         if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.scheduleBroadcast) {
             RealtimeViewSync.scheduleBroadcast();
@@ -69,6 +92,8 @@ var UIEvents = (function () {
         }
         if (!applyingRemoteNav) notifyViewSync();
     }
+
+    // --- Restauration état (autosave / realtime) ---
 
     function applyFromState(state) {
         if (!state) return;
@@ -124,6 +149,8 @@ var UIEvents = (function () {
         }
     }
 
+    // --- Onglets sidebar + barre inspector (sections / piqûre / bague / intérieur) ---
+
     function initPanelTabs() {
         var tabSections = get(IDS.tabSections), tabCalcule = get(IDS.tabCalcule), tabGravure = get(IDS.tabGravure), tabInformation = get(IDS.tabInformation), tabRendu = get(IDS.tabRendu);
         var brandHeader = get(IDS.brandHeader), sectionsArea = get(IDS.sectionsArea), contentCalcule = get(IDS.contentCalcule), contentGravure = get(IDS.contentGravure), contentInformation = get(IDS.contentInformation), contentRendu = get(IDS.contentRendu);
@@ -133,15 +160,16 @@ var UIEvents = (function () {
             ? window.matchMedia('(max-width: 768px)')
             : null;
         var brandHeaderAnchor = { inspectorParent: null, inspectorBefore: null };
-        var sectionsSlotId = 'sidebar-sections-slot';
+        var sectionsSlotId = IDS.sectionsSlot || 'sidebar-sections-slot';
         if (!sectionsArea || !contentCalcule || !contentGravure || !contentInformation || !contentRendu || !contentSections || !contentPiqure || !contentBague || !contentInterieur) return;
 
         function isMobileNav() {
             return !!(mobileMq && mobileMq.matches);
         }
 
+        // Mobile : crée un slot sidebar pour déplacer l’onglet Sections + brand header.
         function getSectionsSlot(create) {
-            var sidebar = document.getElementById('sidebar');
+            var sidebar = document.getElementById(IDS.sidebar || 'sidebar');
             if (!sidebar || !tabSections) return null;
             var slot = document.getElementById(sectionsSlotId);
             if (!slot && create) {
@@ -156,7 +184,7 @@ var UIEvents = (function () {
 
         function unwrapSectionsSlot() {
             var slot = document.getElementById(sectionsSlotId);
-            var sidebar = document.getElementById('sidebar');
+            var sidebar = document.getElementById(IDS.sidebar || 'sidebar');
             if (!slot || !sidebar || !tabSections) return;
             sidebar.insertBefore(tabSections, slot);
             slot.remove();
@@ -178,7 +206,7 @@ var UIEvents = (function () {
             if (!brandHeader) return;
             if (!brandHeaderAnchor.inspectorParent) {
                 brandHeaderAnchor.inspectorParent = brandHeader.parentElement;
-                brandHeaderAnchor.inspectorBefore = document.getElementById('inspector-scroll');
+                brandHeaderAnchor.inspectorBefore = document.getElementById(IDS.inspectorScroll || 'inspector-scroll');
             }
             if (isMobileNav()) {
                 var slot = getSectionsSlot(true);
@@ -259,11 +287,61 @@ var UIEvents = (function () {
             if (tabSections) tabSections.classList.remove('active'); if (tabCalcule) tabCalcule.classList.remove('active'); if (tabGravure) tabGravure.classList.remove('active'); if (tabInformation) tabInformation.classList.remove('active'); if (tabRendu) tabRendu.classList.add('active');
             NavigationState.patch({ activeLeftTab: 'rendu' }); setAddSectionBarVisibility(false);
         }
-        function showBarSections() { contentSections.classList.remove('hidden'); contentPiqure.classList.add('hidden'); contentBague.classList.add('hidden'); contentInterieur.classList.add('hidden'); if (barTabSections) barTabSections.classList.add('active'); if (barTabPiqure) barTabPiqure.classList.remove('active'); if (barTabBague) barTabBague.classList.remove('active'); if (barTabInterieur) barTabInterieur.classList.remove('active'); NavigationState.patch({ activeBarTab: 'sections' }); setAddSectionBarVisibility(true); refreshAfterTabChange(); }
-        function showBarPiqure() { contentSections.classList.add('hidden'); contentPiqure.classList.remove('hidden'); contentBague.classList.add('hidden'); contentInterieur.classList.add('hidden'); if (barTabSections) barTabSections.classList.remove('active'); if (barTabPiqure) barTabPiqure.classList.add('active'); if (barTabBague) barTabBague.classList.remove('active'); if (barTabInterieur) barTabInterieur.classList.remove('active'); NavigationState.patch({ activeBarTab: 'piqure' }); setAddSectionBarVisibility(true); refreshAfterTabChange(); }
-        function showBarBague() { contentSections.classList.add('hidden'); contentPiqure.classList.add('hidden'); contentBague.classList.remove('hidden'); contentInterieur.classList.add('hidden'); if (barTabSections) barTabSections.classList.remove('active'); if (barTabPiqure) barTabPiqure.classList.remove('active'); if (barTabBague) barTabBague.classList.add('active'); if (barTabInterieur) barTabInterieur.classList.remove('active'); NavigationState.patch({ activeBarTab: 'bague' }); setAddSectionBarVisibility(true); refreshAfterTabChange(); }
-        function showBarInterieur() { contentSections.classList.add('hidden'); contentPiqure.classList.add('hidden'); contentBague.classList.add('hidden'); contentInterieur.classList.remove('hidden'); if (barTabSections) barTabSections.classList.remove('active'); if (barTabPiqure) barTabPiqure.classList.remove('active'); if (barTabBague) barTabBague.classList.remove('active'); if (barTabInterieur) barTabInterieur.classList.add('active'); NavigationState.patch({ activeBarTab: 'interieur' }); setAddSectionBarVisibility(false); if (typeof InterieurFeature !== 'undefined' && InterieurFeature.render) InterieurFeature.render(); refreshAfterTabChange(); }
+        function showBarSections() {
+            contentSections.classList.remove('hidden');
+            contentPiqure.classList.add('hidden');
+            contentBague.classList.add('hidden');
+            contentInterieur.classList.add('hidden');
+            if (barTabSections) barTabSections.classList.add('active');
+            if (barTabPiqure) barTabPiqure.classList.remove('active');
+            if (barTabBague) barTabBague.classList.remove('active');
+            if (barTabInterieur) barTabInterieur.classList.remove('active');
+            NavigationState.patch({ activeBarTab: 'sections' });
+            setAddSectionBarVisibility(true);
+            refreshAfterTabChange();
+        }
+        function showBarPiqure() {
+            contentSections.classList.add('hidden');
+            contentPiqure.classList.remove('hidden');
+            contentBague.classList.add('hidden');
+            contentInterieur.classList.add('hidden');
+            if (barTabSections) barTabSections.classList.remove('active');
+            if (barTabPiqure) barTabPiqure.classList.add('active');
+            if (barTabBague) barTabBague.classList.remove('active');
+            if (barTabInterieur) barTabInterieur.classList.remove('active');
+            NavigationState.patch({ activeBarTab: 'piqure' });
+            setAddSectionBarVisibility(true);
+            refreshAfterTabChange();
+        }
+        function showBarBague() {
+            contentSections.classList.add('hidden');
+            contentPiqure.classList.add('hidden');
+            contentBague.classList.remove('hidden');
+            contentInterieur.classList.add('hidden');
+            if (barTabSections) barTabSections.classList.remove('active');
+            if (barTabPiqure) barTabPiqure.classList.remove('active');
+            if (barTabBague) barTabBague.classList.add('active');
+            if (barTabInterieur) barTabInterieur.classList.remove('active');
+            NavigationState.patch({ activeBarTab: 'bague' });
+            setAddSectionBarVisibility(true);
+            refreshAfterTabChange();
+        }
+        function showBarInterieur() {
+            contentSections.classList.add('hidden');
+            contentPiqure.classList.add('hidden');
+            contentBague.classList.add('hidden');
+            contentInterieur.classList.remove('hidden');
+            if (barTabSections) barTabSections.classList.remove('active');
+            if (barTabPiqure) barTabPiqure.classList.remove('active');
+            if (barTabBague) barTabBague.classList.remove('active');
+            if (barTabInterieur) barTabInterieur.classList.add('active');
+            NavigationState.patch({ activeBarTab: 'interieur' });
+            setAddSectionBarVisibility(false);
+            if (typeof InterieurFeature !== 'undefined' && InterieurFeature.render) InterieurFeature.render();
+            refreshAfterTabChange();
+        }
 
+        // Évite un broadcast realtime pendant applyFromState (clics simulés).
         function wrapNavHandler(handler) {
             return function () {
                 handler();
@@ -271,15 +349,15 @@ var UIEvents = (function () {
             };
         }
 
-        NavigationEvents.bind(tabSections, wrapNavHandler(handleSectionsTabClick));
-        NavigationEvents.bind(tabCalcule, wrapNavHandler(showLeftCalcule));
-        NavigationEvents.bind(tabGravure, wrapNavHandler(showLeftGravure));
-        NavigationEvents.bind(tabInformation, wrapNavHandler(showLeftInformation));
-        NavigationEvents.bind(tabRendu, wrapNavHandler(showLeftRendu));
-        NavigationEvents.bind(barTabSections, wrapNavHandler(showBarSections));
-        NavigationEvents.bind(barTabPiqure, wrapNavHandler(showBarPiqure));
-        NavigationEvents.bind(barTabBague, wrapNavHandler(showBarBague));
-        NavigationEvents.bind(barTabInterieur, wrapNavHandler(showBarInterieur));
+        bindNav(tabSections, wrapNavHandler(handleSectionsTabClick));
+        bindNav(tabCalcule, wrapNavHandler(showLeftCalcule));
+        bindNav(tabGravure, wrapNavHandler(showLeftGravure));
+        bindNav(tabInformation, wrapNavHandler(showLeftInformation));
+        bindNav(tabRendu, wrapNavHandler(showLeftRendu));
+        bindNav(barTabSections, wrapNavHandler(showBarSections));
+        bindNav(barTabPiqure, wrapNavHandler(showBarPiqure));
+        bindNav(barTabBague, wrapNavHandler(showBarBague));
+        bindNav(barTabInterieur, wrapNavHandler(showBarInterieur));
 
         syncBrandHeaderPlacement();
         showLeftSections();

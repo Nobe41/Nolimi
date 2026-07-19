@@ -1,11 +1,13 @@
-// Orchestration Gravure + rendu 3D.
-(function () {
-    if (typeof GravureEvents !== 'undefined' && GravureEvents.init) GravureEvents.init();
-})();
+// saas/features/gravure/mesh.js
+// Couche 3D : transforme les cartes UI en géométrie sur la bouteille.
+// Entrées : getEngravingsData() + images PNG (window.engravingImages).
+// Relief normal → mesh extrudé collé à la surface. Inversé → perce le corps.
+// UI (cartes, sliders) → events.js + bloc.js. Qualité → GravureRules.MESH.
 
 var Gravure3D = (function () {
     var engravingGroup = null;
     var lastEngravingSignature = '';
+    var MESH = (typeof GravureRules !== 'undefined' && GravureRules.MESH) ? GravureRules.MESH : {};
 
     function disposeGroup(group) {
         if (!group) return;
@@ -18,73 +20,26 @@ var Gravure3D = (function () {
         });
     }
 
-    function getPanelValue(id, def) {
-        if (typeof document === 'undefined') return def;
-        var el = document.getElementById(id);
-        if (!el) return def;
-        var v = parseFloat(el.value);
-        return isNaN(v) ? def : v;
-    }
-
-    function getPanelValueSigned(id, def) {
-        if (typeof document === 'undefined') return def;
-        var el = document.getElementById(id);
-        if (!el) return def;
-        var v = parseFloat(el.value);
-        return isNaN(v) ? def : v;
-    }
-
-    function getPanelSelectValue(id, def) {
-        if (typeof document === 'undefined') return def;
-        var el = document.getElementById(id);
-        if (!el || !el.value) return def;
-        return el.value;
-    }
-
-    function getBagueSectionsFromDOM() {
-        if (typeof document === 'undefined') return [];
-        var inputs = document.querySelectorAll('input[id^="sb"][id$="-h"]');
-        var idxs = [];
-        for (var i = 0; i < inputs.length; i++) {
-            var m = (inputs[i].id || '').match(/^sb(\d+)-h$/);
-            if (!m) continue;
-            var k = parseInt(m[1], 10);
-            if (isFinite(k)) idxs.push(k);
+    function panelSelect(id, def) {
+        if (typeof Bottle3DData !== 'undefined' && Bottle3DData.getPanelSelectValue) {
+            return Bottle3DData.getPanelSelectValue(id, def);
         }
-        idxs.sort(function (a, b) { return a - b; });
-        var unique = [];
-        for (var j = 0; j < idxs.length; j++) {
-            if (j === 0 || idxs[j] !== idxs[j - 1]) unique.push(idxs[j]);
-        }
-        var out = [];
-        for (var u = 0; u < unique.length; u++) {
-            var ksb = unique[u];
-            var shape = getPanelSelectValue('sb' + ksb + '-forme', 'cylindrique');
-            var L = getPanelValue('sb' + ksb + '-L', 35);
-            var P = getPanelValue('sb' + ksb + '-P', 35);
-            if (typeof SectionsRules !== 'undefined' && SectionsRules.resolveSectionDimensions) {
-                var resolved = SectionsRules.resolveSectionDimensions(shape, L, P);
-                shape = resolved.shape;
-                L = resolved.L;
-                P = resolved.P;
-            }
-            out.push({
-                H: Math.max(0, getPanelValue('sb' + ksb + '-h', 0)),
-                a: Math.max(0, L / 2),
-                b: Math.max(0, P / 2),
-                shape: shape,
-                carreNiveau: Math.max(0, Math.min(100, getPanelValue('sb' + ksb + '-carre-niveau', 0)))
-            });
-        }
-        return out;
+        return def;
     }
 
-    var COMPLEX_LIAISON_TYPES = ['spline', 'courbeS', 'rayon'];
-    var ENGRAVING_GRID_CAP_COMPLEX = 96;
-    var ENGRAVING_PROFILE_RES_DEFAULT = 48;
-    var ENGRAVING_PROFILE_RES_COMPLEX = 16;
-    var ENGRAVING_THETA_BUCKETS_DEFAULT = 96;
-    var ENGRAVING_THETA_BUCKETS_COMPLEX = 48;
+    function panelSigned(id, def) {
+        if (typeof Bottle3DData !== 'undefined' && Bottle3DData.getPanelValueSigned) {
+            return Bottle3DData.getPanelValueSigned(id, def);
+        }
+        return def;
+    }
+
+    function collectBagueSections() {
+        if (typeof Bottle3DData !== 'undefined' && Bottle3DData.collectBagueSectionsFromPanel) {
+            return Bottle3DData.collectBagueSectionsFromPanel();
+        }
+        return [];
+    }
 
     function normalizeSectionsData(surfaceInput) {
         return Array.isArray(surfaceInput)
@@ -98,14 +53,17 @@ var Gravure3D = (function () {
         var edgeTypes = data.edgeTypes || [];
         var rhos = data.rhos || [];
         if (sections.length < 2 || !edgeTypes.length) return false;
+        var complexTypes = MESH.COMPLEX_LIAISON_TYPES || ['spline', 'courbeS', 'rayon'];
+        var marginMin = MESH.COMPLEX_LIAISON_MARGIN_MIN != null ? MESH.COMPLEX_LIAISON_MARGIN_MIN : 4;
+        var marginRho = MESH.COMPLEX_LIAISON_MARGIN_RHO_FACTOR != null ? MESH.COMPLEX_LIAISON_MARGIN_RHO_FACTOR : 0.35;
         for (var i = 0; i < sections.length - 1; i++) {
             var type = edgeTypes[i] || 'ligne';
-            if (COMPLEX_LIAISON_TYPES.indexOf(type) < 0) continue;
+            if (complexTypes.indexOf(type) < 0) continue;
             var y0 = sections[i].H;
             var y1 = sections[i + 1].H;
             var edgeYMin = Math.min(y0, y1);
             var edgeYMax = Math.max(y0, y1);
-            var margin = Math.max(4, Math.abs(rhos[i] || 0) * 0.35);
+            var margin = Math.max(marginMin, Math.abs(rhos[i] || 0) * marginRho);
             if (yMax >= edgeYMin - margin && yMin <= edgeYMax + margin) return true;
         }
         return false;
@@ -122,9 +80,15 @@ var Gravure3D = (function () {
         var complex = isComplexEngravingRegion(surfaceInput, meta);
         return {
             complex: complex,
-            gridCap: complex ? ENGRAVING_GRID_CAP_COMPLEX : 320,
-            profileRes: complex ? ENGRAVING_PROFILE_RES_COMPLEX : ENGRAVING_PROFILE_RES_DEFAULT,
-            thetaBuckets: complex ? ENGRAVING_THETA_BUCKETS_COMPLEX : ENGRAVING_THETA_BUCKETS_DEFAULT
+            gridCap: complex
+                ? (MESH.GRID_CAP_COMPLEX != null ? MESH.GRID_CAP_COMPLEX : 256)
+                : (MESH.GRID_CAP_DEFAULT != null ? MESH.GRID_CAP_DEFAULT : 512),
+            profileRes: complex
+                ? (MESH.PROFILE_RES_COMPLEX != null ? MESH.PROFILE_RES_COMPLEX : 32)
+                : (MESH.PROFILE_RES_DEFAULT != null ? MESH.PROFILE_RES_DEFAULT : 72),
+            thetaBuckets: complex
+                ? (MESH.THETA_BUCKETS_COMPLEX != null ? MESH.THETA_BUCKETS_COMPLEX : 96)
+                : (MESH.THETA_BUCKETS_DEFAULT != null ? MESH.THETA_BUCKETS_DEFAULT : 160)
         };
     }
 
@@ -148,7 +112,7 @@ var Gravure3D = (function () {
     /** Étend sectionsData avec la bague pour que la gravure suive la surface extérieure du col. */
     function extendSurfaceWithBague(surfaceInput) {
         if (!surfaceInput || !surfaceInput.sections || surfaceInput.sections.length < 2) return surfaceInput;
-        var bague = getBagueSectionsFromDOM();
+        var bague = collectBagueSections();
         if (!bague.length) return surfaceInput;
 
         var main = surfaceInput.sections;
@@ -167,8 +131,8 @@ var Gravure3D = (function () {
         rhos.push(0);
         for (var e = 0; e < bague.length - 1; e++) {
             var rbId = 'rb' + (e + 1);
-            edgeTypes.push(getPanelSelectValue(rbId + '-type', 'ligne'));
-            rhos.push(getPanelValueSigned(rbId + '-rho', 5));
+            edgeTypes.push(panelSelect(rbId + '-type', 'ligne'));
+            rhos.push(panelSigned(rbId + '-rho', 5));
         }
 
         return { sections: sections, edgeTypes: edgeTypes, rhos: rhos };
@@ -200,8 +164,8 @@ var Gravure3D = (function () {
 
     function createRadiusSampler(surfaceInput, options) {
         options = options || {};
-        var profileRes = options.profileRes || ENGRAVING_PROFILE_RES_DEFAULT;
-        var thetaBuckets = options.thetaBuckets || ENGRAVING_THETA_BUCKETS_DEFAULT;
+        var profileRes = options.profileRes || (MESH.PROFILE_RES_DEFAULT != null ? MESH.PROFILE_RES_DEFAULT : 72);
+        var thetaBuckets = options.thetaBuckets || (MESH.THETA_BUCKETS_DEFAULT != null ? MESH.THETA_BUCKETS_DEFAULT : 160);
         var sectionsData = normalizeSectionsData(surfaceInput);
         var sections = sectionsData.sections || [];
         var canUseProfile = typeof BottleMaths !== 'undefined' && typeof GeomKernel !== 'undefined' && BottleMaths.buildExteriorProfile && GeomKernel.tessellateProfile && sectionsData.edgeTypes && sectionsData.rhos;
@@ -247,6 +211,7 @@ var Gravure3D = (function () {
         return { x: r * Math.cos(theta), y: y, z: r * Math.sin(theta), r: r };
     }
 
+    // PNG → grille binaire (masque) projetée sur la surface cylindrique/elliptique
     function buildEngravingMask(img, g, gridCap) {
         if (!img || !img.width || !img.height) return null;
         var widthMM = Math.max(1, parseFloat(g.width) || 50);
@@ -254,10 +219,13 @@ var Gravure3D = (function () {
         var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
         var baseAngle = isFinite(parseFloat(g.angle)) ? parseFloat(g.angle) : 0;
         var heightMM = widthMM * (img.height / img.width);
-        var maxGrid = Math.max(48, gridCap || 320);
-        var gridW = Math.max(48, Math.min(maxGrid, Math.ceil(img.width / 2)));
-        var gridH = Math.max(48, Math.min(maxGrid, Math.ceil(img.height / 2)));
-        var srcScale = Math.min(1, 1024 / Math.max(img.width, img.height));
+        var maxGrid = Math.max(48, gridCap || (MESH.GRID_CAP_DEFAULT != null ? MESH.GRID_CAP_DEFAULT : 512));
+        var imgDiv = Math.max(1, MESH.MASK_IMG_DIVISOR != null ? MESH.MASK_IMG_DIVISOR : 1);
+        var gridW = Math.max(48, Math.min(maxGrid, Math.ceil(img.width / imgDiv)));
+        var gridH = Math.max(48, Math.min(maxGrid, Math.ceil(img.height / imgDiv)));
+        var srcMax = MESH.MASK_SRC_MAX != null ? MESH.MASK_SRC_MAX : 2048;
+        var alphaThr = MESH.MASK_ALPHA_THRESHOLD != null ? MESH.MASK_ALPHA_THRESHOLD : 0.3;
+        var srcScale = Math.min(1, srcMax / Math.max(img.width, img.height));
         var srcW = Math.max(1, Math.round(img.width * srcScale));
         var srcH = Math.max(1, Math.round(img.height * srcScale));
         var off = document.createElement('canvas');
@@ -281,7 +249,7 @@ var Gravure3D = (function () {
                 var c2 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.25);
                 var c3 = alphaAtUV(u0 + du * 0.25, v0 + dv * 0.75);
                 var c4 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.75);
-                mask[my * gridW + mx] = (((c1 + c2 + c3 + c4) * 0.25) >= 0.35) ? 1 : 0;
+                mask[my * gridW + mx] = (((c1 + c2 + c3 + c4) * 0.25) >= alphaThr) ? 1 : 0;
             }
         }
 
@@ -403,10 +371,12 @@ var Gravure3D = (function () {
 
     function getBottleTessellationOverrides(surfaceInput) {
         if (!hasInvertedEngravings(surfaceInput)) return null;
+        var complex = MESH.BOTTLE_TESS_COMPLEX || { nTheta: 384, meridianRes: 192 };
+        var simple = MESH.BOTTLE_TESS_SIMPLE || { nTheta: 512, meridianRes: 256 };
         if (hasInvertedEngravingOnComplexLiaison(surfaceInput)) {
-            return { nTheta: 256, meridianRes: 128 };
+            return { nTheta: complex.nTheta, meridianRes: complex.meridianRes };
         }
-        return { nTheta: 384, meridianRes: 192 };
+        return { nTheta: simple.nTheta, meridianRes: simple.meridianRes };
     }
 
     function triangleShouldCutAtEngravingBorder(meta, radiusAt, pos, i0, i1, i2) {
@@ -428,6 +398,7 @@ var Gravure3D = (function () {
         return sampleMaskSolid(meta, radiusAt, cy, Math.atan2(cz, cx));
     }
 
+    // Mode inversé : retire les triangles du corps bouteille sous le masque
     function punchHolesForInvertedEngravings(mesh, surfaceInput) {
         if (!mesh || !mesh.geometry || typeof THREE === 'undefined') return;
         var geo = mesh.geometry;
@@ -453,14 +424,7 @@ var Gravure3D = (function () {
         geo.computeVertexNormals();
     }
 
-    function applyInvertedEngravingsToBottleMesh(mesh, surfaceInput) {
-        punchHolesForInvertedEngravings(mesh, surfaceInput);
-    }
-
-    function buildEngravingMeshGeometry(meta, radiusAt) {
-        return buildReliefEngravingGeometry(meta, radiusAt);
-    }
-
+    // Relief sortant (ou entrant si invert) : voxels du masque → triangles 3D
     function buildReliefEngravingGeometry(meta, radiusAt) {
         var widthMM = meta.widthMM;
         var depthMM = meta.depthMM;
@@ -546,7 +510,7 @@ var Gravure3D = (function () {
                 profileRes: limits.profileRes,
                 thetaBuckets: limits.thetaBuckets
             });
-            var built = buildEngravingMeshGeometry(meta, radiusAt);
+            var built = buildReliefEngravingGeometry(meta, radiusAt);
             if (!built) continue;
             var geom = new THREE.BufferGeometry();
             geom.setAttribute('position', new THREE.Float32BufferAttribute(built.vertices, 3));
@@ -635,6 +599,7 @@ var Gravure3D = (function () {
         BottleView3D.applyViewOpacity(engravingGroup);
     }
 
+    // Reconstruit le groupe de meshes gravure si la signature a changé
     function updateScene(scene, surfaceInput) {
         if (!scene || !surfaceInput) return;
         var sig = buildEngravingSceneSignature(surfaceInput);
@@ -648,7 +613,7 @@ var Gravure3D = (function () {
             disposeGroup(engravingGroup);
             engravingGroup = null;
         }
-        engravingGroup = buildEngravingsGroup(extendSurfaceWithBague(surfaceInput));
+        engravingGroup = buildEngravingsGroup(surfaceInput);
         if (engravingGroup) {
             engravingGroup.userData.isBottleExportRoot = true;
             scene.add(engravingGroup);
@@ -661,8 +626,7 @@ var Gravure3D = (function () {
     return {
         updateScene: updateScene,
         refreshEngravingOpacity: refreshEngravingOpacity,
-        applyInvertedEngravingsToBottleMesh: applyInvertedEngravingsToBottleMesh,
-        applyInvertedDisplacementsToMesh: applyInvertedEngravingsToBottleMesh,
+        applyInvertedEngravingsToBottleMesh: punchHolesForInvertedEngravings,
         punchHolesForInvertedEngravings: punchHolesForInvertedEngravings,
         getBottleTessellationOverrides: getBottleTessellationOverrides,
         hasInvertedEngravings: hasInvertedEngravings,

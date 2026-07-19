@@ -1,14 +1,23 @@
+// saas/shared/navigation/state.js
+// État runtime de la navigation (onglets + vue active).
+// Persisté dans l’autosave / sync realtime via getState / patch.
+
 var NavigationState = (function () {
     var state = {
-        activeLeftTab: 'sections',
-        activeBarTab: 'sections',
-        activeView: '3d'
+        activeLeftTab: 'sections',   // sidebar : sections | calcule | gravure | …
+        activeBarTab: 'sections',    // barre inspector : sections | piqure | bague | interieur
+        activeView: '3d'             // viewport : 3d | 2d
     };
 
-    function getState() { return state; }
+    function getState() {
+        return state;
+    }
+
     function patch(next) {
         if (!next) return state;
-        for (var k in next) if (Object.prototype.hasOwnProperty.call(next, k)) state[k] = next[k];
+        for (var k in next) {
+            if (Object.prototype.hasOwnProperty.call(next, k)) state[k] = next[k];
+        }
         return state;
     }
 

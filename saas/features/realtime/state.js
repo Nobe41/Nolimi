@@ -1,10 +1,15 @@
-// État runtime de la session partagée.
+// saas/features/realtime/state.js
+// Mémoire vive de la session partagée Supabase (une seule source de vérité locale).
+// Stocke : id session, connexion, rôle hôte/invité, nombre de participants.
+// Timestamps savedAt : éviter d’écraser le projet avec une version plus ancienne.
+
 var RealtimeState = (function () {
     var sessionId = null;
     var connected = false;
     var isHost = false;
     var isSessionGuest = false;
     var peerCount = 0;
+    // Horodatage du dernier payload local / distant (sync projet)
     var lastLocalSavedAt = 0;
     var lastRemoteSavedAt = 0;
 

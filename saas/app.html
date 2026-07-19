@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+  saas/app.html — coquille HTML de l’atelier.
+  CSS : layout/structure.css (géométrie) puis style/theme.css (look).
+  Scripts : ordre critique (config → store → features → canvas → shared → layout → boot).
+-->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -9,20 +14,26 @@
     <title>Nolimi</title>
     <link rel="icon" href="assets/brand/favicon-64.png" type="image/png" sizes="64x64">
     <link rel="icon" href="assets/brand/favicon-32.png" type="image/png" sizes="32x32">
-    <link rel="shortcut icon" href="favicon.png" type="image/png">
+    <link rel="shortcut icon" href="assets/brand/favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png" sizes="180x180">
     
     <link rel="stylesheet" href="layout/structure.css">
     <link rel="stylesheet" href="style/theme.css">
     
+    <!-- Libs externes (Three.js, jsPDF) -->
     <script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/EXRLoader.js"></script>
     <script src="https://unpkg.com/three@0.126.0/examples/js/exporters/STLExporter.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/lines/LineSegmentsGeometry.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/lines/LineGeometry.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/lines/LineMaterial.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/lines/LineSegments2.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/lines/Line2.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
+    <!-- Menu projets (nouveau / ouvrir) — masqué une fois dans l’atelier -->
     <section id="Page-menu" class="hidden">
         <div class="menu-split-container">
             <div class="menu-col-left">
@@ -37,6 +48,7 @@
         </div>
     </section>
 
+    <!-- Atelier : sidebar + inspector + topbar + viewport -->
     <section id="Page-Bouteille">
         
         <aside id="Panel-gauche">
@@ -44,7 +56,7 @@
             <div id="sidebar" class="panel-logo-col">
                 <div class="panel-brand-logo">
                     <img
-                        src="../assets/brand/nolimi-logo-viewport.png"
+                        src="assets/brand/nolimi-logo-viewport.png"
                         alt="Nolimi"
                         width="500"
                         height="500"
@@ -57,9 +69,9 @@
                 <div class="panel-logo panel-col-tab" id="panel-tab-rendu" title="Rendu" role="button" tabindex="0">R</div>
                 <div class="panel-logo panel-col-tab" id="panel-tab-calcule" title="Calcule" role="button" tabindex="0">C</div>
             </div>
-            <!-- Inspector : zone où s'affiche le contenu (pages pilotées par le Brand Header) -->
+            <!-- Inspector : contenu des onglets sidebar (sections, gravure, plan, rendu, calcule) -->
             <div id="inspector" class="panel-right">
-                <!-- Row fixe avec les 3 icônes (Sections / Piqûre / Bague) -->
+                <!-- Barre d’onglets inspector (sections / piqûre / bague / intérieur) -->
                 <div id="brand-header" class="panel-icons-bar">
                     <span class="panel-bar-icon" id="panel-bar-tab-sections" title="Sections actuelles">🔧</span>
                     <span class="panel-bar-icon" id="panel-bar-tab-piqure" title="Sections piqûre">⚙️</span>
@@ -171,17 +183,6 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="setting-card" id="render-scene-card">
-                            <button class="accordion main-accordion">Scène</button>
-                            <div class="panel-controls">
-                                <div class="control-group">
-                                    <label>
-                                        <input type="radio" name="render-scene" id="render-scene-base" value="base" checked>
-                                        Scène 0
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
                         <div class="setting-card" id="render-label-card">
                             <button class="accordion main-accordion">Etiquettes</button>
                             <div class="panel-controls">
@@ -239,7 +240,7 @@
         </aside>
 
         <div id="right-column">
-            <!-- Topbar : Fichier, Affichage, choix de vue 3D/2D/Outillage -->
+            <!-- Topbar : Fichier, Affichage, session, vues 3D/2D -->
             <div id="topbar" class="panel-haut-container">
                 <div class="panel-haut-actions">
                 <div class="panel-haut-bar">
@@ -406,60 +407,78 @@
         </div>
     </div>
 
+    <!-- ========== Auth / store ========== -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config/supabase.config.js"></script>
     <script src="lib/auth.js"></script>
     <script src="store/state.js"></script>
     <script src="store/validator.js"></script>
-    <script src="features/rattachement/sliderLimits.js"></script>
+
+    <!-- ========== Features : profil / sections / rendu / rattachement ========== -->
     <script src="features/profile/rules.js"></script>
+    <script src="features/profile/kernel.js"></script>
     <script src="features/profile/math.js"></script>
-    <script src="features/sections/math.js"></script>
     <script src="features/sections/rules.js"></script>
+    <script src="features/sections/math.js"></script>
     <script src="features/sections/state.js"></script>
     <script src="features/sections/bloc.js"></script>
     <script src="features/sections/events.js"></script>
     <script src="features/render/rules.js"></script>
     <script src="features/render/math.js"></script>
+    <script src="features/render/materials.js"></script>
     <script src="features/render/function.js"></script>
     <script src="features/rattachement/rules.js"></script>
-    <script src="features/rattachement/state.js"></script>
-    <script src="features/rattachement/bloc.js"></script>
-    <script src="features/rattachement/events.js"></script>
     <script src="features/rattachement/math.js"></script>
     <script src="features/rattachement/function.js"></script>
+    <script src="features/rattachement/sliderLimits.js"></script>
     <script src="features/profile/function.js"></script>
+    <!-- ========== Features : 3d / calcule / intérieur ========== -->
+    <script src="features/3d/rules.js"></script>
     <script src="features/3d/data.js"></script>
+    <script src="features/calcule/rules.js"></script>
     <script src="features/calcule/math.js"></script>
     <script src="features/calcule/function.js"></script>
-    <script src="features/Interieur/function.js"></script>
+    <script src="features/Interieur/rules.js"></script>
     <script src="features/Interieur/math.js"></script>
+    <script src="features/Interieur/function.js"></script>
+    <!-- ========== Canvas 3D ========== -->
     <script src="canvas/3d/rules.js"></script>
-    <script src="canvas/3d/sceneSetup.js"></script>
     <script src="canvas/3d/materials.js"></script>
-    <script src="canvas/3d/bottleMesh.js"></script>
-    <script src="canvas/3d/bottleView.js"></script>
-    <script src="canvas/3d/viewer.js"></script>
+    <script src="canvas/3d/scene/background.js"></script>
+    <script src="features/render/scene.js"></script>
+    <script src="canvas/3d/scene/world.js"></script>
+    <script src="canvas/3d/bottle/mesh.js"></script>
+    <script src="canvas/3d/bottle/panel.js"></script>
+    <script src="canvas/3d/bottle/edges.js"></script>
+    <script src="canvas/3d/bottle/sheets.js"></script>
+    <script src="canvas/3d/bottle/appearance.js"></script>
+    <script src="canvas/3d/bottle/geometry.js"></script>
+    <script src="canvas/3d/bottle/highlight.js"></script>
+    <script src="canvas/3d/bottle/export.js"></script>
+    <script src="canvas/3d/bottle/build.js"></script>
+    <script src="features/render/labels.js"></script>
+    <script src="canvas/3d/bottle/update.js"></script>
+    <script src="canvas/3d/main.js"></script>
+    <!-- ========== Features 2D + canvas 2D ========== -->
     <script src="features/2d/rules.js"></script>
-    <script src="features/2d/math.js"></script>
-    <script src="features/2d/state.js"></script>
-    <script src="features/2d/events.js"></script>
-    <script src="features/2d/paper.js"></script>
-    <script src="features/2d/views.js"></script>
-    <script src="features/2d/cartouche.js"></script>
+    <script src="features/2d/function.js"></script>
     <script src="features/2d/cotation.js"></script>
     <script src="features/2d/data.js"></script>
-    <script src="features/2d/function.js"></script>
-    <script src="canvas/2d/renderPrimitives.js"></script>
-    <script src="canvas/2d/interactions.js"></script>
-    <script src="canvas/2d/viewer2d.js"></script>
+    <script src="features/2d/cartouche.js"></script>
+    <script src="canvas/2d/rules.js"></script>
+    <script src="canvas/2d/tools.js"></script>
+    <script src="canvas/2d/view.js"></script>
+    <script src="canvas/2d/render.js"></script>
+    <script src="canvas/2d/main.js"></script>
     <script src="features/sections/function.js"></script>
+
+    <!-- ========== Shared UI (nav, inspector, topbar, display, history) ========== -->
     <script src="shared/navigation/rules.js"></script>
     <script src="shared/navigation/state.js"></script>
-    <script src="shared/navigation/events.js"></script>
     <script src="shared/navigation/function.js"></script>
     <script src="shared/inspector-ui.js"></script>
     <script src="shared/topbar/function.js"></script>
+    <!-- ========== Realtime ========== -->
     <script src="features/realtime/rules.js"></script>
     <script src="features/realtime/state.js"></script>
     <script src="features/realtime/cursor.js"></script>
@@ -468,9 +487,12 @@
     <script src="features/realtime/events.js"></script>
     <script src="shared/display/function.js"></script>
     <script src="shared/history/function.js"></script>
+    <!-- ========== Layout + autosave ========== -->
     <script src="layout/ui-controls.js"></script>
     <script src="layout/function.js"></script>
     <script src="store/storage.js"></script>
+
+    <!-- ========== Export / gravure / boot ========== -->
     <script src="features/export/rules.js"></script>
     <script src="features/export/math.js"></script>
     <script src="features/export/state.js"></script>
@@ -481,7 +503,7 @@
     <script src="features/gravure/state.js"></script>
     <script src="features/gravure/bloc.js"></script>
     <script src="features/gravure/events.js"></script>
-    <script src="features/gravure/function.js"></script>
+    <script src="features/gravure/mesh.js"></script>
     <script src="app/main.js"></script>
 </body>
 </html>

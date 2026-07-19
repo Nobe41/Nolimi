@@ -1,14 +1,11 @@
+// saas/features/gravure/math.js
+// Pont UI → données : lit les champs d’une carte .gravure-item dans le DOM.
+// Retourne position, angle, taille, relief, miroir/inverser pour le mesh 3D.
+// Pas de géométrie ici — uniquement parsing des contrôles utilisateur.
+
 var GravureMath = (function () {
     function toRadians(deg) {
         return deg * Math.PI / 180;
-    }
-
-    function clamp(value, min, max) {
-        var n = parseFloat(value);
-        if (!isFinite(n)) n = min;
-        if (n < min) n = min;
-        if (n > max) n = max;
-        return n;
     }
 
     function parseItemData(item) {
@@ -26,8 +23,6 @@ var GravureMath = (function () {
     }
 
     return {
-        toRadians: toRadians,
-        clamp: clamp,
         parseItemData: parseItemData
     };
 })();

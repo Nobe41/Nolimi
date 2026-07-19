@@ -1,6 +1,17 @@
-// Auth Supabase uniquement (aucun identifiant en dur dans le code).
+// saas/lib/auth.js
+// Auth Supabase (navigateur) — aucun identifiant en dur ici.
+// Config → config/supabase.config.js (window.NOLIMI_SUPABASE_CONFIG).
+// Utilisé par : app/main.js, features/realtime, website/pages/connexion.
+//
+// Vocabulaire :
+//   session compte  = utilisateur connecté (email) ou anonyme
+//   session partagée = id ?session=… (Realtime), pas la session Supabase
+//   invité           = accès via lien partagé (anonyme + flag sessionStorage)
+
 var NolimiAuth = (function () {
     var client = null;
+
+    // --- Config / client Supabase ---
 
     function getConfig() {
         return (typeof window !== 'undefined' && window.NOLIMI_SUPABASE_CONFIG)
@@ -18,22 +29,18 @@ var NolimiAuth = (function () {
         return client;
     }
 
+    // --- URLs pages (connexion ↔ atelier) ---
+
     function resolveUrl(relativePath) {
         return new URL(relativePath, window.location.href).href;
     }
 
+    // Depuis /connexion/ → index.html local ; sinon chemin relatif vers le site
     function getLoginUrl() {
         if (window.location.pathname.indexOf('/connexion/') !== -1) {
             return resolveUrl('index.html');
         }
         return resolveUrl('../website/pages/connexion/index.html');
-    }
-
-    function getSignupUrl() {
-        if (window.location.pathname.indexOf('/creation-compte/') !== -1) {
-            return resolveUrl('index.html');
-        }
-        return resolveUrl('../website/pages/creation-compte/index.html');
     }
 
     function getAppUrl(sessionId) {
@@ -46,40 +53,9 @@ var NolimiAuth = (function () {
         return u.href;
     }
 
-    function isAnonymousSession(session) {
-        if (!session || !session.user) return false;
-        if (session.user.is_anonymous === true) return true;
-        var provider = session.user.app_metadata && session.user.app_metadata.provider;
-        if (provider === 'anonymous') return true;
-        var identities = session.user.identities;
-        if (Array.isArray(identities)) {
-            for (var i = 0; i < identities.length; i++) {
-                if (identities[i] && identities[i].provider === 'anonymous') return true;
-            }
-        }
-        return false;
-    }
+    // --- Session partagée (?session=) ---
 
-    function markSessionGuestAccess() {
-        try {
-            sessionStorage.setItem('nolimi-session-guest', '1');
-        } catch (e) { /* ignore */ }
-    }
-
-    function clearSessionGuestAccess() {
-        try {
-            sessionStorage.removeItem('nolimi-session-guest');
-        } catch (e) { /* ignore */ }
-    }
-
-    function isSessionGuestAccess() {
-        try {
-            return sessionStorage.getItem('nolimi-session-guest') === '1';
-        } catch (e) {
-            return false;
-        }
-    }
-
+    // Accepte un id brut ou une URL contenant ?session=
     function parseSessionLink(input) {
         var raw = String(input || '').trim();
         if (!raw) return '';
@@ -97,6 +73,15 @@ var NolimiAuth = (function () {
         return !!(sessionId && /^[a-zA-Z0-9_-]{6,}$/.test(sessionId));
     }
 
+    function getSessionFromCurrentUrl() {
+        try {
+            var fromUrl = new URLSearchParams(window.location.search).get('session');
+            if (fromUrl && isValidSessionId(fromUrl.trim())) return fromUrl.trim();
+        } catch (e) { /* ignore */ }
+        return '';
+    }
+
+    // Mémorise l’id avant login (URL + sessionStorage)
     function persistPendingSession(sessionId) {
         if (!sessionId) return;
         try {
@@ -134,6 +119,66 @@ var NolimiAuth = (function () {
         } catch (e2) { /* ignore */ }
     }
 
+    // --- Accès invité (flag local) ---
+
+    function markSessionGuestAccess() {
+        try {
+            sessionStorage.setItem('nolimi-session-guest', '1');
+        } catch (e) { /* ignore */ }
+    }
+
+    function clearSessionGuestAccess() {
+        try {
+            sessionStorage.removeItem('nolimi-session-guest');
+        } catch (e) { /* ignore */ }
+    }
+
+    function isSessionGuestAccess() {
+        try {
+            return sessionStorage.getItem('nolimi-session-guest') === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Message affiché sur la page connexion après sortie invité
+    function consumeGuestExitMessage() {
+        try {
+            var msg = sessionStorage.getItem('nolimi-guest-exit-msg');
+            if (msg) sessionStorage.removeItem('nolimi-guest-exit-msg');
+            return msg || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    // --- Détection anonyme Supabase ---
+
+    function isAnonymousSession(session) {
+        if (!session || !session.user) return false;
+        if (session.user.is_anonymous === true) return true;
+        var provider = session.user.app_metadata && session.user.app_metadata.provider;
+        if (provider === 'anonymous') return true;
+        var identities = session.user.identities;
+        if (Array.isArray(identities)) {
+            for (var i = 0; i < identities.length; i++) {
+                if (identities[i] && identities[i].provider === 'anonymous') return true;
+            }
+        }
+        return false;
+    }
+
+    function isAnonymousUser() {
+        var sb = getClient();
+        if (!sb) return Promise.resolve(false);
+        return sb.auth.getSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            return isAnonymousSession(session);
+        });
+    }
+
+    // --- Redirections ---
+
     function redirectToLogin(sessionId) {
         var url = getLoginUrl();
         if (sessionId) {
@@ -147,133 +192,25 @@ var NolimiAuth = (function () {
         window.location.replace(url);
     }
 
-    function exitGuestAccess(message) {
-        clearSessionGuestAccess();
-        clearPendingSession();
-        try {
-            if (message) sessionStorage.setItem('nolimi-guest-exit-msg', message);
-        } catch (e) { /* ignore */ }
+    // Déjà connecté sur la page login → envoie vers l’atelier
+    function redirectIfAlreadyLoggedIn(sessionId) {
         var sb = getClient();
-        if (!sb) {
-            redirectToLogin();
-            return Promise.resolve();
-        }
-        return sb.auth.signOut().then(function () {
-            redirectToLogin();
-        }).catch(function () {
-            redirectToLogin();
-        });
-    }
-
-    function isAnonymousUser() {
-        var sb = getClient();
-        if (!sb) return Promise.resolve(false);
+        if (!sb) return Promise.resolve();
+        var parsedSession = sessionId ? parseSessionLink(sessionId) : '';
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            return isAnonymousSession(session);
+            if (!session) return;
+            if (!isAnonymousSession(session)) {
+                window.location.replace(getAppUrl(parsedSession || ''));
+                return;
+            }
+            if (parsedSession && isValidSessionId(parsedSession)) {
+                window.location.replace(getAppUrl(parsedSession));
+            }
         });
     }
 
-    function consumeGuestExitMessage() {
-        try {
-            var msg = sessionStorage.getItem('nolimi-guest-exit-msg');
-            if (msg) sessionStorage.removeItem('nolimi-guest-exit-msg');
-            return msg || '';
-        } catch (e) {
-            return '';
-        }
-    }
-
-    function requireSession() {
-        var sb = getClient();
-        if (!sb) {
-            redirectToLogin();
-            return Promise.reject(new Error('supabase_not_configured'));
-        }
-        var sessionFromUrl = getSessionFromCurrentUrl();
-        return sb.auth.getSession().then(function (result) {
-            var session = result && result.data ? result.data.session : null;
-            if (session) {
-                if (isAnonymousSession(session) && !sessionFromUrl) {
-                    return exitGuestAccess('Accès réservé via un lien de session partagée active.');
-                }
-                return session;
-            }
-
-            if (sessionFromUrl) {
-                return ensureGuestAuthForSessionLink(sessionFromUrl).then(function (guestSession) {
-                    if (guestSession) return guestSession;
-                    redirectToLogin(sessionFromUrl);
-                    return Promise.reject(new Error('guest_auth_failed'));
-                }).catch(function (err) {
-                    redirectToLogin(sessionFromUrl);
-                    return Promise.reject(err);
-                });
-            }
-
-            redirectToLogin(null);
-            return Promise.reject(new Error('no_session'));
-        });
-    }
-
-    function mapSignUpError(error) {
-        if (!error) return 'Impossible de créer le compte.';
-        var msg = String(error.message || '');
-        var code = String(error.code || error.error_code || '');
-        if (/already registered|already been registered|user already exists/i.test(msg + ' ' + code)) {
-            return 'Cette adresse mail est déjà utilisée. Connectez-vous ou réinitialisez votre mot de passe.';
-        }
-        if (/signups not allowed|signup.*disabled|new users.*sign up/i.test(msg + ' ' + code)) {
-            return 'Les inscriptions sont actuellement désactivées. Contactez-nous pour obtenir un accès.';
-        }
-        if (/password.*at least|too short/i.test(msg + ' ' + code)) {
-            return 'Le mot de passe doit contenir au moins 6 caractères.';
-        }
-        if (/invalid email|valid email/i.test(msg + ' ' + code)) {
-            return 'Adresse mail invalide.';
-        }
-        return msg || 'Impossible de créer le compte.';
-    }
-
-    function signUpWithPassword(email, password) {
-        var sb = getClient();
-        if (!sb) {
-            return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
-        }
-        var credentials = {
-            email: String(email || '').trim(),
-            password: String(password || '')
-        };
-        return sb.auth.getSession().then(function (result) {
-            var session = result && result.data ? result.data.session : null;
-            if (session && isAnonymousSession(session)) {
-                return sb.auth.signOut().then(function () {
-                    return sb.auth.signUp(credentials);
-                });
-            }
-            return sb.auth.signUp(credentials);
-        });
-    }
-
-    function signInWithPassword(email, password) {
-        var sb = getClient();
-        if (!sb) {
-            return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
-        }
-        var credentials = {
-            email: String(email || '').trim(),
-            password: String(password || '')
-        };
-        return sb.auth.getSession().then(function (result) {
-            var session = result && result.data ? result.data.session : null;
-            if (session && isAnonymousSession(session)) {
-                return sb.auth.signOut().then(function () {
-                    return sb.auth.signInWithPassword(credentials);
-                });
-            }
-            return sb.auth.signInWithPassword(credentials);
-        });
-    }
+    // --- Sign-in / sign-out ---
 
     function mapGuestAuthError(error) {
         if (!error) return 'Impossible de rejoindre la session.';
@@ -301,14 +238,71 @@ var NolimiAuth = (function () {
         });
     }
 
-    function getSessionFromCurrentUrl() {
-        try {
-            var fromUrl = new URLSearchParams(window.location.search).get('session');
-            if (fromUrl && isValidSessionId(fromUrl.trim())) return fromUrl.trim();
-        } catch (e) { /* ignore */ }
-        return '';
+    // Connexion email : si une session anonyme est ouverte, on la ferme d’abord
+    function signInWithPassword(email, password) {
+        var sb = getClient();
+        if (!sb) {
+            return Promise.resolve({ error: { message: 'Configuration Supabase manquante.' } });
+        }
+        var credentials = {
+            email: String(email || '').trim(),
+            password: String(password || '')
+        };
+        return sb.auth.getSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            if (session && isAnonymousSession(session)) {
+                return sb.auth.signOut().then(function () {
+                    return sb.auth.signInWithPassword(credentials);
+                });
+            }
+            return sb.auth.signInWithPassword(credentials);
+        });
     }
 
+    function signOut() {
+        var sb = getClient();
+        if (!sb) {
+            redirectToLogin();
+            return Promise.resolve();
+        }
+        return sb.auth.signOut().then(function () {
+            redirectToLogin();
+        }).catch(function () {
+            redirectToLogin();
+        });
+    }
+
+    function bindLogoutButton(buttonId) {
+        var btn = document.getElementById(buttonId || 'btn-logout');
+        if (!btn || btn.dataset.bound) return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function () {
+            signOut();
+        });
+    }
+
+    // Quitte l’atelier invité → login (+ message optionnel)
+    function exitGuestAccess(message) {
+        clearSessionGuestAccess();
+        clearPendingSession();
+        try {
+            if (message) sessionStorage.setItem('nolimi-guest-exit-msg', message);
+        } catch (e) { /* ignore */ }
+        var sb = getClient();
+        if (!sb) {
+            redirectToLogin();
+            return Promise.resolve();
+        }
+        return sb.auth.signOut().then(function () {
+            redirectToLogin();
+        }).catch(function () {
+            redirectToLogin();
+        });
+    }
+
+    // --- Garde d’accès atelier / rejoindre session ---
+
+    // Auth pour rejoindre une session : credentials → login ; sinon anonyme
     function ensureAuthForSessionJoin(email, password) {
         var sb = getClient();
         if (!sb) {
@@ -332,6 +326,7 @@ var NolimiAuth = (function () {
         });
     }
 
+    // Lien ?session= sans compte : crée une auth anonyme si besoin
     function ensureGuestAuthForSessionLink(sessionId) {
         var sb = getClient();
         if (!sb) {
@@ -353,68 +348,55 @@ var NolimiAuth = (function () {
         });
     }
 
-    function signOut() {
+    // Point d’entrée atelier : session valide requise (sinon redirect login)
+    function requireSession() {
         var sb = getClient();
         if (!sb) {
             redirectToLogin();
-            return Promise.resolve();
+            return Promise.reject(new Error('supabase_not_configured'));
         }
-        return sb.auth.signOut().then(function () {
-            redirectToLogin();
-        }).catch(function () {
-            redirectToLogin();
-        });
-    }
-
-    function redirectIfAlreadyLoggedIn(sessionId) {
-        var sb = getClient();
-        if (!sb) return Promise.resolve();
-        var parsedSession = sessionId ? parseSessionLink(sessionId) : '';
+        var sessionFromUrl = getSessionFromCurrentUrl();
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            if (!session) return;
-            if (!isAnonymousSession(session)) {
-                window.location.replace(getAppUrl(parsedSession || ''));
-                return;
+            if (session) {
+                // Anonyme sans ?session= → pas d’accès libre à l’atelier
+                if (isAnonymousSession(session) && !sessionFromUrl) {
+                    return exitGuestAccess('Accès réservé via un lien de session partagée active.');
+                }
+                return session;
             }
-            if (parsedSession && isValidSessionId(parsedSession)) {
-                window.location.replace(getAppUrl(parsedSession));
-            }
-        });
-    }
 
-    function bindLogoutButton(buttonId) {
-        var btn = document.getElementById(buttonId || 'btn-logout');
-        if (!btn || btn.dataset.bound) return;
-        btn.dataset.bound = '1';
-        btn.addEventListener('click', function () {
-            signOut();
+            if (sessionFromUrl) {
+                return ensureGuestAuthForSessionLink(sessionFromUrl).then(function (guestSession) {
+                    if (guestSession) return guestSession;
+                    redirectToLogin(sessionFromUrl);
+                    return Promise.reject(new Error('guest_auth_failed'));
+                }).catch(function (err) {
+                    redirectToLogin(sessionFromUrl);
+                    return Promise.reject(err);
+                });
+            }
+
+            redirectToLogin(null);
+            return Promise.reject(new Error('no_session'));
         });
     }
 
     return {
-        mapGuestAuthError: mapGuestAuthError,
         getClient: getClient,
         requireSession: requireSession,
-        signUpWithPassword: signUpWithPassword,
-        mapSignUpError: mapSignUpError,
         signInWithPassword: signInWithPassword,
-        signInAnonymously: signInAnonymously,
         ensureAuthForSessionJoin: ensureAuthForSessionJoin,
-        ensureGuestAuthForSessionLink: ensureGuestAuthForSessionLink,
+        mapGuestAuthError: mapGuestAuthError,
         signOut: signOut,
         exitGuestAccess: exitGuestAccess,
         isAnonymousUser: isAnonymousUser,
-        isAnonymousSession: isAnonymousSession,
         markSessionGuestAccess: markSessionGuestAccess,
         clearSessionGuestAccess: clearSessionGuestAccess,
         isSessionGuestAccess: isSessionGuestAccess,
-        getSessionFromCurrentUrl: getSessionFromCurrentUrl,
         consumeGuestExitMessage: consumeGuestExitMessage,
         redirectIfAlreadyLoggedIn: redirectIfAlreadyLoggedIn,
         bindLogoutButton: bindLogoutButton,
-        getLoginUrl: getLoginUrl,
-        getSignupUrl: getSignupUrl,
         getAppUrl: getAppUrl,
         parseSessionLink: parseSessionLink,
         isValidSessionId: isValidSessionId,
