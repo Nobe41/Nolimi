@@ -1,7 +1,8 @@
+/* website/pages/mentions-legales/ — styles de la page documents légaux. */
+
 .page--legal {
     --legal-muted: var(--nolimi-text-muted);
     --legal-accent: var(--nolimi-accent);
-    --legal-chapter-indent: 0;
     --legal-chapter-sub-indent: 1.25rem;
     --legal-content-pad: clamp(1.25rem, 4vw, 3rem);
     --legal-content-max: 42rem;
@@ -10,12 +11,10 @@
 
 .page-main--legal {
     flex: 1;
-    width: 100%;
-    max-width: none;
-    margin: 0;
     padding: clamp(2rem, 6vh, 3rem) 0 3rem;
 }
 
+/* --- Retour --- */
 .legal-back {
     display: inline-block;
     margin: 0 0 1.5rem var(--legal-content-pad);
@@ -23,7 +22,6 @@
     font: inherit;
     font-size: 0.875rem;
     color: var(--legal-muted);
-    text-decoration: none;
     background: none;
     border: none;
     cursor: pointer;
@@ -33,6 +31,7 @@
     color: var(--legal-accent);
 }
 
+/* --- En-tête --- */
 .legal-page-header {
     margin-bottom: 2rem;
     padding: 0 var(--legal-content-pad);
@@ -50,9 +49,9 @@
 .legal-page__updated {
     font-size: 0.875rem;
     color: var(--legal-muted);
-    margin-bottom: 0;
 }
 
+/* --- Onglets --- */
 .legal-tabs-shell {
     width: 100%;
     height: 3rem;
@@ -63,12 +62,9 @@
 
 .legal-tabs {
     display: flex;
-    flex-wrap: nowrap;
     align-items: center;
-    gap: 0;
     width: 100%;
     height: 100%;
-    margin: 0;
     padding: 0 var(--legal-content-pad);
     overflow-x: auto;
     overflow-y: hidden;
@@ -88,7 +84,6 @@
     align-items: center;
     align-self: stretch;
     height: 100%;
-    margin: 0;
     padding: 0 1.25rem;
     font: inherit;
     font-size: 0.9rem;
@@ -98,71 +93,34 @@
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
-    box-sizing: border-box;
     cursor: pointer;
     white-space: nowrap;
     transition: color 0.2s ease, border-color 0.2s ease;
     touch-action: pan-x;
 }
 
-.legal-tabs__btn:hover {
+.legal-tabs__btn:hover,
+.legal-tabs__btn--active {
     color: var(--legal-accent);
 }
 
 .legal-tabs__btn--active {
-    color: var(--legal-accent);
     border-bottom-color: var(--legal-accent);
 }
 
+/* --- Contenu --- */
 .legal-doc {
-    width: 100%;
     padding: 2rem var(--legal-content-pad) 0;
 }
 
 .legal-chapter {
-    width: 100%;
     max-width: var(--legal-content-max);
     margin: 0 auto;
     padding: 0 var(--legal-content-inner-pad);
-    box-sizing: border-box;
 }
 
 .legal-chapter[hidden] {
     display: none;
-}
-
-.legal-chapter__body {
-    width: 100%;
-    padding: 0;
-}
-
-.legal-page-footer {
-    margin-top: 2.75rem;
-    padding: 1.75rem var(--legal-content-pad) 0;
-    border-top: 1px solid var(--nolimi-border-subtle);
-}
-
-.legal-page-footer__inner {
-    width: 100%;
-    max-width: var(--legal-content-max);
-    margin: 0 auto;
-    padding: 0 var(--legal-content-inner-pad);
-    box-sizing: border-box;
-}
-
-.legal-page-footer p {
-    font-size: 0.9rem;
-    line-height: 1.75;
-    color: var(--nolimi-text);
-    margin-bottom: 1rem;
-}
-
-.legal-page-footer p:last-child {
-    margin-bottom: 0;
-}
-
-.legal-page-footer a {
-    color: var(--legal-accent);
 }
 
 .legal-chapter__subtitle {
@@ -177,7 +135,8 @@
     margin-top: 0.75rem;
 }
 
-.legal-chapter__subsection > .legal-chapter__subtitle:first-child {
+.legal-chapter__subsection > .legal-chapter__subtitle:first-child,
+.legal-chapter__body > .legal-chapter__subtitle:first-child {
     margin-top: 0;
 }
 
@@ -189,21 +148,19 @@
     padding-left: var(--legal-chapter-sub-indent);
 }
 
-.legal-chapter__body > .legal-chapter__subtitle:first-child {
-    margin-top: 0;
-}
-
 .legal-chapter__body p,
 .legal-chapter__subsection-content p,
 .legal-chapter__body li,
-.legal-chapter__subsection-content li {
+.legal-chapter__subsection-content li,
+.legal-page-footer p {
     font-size: 0.9rem;
     line-height: 1.75;
     color: var(--nolimi-text);
 }
 
 .legal-chapter__body p,
-.legal-chapter__subsection-content p {
+.legal-chapter__subsection-content p,
+.legal-page-footer p {
     margin-bottom: 1rem;
 }
 
@@ -218,8 +175,26 @@
 }
 
 .legal-chapter__body a,
-.legal-chapter__subsection-content a {
+.legal-chapter__subsection-content a,
+.legal-page-footer a {
     color: var(--legal-accent);
+}
+
+/* --- Pied de page légal --- */
+.legal-page-footer {
+    margin-top: 2.75rem;
+    padding: 1.75rem var(--legal-content-pad) 0;
+    border-top: 1px solid var(--nolimi-border-subtle);
+}
+
+.legal-page-footer__inner {
+    max-width: var(--legal-content-max);
+    margin: 0 auto;
+    padding: 0 var(--legal-content-inner-pad);
+}
+
+.legal-page-footer p:last-child {
+    margin-bottom: 0;
 }
 
 @media (max-width: 640px) {

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- website/pages/splash/ — écran logo au démarrage, puis redirection vers l’accueil. -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -21,21 +22,6 @@
             decoding="async"
         >
     </main>
-    <script>
-        (function () {
-            var target = "../accueil/index.html";
-            var displayMs = 1400;
-            var fadeMs = 450;
-
-            function goToSite() {
-                document.body.classList.add("splash--exit");
-                window.setTimeout(function () {
-                    window.location.replace(target);
-                }, fadeMs);
-            }
-
-            window.setTimeout(goToSite, displayMs);
-        })();
-    </script>
+    <script src="./splash.js"></script>
 </body>
 </html>

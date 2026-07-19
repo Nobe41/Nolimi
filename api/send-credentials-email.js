@@ -1,3 +1,7 @@
+// api/ — Endpoints serveur (licences, Stripe, emails).
+// Ce fichier : construit et envoie l’email d’identifiants via Resend (rien d’autre).
+
+// Sécurise le texte avant de l’injecter dans le HTML du mail.
 function escapeHtml(text) {
     return String(text || '')
         .replace(/&/g, '&amp;')
@@ -6,6 +10,7 @@ function escapeHtml(text) {
         .replace(/"/g, '&quot;');
 }
 
+// Contenu HTML du mail d’accès (lien, email, mot de passe).
 function buildCredentialsEmailHtml(email, password, siteUrl) {
     var safeEmail = escapeHtml(email);
     var safePassword = escapeHtml(password);
@@ -23,7 +28,7 @@ function buildCredentialsEmailHtml(email, password, siteUrl) {
         '<li style="margin-bottom:0.65rem;"><strong>Mot de passe (Clé unique) :</strong> <code style="font-family:monospace;background:#f4f4f5;padding:0.15rem 0.35rem;border-radius:4px;">', safePassword, '</code></li>',
         '</ul>',
         '<p style="margin:0 0 0.5rem;font-weight:700;">⚠️ Sécurité et Confidentialité</p>',
-        '<p style="margin:0 0 0.75rem;"><strong>Important :</strong> Ce mot de passe unique. Veuillez conserver cet e-mail précieusement pour vos prochaines connexions.</p>',
+        '<p style="margin:0 0 0.75rem;"><strong>Important :</strong> Ce mot de passe est unique. Veuillez conserver cet e-mail précieusement pour vos prochaines connexions.</p>',
         '<p style="margin:0 0 1.25rem;"><strong>Usage strictement personnel :</strong> Ces accès sont confidentiels, anonymes et rattachés à votre usage exclusif. Ils ne doivent en aucun cas être partagés ou communiqués à des tiers.</p>',
         '<p style="margin:0 0 1.25rem;">Pour tout retour d\'expérience ou besoin d\'assistance technique, vous pouvez nous contacter à l\'adresse suivante : <a href="mailto:hello.nolimi+contact@gmail.com" style="color:#5cb3ff;text-decoration:none;">hello.nolimi+contact@gmail.com</a></p>',
         '<p style="margin:0;">Cordialement,<br><strong>L\'équipe Nolimi</strong></p>',
@@ -31,6 +36,7 @@ function buildCredentialsEmailHtml(email, password, siteUrl) {
     ].join('');
 }
 
+// Envoie le mail d’identifiants via l’API Resend.
 async function sendCredentialsEmail(options) {
     var apiKey = options.apiKey;
     var from = options.from;

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- website/pages/creation-compte/ — après paiement Stripe : saisie des emails → création des comptes. -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -10,27 +11,15 @@
     <link rel="stylesheet" href="../../main.css">
     <link rel="stylesheet" href="../connexion/connexion.css">
     <link rel="stylesheet" href="./creation-compte.css">
-    <script src="./connection-supabase.js"></script>
+    <script src="./creation-compte-api.js"></script>
 </head>
 <body class="page page--auth">
-    <header class="panel">
-        <a href="../accueil/index.html" class="panel-logo" aria-label="Nolimi — accueil">
-            <img
-                src="../../../assets/brand/nolimi-logo-wordmark.jpg"
-                alt=""
-                class="panel-logo__img"
-                width="1024"
-                height="300"
-                decoding="async"
-            >
-        </a>
-        <nav class="panel-actions" aria-label="Actions principales">
-            <a href="../abonnement/index.html" class="panel-cta panel-cta--secondary">Licences</a>
-            <a href="../connexion/index.html" class="panel-cta">Se connecter</a>
-        </nav>
-    </header>
+    <script src="../../components/navbar/navbar.js"></script>
+    <script>NolimiNavbar.mount();</script>
+
     <main class="page-main page-main--auth">
         <div class="auth-centre">
+            <!-- Confirmation paiement -->
             <div class="payment-success" aria-labelledby="payment-success-title">
                 <div class="payment-success__icon" aria-hidden="true">
                     <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -45,7 +34,6 @@
 
             <form class="form-login form-licenses" id="form-licenses">
                 <div id="license-fields"></div>
-
                 <div id="error-msg" class="error-msg" aria-live="polite"></div>
                 <div id="success-msg" class="success-msg" aria-live="polite"></div>
 
@@ -56,175 +44,13 @@
                     et notre <a href="../mentions-legales/index.html#confidentialite">Politique de confidentialité</a>.
                     Vous recevrez vos identifiants par mail.
                 </p>
+
                 <button type="submit" id="btn-submit" disabled>Valider</button>
                 <a href="../connexion/index.html" class="license-login-btn" id="btn-login" hidden>Se connecter</a>
             </form>
         </div>
     </main>
-    <script>
-        (function () {
-            var ALLOWED_COUNTS = [1, 5, 10];
-            var form = document.getElementById('form-licenses');
-            var fieldsEl = document.getElementById('license-fields');
-            var instructionsEl = document.getElementById('license-instructions');
-            var errEl = document.getElementById('error-msg');
-            var successEl = document.getElementById('success-msg');
-            var submitBtn = document.getElementById('btn-submit');
-            var loginBtn = document.getElementById('btn-login');
-            var stripeSessionId = typeof NolimiLicenseSupabase !== 'undefined' && NolimiLicenseSupabase.getStripeSessionId
-                ? NolimiLicenseSupabase.getStripeSessionId()
-                : (new URLSearchParams(window.location.search).get('session_id')
-                    || new URLSearchParams(window.location.search).get('checkout_session_id')
-                    || '');
-            var paymentSuccessEl = document.querySelector('.payment-success');
 
-            function parseLicenseCount() {
-                var raw = new URLSearchParams(window.location.search).get('licences');
-                var count = parseInt(raw, 10);
-                if (ALLOWED_COUNTS.indexOf(count) === -1) return 1;
-                return count;
-            }
-
-            function licenseInstructions(count) {
-                if (count === 1) {
-                    return 'Veuillez entrer l\'adresse mail de la licence souhaitée.';
-                }
-                return 'Veuillez entrer les ' + count + ' adresses mail des licences souhaitées.';
-            }
-
-            function renderFields(count) {
-                instructionsEl.textContent = licenseInstructions(count);
-                fieldsEl.innerHTML = '';
-
-                var mainEl = document.querySelector('.page-main--auth');
-                if (mainEl) {
-                    mainEl.classList.toggle('page-main--licenses-many', count >= 5);
-                }
-
-                for (var i = 1; i <= count; i++) {
-                    var input = document.createElement('input');
-                    input.type = 'email';
-                    input.id = 'email-' + i;
-                    input.name = 'email-' + i;
-                    input.required = true;
-                    input.autocomplete = 'email';
-                    input.placeholder = count === 1
-                        ? 'Adresse mail — licence'
-                        : 'Adresse mail — licence ' + i;
-                    input.setAttribute('aria-label', count === 1
-                        ? 'Adresse mail licence'
-                        : 'Adresse mail licence ' + i);
-                    input.addEventListener('input', updateSubmitState);
-                    input.addEventListener('blur', updateSubmitState);
-                    fieldsEl.appendChild(input);
-                }
-
-                updateSubmitState();
-            }
-
-            function updateSubmitState() {
-                if (!stripeSessionId) {
-                    submitBtn.disabled = true;
-                    return;
-                }
-
-                var emails = [];
-
-                for (var i = 1; i <= licenseCount; i++) {
-                    var field = document.getElementById('email-' + i);
-                    if (!field) {
-                        submitBtn.disabled = true;
-                        return;
-                    }
-                    var value = field.value.trim();
-                    if (!value || !field.checkValidity()) {
-                        submitBtn.disabled = true;
-                        return;
-                    }
-                    emails.push(value.toLowerCase());
-                }
-
-                if (licenseCount > 1) {
-                    var unique = {};
-                    for (var j = 0; j < emails.length; j++) {
-                        if (unique[emails[j]]) {
-                            submitBtn.disabled = true;
-                            return;
-                        }
-                        unique[emails[j]] = true;
-                    }
-                }
-
-                submitBtn.disabled = false;
-            }
-
-            var licenseCount = parseLicenseCount();
-
-            if (!stripeSessionId) {
-                if (paymentSuccessEl) paymentSuccessEl.hidden = true;
-                errEl.textContent = 'Paiement reçu, mais la session Stripe est introuvable dans l’URL. Vérifiez que l’URL de redirection Stripe contient bien : session_id={CHECKOUT_SESSION_ID}';
-                instructionsEl.textContent = 'Exemple d’URL Stripe : …/creation-compte/index.html?licences=1&session_id={CHECKOUT_SESSION_ID}';
-                form.hidden = true;
-            } else {
-                renderFields(licenseCount);
-            }
-
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (submitBtn.disabled || !form.checkValidity()) return;
-                errEl.textContent = '';
-                successEl.textContent = '';
-                if (loginBtn) loginBtn.hidden = true;
-
-                var emails = [];
-                for (var i = 1; i <= licenseCount; i++) {
-                    var field = document.getElementById('email-' + i);
-                    var value = field ? field.value.trim().toLowerCase() : '';
-                    if (!value) {
-                        errEl.textContent = licenseCount === 1
-                            ? 'Veuillez renseigner l\'adresse mail.'
-                            : 'Veuillez renseigner les ' + licenseCount + ' adresses mail.';
-                        return;
-                    }
-                    emails.push(value);
-                }
-
-                if (licenseCount > 1) {
-                    var unique = {};
-                    for (var j = 0; j < emails.length; j++) {
-                        if (unique[emails[j]]) {
-                            errEl.textContent = 'Chaque licence doit avoir une adresse mail différente.';
-                            return;
-                        }
-                        unique[emails[j]] = true;
-                    }
-                }
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Envoi…';
-
-                if (typeof NolimiLicenseSupabase === 'undefined' || !NolimiLicenseSupabase.submitLicenseAccounts) {
-                    errEl.textContent = 'Service de création de comptes indisponible.';
-                    submitBtn.textContent = 'Valider';
-                    updateSubmitState();
-                    return;
-                }
-
-                NolimiLicenseSupabase.submitLicenseAccounts(licenseCount).then(function (result) {
-                    if (!result.ok) {
-                        errEl.textContent = result.error || 'Impossible de créer les comptes.';
-                        submitBtn.textContent = 'Valider';
-                        updateSubmitState();
-                        return;
-                    }
-
-                    successEl.textContent = result.message || 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.';
-                    submitBtn.textContent = 'Valider';
-                    submitBtn.disabled = true;
-                    if (loginBtn) loginBtn.hidden = false;
-                });
-            });
-        })();
-    </script>
+    <script src="./creation-compte.js"></script>
 </body>
 </html>

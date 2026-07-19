@@ -1,27 +1,31 @@
+/* website/components/footer/ — pied de page du site. */
+/* Ce fichier : styles du pied de page (.home-footer). */
+
+/* Conteneur */
 .home-footer {
     flex-shrink: 0;
     padding: 0.75rem 1.75rem 1.25rem;
-    text-align: center;
     display: flex;
-    flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 0.5rem 1.25rem;
 }
 
-.home-footer__copyright {
+/* Texte copyright + lien : même base */
+.home-footer__copyright,
+.home-footer__link {
     font-size: 0.72rem;
     color: var(--nolimi-text-muted);
     letter-spacing: 0.01em;
+}
+
+.home-footer__copyright {
     margin: 0;
 }
 
 .home-footer__link {
-    font-size: 0.72rem;
-    color: var(--nolimi-text-muted);
     text-decoration: none;
-    letter-spacing: 0.01em;
 }
 
 .home-footer__link:hover {

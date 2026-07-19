@@ -1,10 +1,16 @@
+/* website/components/navbar/ — barre du haut du site. */
+/* Ce fichier : styles de la barre du haut (.panel). */
+
+/* --- Variables --- */
 :root {
     --panel-pad-block: 0.55rem;
     --panel-pad-inline: 1.1rem;
     --panel-logo-height: 1.25rem;
+    /* Espace sous la barre (utilisé par les pages pour le padding du contenu) */
     --panel-offset: calc(var(--panel-logo-height) + var(--panel-pad-block) * 2 + 1.25rem);
 }
 
+/* --- Barre fixe --- */
 .panel {
     --panel-accent: var(--nolimi-accent);
     --panel-accent-hover: var(--nolimi-accent-hover);
@@ -12,17 +18,17 @@
     top: 0;
     left: 0;
     right: 0;
-    width: 100%;
     min-height: calc(var(--panel-logo-height) + var(--panel-pad-block) * 2);
     padding: var(--panel-pad-block) var(--panel-pad-inline);
     display: flex;
     align-items: center;
     justify-content: space-between;
     background: var(--nolimi-surface);
-    box-shadow: var(--nolimi-shadow-sm);
+    border-bottom: 1px solid var(--nolimi-border-subtle);
     z-index: 10;
 }
 
+/* --- Logo --- */
 .panel-logo {
     display: block;
     flex-shrink: 0;
@@ -38,6 +44,7 @@
     object-fit: contain;
 }
 
+/* --- Boutons --- */
 .panel-actions {
     display: flex;
     align-items: center;
@@ -59,16 +66,19 @@
     background: var(--panel-accent-hover);
 }
 
+/* Bouton secondaire (ex. Licences) */
 .panel-cta--secondary {
     background: transparent;
-    color: var(--panel-accent);
-    border: 1px solid var(--panel-accent);
+    color: var(--nolimi-ink);
+    border: 1px solid var(--nolimi-border);
 }
 
 .panel-cta--secondary:hover {
-    background: var(--nolimi-accent-muted);
+    background: var(--nolimi-bg);
+    color: var(--nolimi-ink);
 }
 
+/* Bouton de la page active */
 .panel-cta--current {
     background: var(--nolimi-accent-muted);
     color: var(--panel-accent);
@@ -76,6 +86,7 @@
     pointer-events: none;
 }
 
+/* --- Mobile --- */
 @media (max-width: 480px) {
     .panel-actions {
         gap: 0.35rem;

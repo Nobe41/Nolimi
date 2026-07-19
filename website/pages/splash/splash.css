@@ -1,3 +1,5 @@
+/* website/pages/splash/ — styles de l’écran logo de démarrage. */
+
 body.splash {
     min-height: 100vh;
     min-height: 100dvh;
@@ -23,6 +25,7 @@ body.splash {
     object-fit: contain;
 }
 
+/* Sortie avant redirection */
 body.splash--exit .splash-main {
     animation: splash-out 0.45s ease-in both;
 }

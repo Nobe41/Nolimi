@@ -1,12 +1,14 @@
+/* website/pages/connexion/ — styles auth (aussi réutilisés par création-compte). */
+
 .page--auth {
     --auth-muted: var(--nolimi-text-muted);
 }
 
+/* --- Layout --- */
 .page-main--auth {
     flex: 1;
     display: flex;
     flex-direction: column;
-    width: 100%;
     max-width: 42rem;
     margin: 0 auto;
     padding: clamp(var(--panel-offset), 12vh, calc(var(--panel-offset) + 1.5rem)) 1.75rem 2rem;
@@ -34,6 +36,7 @@
     width: 100%;
 }
 
+/* --- Formulaire --- */
 .form-login {
     display: flex;
     flex-direction: column;
@@ -42,26 +45,24 @@
     max-width: 320px;
 }
 
-.form-login label {
-    font-size: 0.9rem;
-    color: var(--nolimi-text);
-}
-
-.form-login input {
+.form-login input,
+.login-link-dropdown__panel input {
+    width: 100%;
     padding: 0.6rem 0.75rem;
     font-size: 1rem;
+    font-family: inherit;
     border: 1px solid var(--nolimi-border);
     border-radius: 6px;
     background: var(--nolimi-surface);
 }
 
-.form-login input:focus {
+.form-login input:focus,
+.login-link-dropdown__panel input:focus {
     outline: none;
     border-color: var(--nolimi-accent);
 }
 
 .form-login button[type="submit"] {
-    margin-top: 0;
     padding: 0.65rem 1.5rem;
     font-size: 1rem;
     cursor: pointer;
@@ -92,27 +93,20 @@
     margin-bottom: 0.25rem;
 }
 
-.login-forgot {
-    margin: -0.5rem 0 0;
+.login-forgot,
+.login-legal {
     font-size: 0.72rem;
     line-height: 1.5;
     color: var(--nolimi-text-muted);
 }
 
-.login-forgot a {
-    color: var(--nolimi-accent);
-    text-decoration: none;
-}
-
-.login-forgot a:hover {
-    text-decoration: underline;
+.login-forgot {
+    margin: -0.5rem 0 0;
 }
 
 .login-legal {
     margin: 0.15rem 0 0;
-    font-size: 0.72rem;
     line-height: 1.45;
-    color: var(--nolimi-text-muted);
     text-align: center;
 }
 
@@ -120,15 +114,18 @@
     margin-top: -0.45rem;
 }
 
+.login-forgot a,
 .login-legal a {
     color: var(--nolimi-accent);
     text-decoration: none;
 }
 
+.login-forgot a:hover,
 .login-legal a:hover {
     text-decoration: underline;
 }
 
+/* --- Dropdown « J'ai un lien » --- */
 .login-link-dropdown {
     margin-top: 0.25rem;
     width: 100%;
@@ -182,18 +179,7 @@
 }
 
 .login-link-dropdown__panel input {
-    width: 100%;
-    padding: 0.6rem 0.75rem;
     font-size: 0.9rem;
-    font-family: inherit;
-    border: 1px solid var(--nolimi-border);
-    border-radius: 6px;
-    background: var(--nolimi-surface);
-}
-
-.login-link-dropdown__panel input:focus {
-    outline: none;
-    border-color: var(--nolimi-accent);
 }
 
 .login-link-dropdown__panel input.invalid {

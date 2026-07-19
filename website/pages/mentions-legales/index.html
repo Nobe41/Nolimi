@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- website/pages/mentions-legales/ — documents légaux (mentions, CGU, confidentialité, CGV). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -26,7 +27,7 @@
             </nav>
         </div>
         <article class="legal-doc">
-            <section class="legal-chapter legal-chapter--active" id="mentions-legales" data-legal-panel="mentions-legales">
+            <section class="legal-chapter" id="mentions-legales" data-legal-panel="mentions-legales">
                 <div class="legal-chapter__body">
                     <div class="legal-chapter__subsection">
                         <h3 class="legal-chapter__subtitle">1.1. Édition du site et du logiciel</h3>
@@ -420,98 +421,6 @@
             </div>
         </footer>
     </main>
-    <script>
-        (function () {
-            var btn = document.getElementById('legal-back');
-            if (btn) {
-                btn.addEventListener('click', function () {
-                    if (window.history.length > 1) {
-                        window.history.back();
-                        return;
-                    }
-                    window.location.href = '../accueil/index.html';
-                });
-            }
-
-            var tabButtons = document.querySelectorAll('[data-legal-tab]');
-            var panels = document.querySelectorAll('[data-legal-panel]');
-            var validTabs = ['mentions-legales', 'cgu', 'confidentialite', 'cgv'];
-
-            function setActiveTab(tabId, updateHash) {
-                if (validTabs.indexOf(tabId) === -1) tabId = 'mentions-legales';
-
-                tabButtons.forEach(function (button) {
-                    var isActive = button.getAttribute('data-legal-tab') === tabId;
-                    button.classList.toggle('legal-tabs__btn--active', isActive);
-                    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                });
-
-                panels.forEach(function (panel) {
-                    var isActive = panel.getAttribute('data-legal-panel') === tabId;
-                    panel.classList.toggle('legal-chapter--active', isActive);
-                    panel.hidden = !isActive;
-                });
-
-                if (updateHash !== false && window.location.hash.replace(/^#/, '') !== tabId) {
-                    history.replaceState(null, '', '#' + tabId);
-                }
-            }
-
-            tabButtons.forEach(function (button) {
-                button.setAttribute('role', 'tab');
-                button.addEventListener('click', function () {
-                    setActiveTab(button.getAttribute('data-legal-tab'));
-                });
-            });
-
-            panels.forEach(function (panel) {
-                panel.setAttribute('role', 'tabpanel');
-            });
-
-            var nav = document.querySelector('.legal-tabs');
-            if (nav) nav.setAttribute('role', 'tablist');
-
-            function openFromHash() {
-                var hash = window.location.hash.replace(/^#/, '');
-                setActiveTab(hash || 'mentions-legales', false);
-            }
-
-            openFromHash();
-            window.addEventListener('hashchange', openFromHash);
-
-            var tabs = document.querySelector('.legal-tabs');
-            var tabsShell = document.querySelector('.legal-tabs-shell');
-            if (tabs && tabsShell) {
-                tabs.addEventListener('wheel', function (e) {
-                    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                        e.preventDefault();
-                    }
-                }, { passive: false });
-
-                var touchStartX = 0;
-                var touchStartY = 0;
-                var touchAxis = null;
-
-                tabs.addEventListener('touchstart', function (e) {
-                    if (!e.touches.length) return;
-                    touchStartX = e.touches[0].clientX;
-                    touchStartY = e.touches[0].clientY;
-                    touchAxis = null;
-                }, { passive: true });
-
-                tabs.addEventListener('touchmove', function (e) {
-                    if (!e.touches.length) return;
-                    var dx = e.touches[0].clientX - touchStartX;
-                    var dy = e.touches[0].clientY - touchStartY;
-                    if (!touchAxis && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
-                        touchAxis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
-                    }
-                    if (touchAxis === 'y') {
-                        e.preventDefault();
-                    }
-                }, { passive: false });
-            }
-        })();
-    </script>
+    <script src="./mentions-legales.js"></script>
 </body>
 </html>

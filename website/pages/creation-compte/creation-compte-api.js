@@ -1,5 +1,6 @@
-// Création de comptes licence via l'API Vercel (Stripe + Supabase côté serveur).
-var NolimiLicenseSupabase = (function () {
+// website/pages/creation-compte/ — appel API création de comptes (Stripe vérifié côté serveur).
+
+var NolimiLicenseApi = (function () {
     function getStripeSessionId() {
         var params = new URLSearchParams(window.location.search);
         return params.get('session_id')
@@ -7,6 +8,7 @@ var NolimiLicenseSupabase = (function () {
             || '';
     }
 
+    // Lit et valide les champs email-1…email-N du formulaire.
     function collectEmails(licenseCount) {
         var emails = [];
 
@@ -27,24 +29,20 @@ var NolimiLicenseSupabase = (function () {
         }
 
         if (licenseCount > 1) {
-            var unique = {};
+            var seen = {};
             for (var j = 0; j < emails.length; j++) {
-                if (unique[emails[j]]) {
+                if (seen[emails[j]]) {
                     return { error: 'Chaque licence doit avoir une adresse mail différente.' };
                 }
-                unique[emails[j]] = true;
+                seen[emails[j]] = true;
             }
         }
 
         return { emails: emails };
     }
 
-    function resolveApiUrl() {
-        return new URL('/api/create-license-accounts', window.location.origin).href;
-    }
-
     function createAccounts(emails, licenseCount, sessionId) {
-        return fetch(resolveApiUrl(), {
+        return fetch(new URL('/api/create-license-accounts', window.location.origin).href, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -54,24 +52,12 @@ var NolimiLicenseSupabase = (function () {
             })
         }).then(function (response) {
             return response.json().then(function (data) {
-                return {
-                    ok: response.ok,
-                    status: response.status,
-                    data: data
-                };
+                return { ok: response.ok, status: response.status, data: data };
             }).catch(function () {
-                return {
-                    ok: false,
-                    status: response.status,
-                    data: { error: 'Réponse serveur invalide.' }
-                };
+                return { ok: false, status: response.status, data: { error: 'Réponse serveur invalide.' } };
             });
         }).catch(function () {
-            return {
-                ok: false,
-                status: 0,
-                data: { error: 'Impossible de contacter le serveur. Réessayez plus tard.' }
-            };
+            return { ok: false, status: 0, data: { error: 'Impossible de contacter le serveur. Réessayez plus tard.' } };
         });
     }
 
@@ -84,6 +70,7 @@ var NolimiLicenseSupabase = (function () {
         return 'Impossible de créer les comptes.';
     }
 
+    // Point d’entrée : valide les mails puis appelle l’API.
     function submitLicenseAccounts(licenseCount) {
         var sessionId = getStripeSessionId();
         if (!sessionId) {
@@ -114,7 +101,8 @@ var NolimiLicenseSupabase = (function () {
 
             return {
                 ok: true,
-                created: result.data.created || collected.emails.length
+                created: result.data.created || collected.emails.length,
+                message: 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.'
             };
         });
     }
@@ -122,7 +110,6 @@ var NolimiLicenseSupabase = (function () {
     return {
         getStripeSessionId: getStripeSessionId,
         collectEmails: collectEmails,
-        createAccounts: createAccounts,
         submitLicenseAccounts: submitLicenseAccounts
     };
 })();

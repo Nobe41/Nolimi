@@ -1,3 +1,6 @@
+/* website/pages/creation-compte/ — styles spécifiques (le reste vient de connexion.css). */
+
+/* --- Paiement validé --- */
 .payment-success {
     display: flex;
     flex-direction: column;
@@ -26,6 +29,7 @@
     color: var(--nolimi-text);
 }
 
+/* --- Formulaire licences --- */
 .license-instructions {
     width: 100%;
     max-width: 320px;
@@ -47,6 +51,7 @@
     width: 100%;
 }
 
+/* Beaucoup de champs (5 / 10) : aligner en haut */
 .page-main--auth.page-main--licenses-many {
     justify-content: flex-start;
     padding-bottom: 2.5rem;
@@ -56,7 +61,6 @@
     justify-content: flex-start;
     padding-top: 0.5rem;
 }
-
 
 .success-msg {
     color: var(--nolimi-accent);
@@ -70,6 +74,7 @@
     margin-bottom: 0.25rem;
 }
 
+/* Bouton « Se connecter » après succès */
 .license-login-btn {
     display: inline-flex;
     align-items: center;
@@ -79,15 +84,10 @@
     padding: 0.65rem 1.5rem;
     font-size: 1rem;
     font-weight: 600;
-    font-family: inherit;
     text-decoration: none;
-    text-align: center;
-    cursor: pointer;
     background: var(--nolimi-accent);
     color: #fff;
-    border: none;
     border-radius: 6px;
-    box-sizing: border-box;
 }
 
 .license-login-btn:hover {

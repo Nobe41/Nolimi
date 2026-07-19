@@ -1,11 +1,13 @@
+/* website/pages/abonnement/ — styles de la page licences. */
+
 .page--abonnement {
     --abo-muted: var(--nolimi-text-muted);
     --abo-accent: var(--nolimi-accent);
 }
 
+/* --- Layout --- */
 .page-main--abonnement {
     flex: 1;
-    width: 100%;
     max-width: 56rem;
     margin: 0 auto;
     padding: clamp(var(--panel-offset), 12vh, calc(var(--panel-offset) + 1.5rem)) 1.75rem 0.75rem;
@@ -24,6 +26,7 @@
     color: var(--abo-accent);
 }
 
+/* --- Titre --- */
 .abo-hero {
     max-width: 40rem;
     margin: 0 auto 3rem;
@@ -44,6 +47,7 @@
     color: var(--abo-muted);
 }
 
+/* --- Grille --- */
 .abo-plans {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
@@ -51,9 +55,9 @@
     max-width: 56rem;
     margin: 0 auto;
     padding-top: 0.5rem;
-    overflow: visible;
 }
 
+/* --- Carte --- */
 .abo-plan {
     position: relative;
     display: flex;
@@ -63,7 +67,6 @@
     border: 1px solid var(--nolimi-border-subtle);
     border-radius: 12px;
     box-shadow: var(--nolimi-shadow-sm);
-    overflow: visible;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -71,24 +74,6 @@
     transform: scale(1.06);
     box-shadow: 0 8px 24px rgba(92, 179, 255, 0.18);
     z-index: 1;
-}
-
-.abo-plan--featured {
-    border-color: var(--abo-accent);
-    box-shadow: 0 4px 20px rgba(92, 179, 255, 0.15);
-}
-
-.abo-plan__badge {
-    align-self: flex-start;
-    margin-bottom: 0.75rem;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--abo-accent);
-    background: var(--nolimi-accent-muted);
-    border-radius: 999px;
 }
 
 .abo-plan__name {
@@ -158,6 +143,7 @@
     font-weight: 700;
 }
 
+/* Bouton S'abonner */
 .abo-plan__cta {
     display: inline-flex;
     align-items: center;
@@ -166,49 +152,39 @@
     padding: 0.65rem 1rem;
     font-size: 0.9rem;
     font-weight: 600;
-    font-family: inherit;
     text-decoration: none;
-    text-align: center;
     border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.abo-plan__cta--secondary {
     background: transparent;
     color: var(--abo-accent);
     border: 1px solid var(--abo-accent);
-    box-shadow: none;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.abo-plan__cta--secondary:hover,
-.abo-plan__cta--secondary:focus-visible,
-.abo-plan__cta--secondary:active {
-    position: relative;
-    z-index: 2;
-}
-
-.abo-plan__cta--secondary:hover,
-.abo-plan__cta--secondary:focus-visible {
+/* Rempli au survol carte ou bouton */
+.abo-plan__cta:hover,
+.abo-plan__cta:focus-visible,
+.abo-plan:hover .abo-plan__cta:not(:hover):not(:active) {
     background: var(--abo-accent);
     color: #fff;
     border-color: var(--abo-accent);
+}
+
+.abo-plan__cta:hover,
+.abo-plan__cta:focus-visible {
+    position: relative;
+    z-index: 2;
     box-shadow: 0 6px 20px rgba(92, 179, 255, 0.55);
 }
 
-.abo-plan:hover .abo-plan__cta--secondary:not(:hover):not(:active) {
-    background: var(--abo-accent);
-    color: #fff;
-    border-color: var(--abo-accent);
-    box-shadow: none;
-}
-
-.abo-plan__cta--secondary:active {
+.abo-plan__cta:active {
+    position: relative;
+    z-index: 2;
     background: var(--nolimi-accent-hover);
     border-color: var(--nolimi-accent-hover);
     box-shadow: 0 3px 12px rgba(74, 166, 247, 0.5);
 }
 
+/* --- Légal + footer --- */
 .abo-legal {
     max-width: 36rem;
     margin: 1.5rem auto 0;
@@ -228,7 +204,6 @@
 }
 
 .page--abonnement .home-footer {
-    flex-shrink: 0;
     padding: 0.25rem 1.75rem 0.5rem;
     margin-top: 0.25rem;
 }

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- website/pages/accueil/ — page d’accueil du site. -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -11,30 +12,19 @@
     <link rel="stylesheet" href="./accueil.css">
 </head>
 <body class="page page--home">
-    <header class="panel">
-        <a href="index.html" class="panel-logo" aria-label="Nolimi — accueil">
-            <img
-                src="../../../assets/brand/nolimi-logo-wordmark.jpg"
-                alt=""
-                class="panel-logo__img"
-                width="1024"
-                height="300"
-                decoding="async"
-            >
-        </a>
-        <nav class="panel-actions" aria-label="Actions principales">
-            <a href="../abonnement/index.html" class="panel-cta panel-cta--secondary">Licences</a>
-            <a href="../connexion/index.html" class="panel-cta">Se connecter</a>
-        </nav>
-    </header>
+    <script src="../../components/navbar/navbar.js"></script>
+    <script>NolimiNavbar.mount();</script>
+
     <main class="page-main page-main--home" id="accueil">
         <section class="home-hero" aria-labelledby="home-title">
             <div class="home-hero__layout">
+                <!-- Texte + CTA -->
                 <div class="home-hero__copy">
                     <h1 id="home-title">Concevez vos bouteilles en quelques clics</h1>
                     <p class="home-lead">Grâce à une conception paramétrique, créez vos bouteilles en quelques minutes.</p>
-                    <a href="../connexion/index.html" class="home-cta home-cta--hero">Se connecter</a>
+                    <a href="../connexion/index.html" class="home-cta">Se connecter</a>
                 </div>
+                <!-- Image hero -->
                 <figure class="home-preview">
                     <img
                         src="../../assets/nolimi-bottles-hero.png"
@@ -48,9 +38,8 @@
             </div>
         </section>
     </main>
-    <footer class="home-footer">
-        <p class="home-footer__copyright">© 2026 Nolimi. Tous droits réservés.</p>
-        <a href="../mentions-legales/index.html" class="home-footer__link">Documents légaux</a>
-    </footer>
+
+    <script src="../../components/footer/footer.js"></script>
+    <script>NolimiFooter.mount();</script>
 </body>
 </html>

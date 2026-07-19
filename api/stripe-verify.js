@@ -1,5 +1,10 @@
+// api/ — Endpoints serveur (licences, Stripe, emails).
+// Ce fichier : vérifie qu’une session Stripe est payée et pas déjà utilisée (rien d’autre).
+
+// Packs de licences autorisés (partagé avec create-license-accounts.js).
 const ALLOWED_COUNTS = [1, 5, 10];
 
+// Appel générique à l’API Stripe.
 async function stripeRequest(stripeSecretKey, method, path, body) {
     var options = {
         method: method,
@@ -24,6 +29,7 @@ async function stripeRequest(stripeSecretKey, method, path, body) {
     return { ok: response.ok, status: response.status, data: data };
 }
 
+// Récupère une session Checkout Stripe.
 async function retrieveCheckoutSession(stripeSecretKey, sessionId) {
     return stripeRequest(
         stripeSecretKey,
@@ -32,6 +38,7 @@ async function retrieveCheckoutSession(stripeSecretKey, sessionId) {
     );
 }
 
+// Marque la session comme déjà utilisée (évite de recréer les comptes).
 async function markCheckoutSessionUsed(stripeSecretKey, sessionId) {
     return stripeRequest(
         stripeSecretKey,
@@ -41,7 +48,9 @@ async function markCheckoutSessionUsed(stripeSecretKey, sessionId) {
     );
 }
 
+// Vérifie : session valide, payée, pas déjà activée, bon nombre de licences.
 async function verifyPaidCheckoutSession(stripeSecretKey, sessionId, licenseCount) {
+    // Format de l’id de session Stripe (cs_...)
     if (!sessionId || !/^cs_[a-zA-Z0-9_]+$/.test(sessionId)) {
         return { ok: false, error: 'Session de paiement invalide.' };
     }
@@ -57,14 +66,17 @@ async function verifyPaidCheckoutSession(stripeSecretKey, sessionId, licenseCoun
 
     var session = result.data;
 
+    // Paiement bien confirmé ?
     if (session.payment_status !== 'paid') {
         return { ok: false, error: 'Le paiement n\'est pas confirmé.' };
     }
 
+    // Déjà utilisé pour créer des comptes ?
     if (session.metadata && session.metadata.accounts_created === 'true') {
         return { ok: false, error: 'Ces licences ont déjà été activées pour ce paiement.' };
     }
 
+    // Metadata « licences » sur le lien de paiement Stripe (1, 5 ou 10)
     var paidLicenses = session.metadata ? parseInt(session.metadata.licences, 10) : NaN;
     if (ALLOWED_COUNTS.indexOf(paidLicenses) === -1) {
         return {
@@ -81,6 +93,7 @@ async function verifyPaidCheckoutSession(stripeSecretKey, sessionId, licenseCoun
 }
 
 module.exports = {
+    ALLOWED_COUNTS: ALLOWED_COUNTS,
     verifyPaidCheckoutSession: verifyPaidCheckoutSession,
     markCheckoutSessionUsed: markCheckoutSessionUsed
 };

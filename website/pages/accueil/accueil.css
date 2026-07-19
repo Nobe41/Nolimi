@@ -1,3 +1,5 @@
+/* website/pages/accueil/ — styles de la page d’accueil. */
+
 .page--home {
     --home-ink: var(--nolimi-ink);
     --home-muted: var(--nolimi-text-muted);
@@ -6,11 +8,10 @@
 
 .page-main--home {
     flex: 1;
-    width: 100%;
 }
 
+/* --- Hero --- */
 .home-hero {
-    width: 100%;
     max-width: 80rem;
     margin: 0 auto;
     padding: clamp(calc(var(--panel-offset) + 4rem), 17vh, calc(var(--panel-offset) + 6rem)) clamp(1.25rem, 3vw, 2.5rem) 2.5rem;
@@ -21,7 +22,6 @@
     grid-template-columns: minmax(0, 32rem) minmax(0, 1fr);
     align-items: center;
     gap: clamp(2rem, 4vw, 3.5rem);
-    width: 100%;
 }
 
 .home-hero__copy {
@@ -45,39 +45,36 @@
     margin-bottom: 1.75rem;
 }
 
+/* Bouton Se connecter */
 .home-cta {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    text-decoration: none;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.home-cta--hero {
     padding: 0.65rem 2rem;
     font-size: clamp(0.85rem, 1.3vw, 0.95rem);
+    font-weight: 600;
     color: #fff;
+    text-decoration: none;
     background: var(--home-accent);
     border: 1px solid var(--home-accent);
     border-radius: 999px;
     box-shadow: 0 2px 10px rgba(92, 179, 255, 0.28);
     white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.home-cta--hero:hover {
+.home-cta:hover {
     background: var(--nolimi-accent-hover);
     border-color: var(--nolimi-accent-hover);
     box-shadow: 0 4px 16px rgba(92, 179, 255, 0.35);
 }
 
+/* Image */
 .home-preview {
     min-width: 0;
     width: 100%;
     max-width: min(40rem, 50vw);
-    margin: 0;
-    margin-left: auto;
-    margin-right: clamp(0.5rem, 2vw, 1.5rem);
+    margin: 0 clamp(0.5rem, 2vw, 1.5rem) 0 auto;
     line-height: 0;
 }
 
@@ -85,9 +82,9 @@
     display: block;
     width: 100%;
     height: auto;
-    image-rendering: auto;
 }
 
+/* --- Mobile --- */
 @media (max-width: 768px) {
     .home-hero {
         padding-inline: clamp(2rem, 7vw, 3rem);
@@ -110,23 +107,13 @@
         align-items: center;
     }
 
-    .home-hero h1 {
-        text-align: center;
-    }
-
-    .home-lead {
-        text-align: center;
-    }
-
-    .home-cta--hero {
+    .home-cta {
         padding: 0.6rem 1.65rem;
         font-size: 0.88rem;
     }
 
     .home-preview {
         max-width: min(100%, 20rem);
-        margin-top: 1.5rem;
-        margin-left: 0;
-        margin-right: 0;
+        margin: 1.5rem 0 0;
     }
 }

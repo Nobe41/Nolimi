@@ -1,5 +1,11 @@
+# Fichiers à ne jamais committer (secrets, fichiers locaux, macOS).
+
 .DS_Store
+
+# Variables d’environnement (secrets serveur)
 .env
 .env.local
 .env*.local
+
+# Config Supabase locale (optionnelle, hors repo)
 saas/config/supabase.local.js

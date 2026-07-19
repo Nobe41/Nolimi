@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- website/pages/abonnement/ — page des offres de licences (Stripe). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -11,28 +12,17 @@
     <link rel="stylesheet" href="./abonnement.css">
 </head>
 <body class="page page--abonnement">
-    <header class="panel">
-        <a href="../accueil/index.html" class="panel-logo" aria-label="Nolimi — accueil">
-            <img
-                src="../../../assets/brand/nolimi-logo-wordmark.jpg"
-                alt=""
-                class="panel-logo__img"
-                width="1024"
-                height="300"
-                decoding="async"
-            >
-        </a>
-        <nav class="panel-actions" aria-label="Actions principales">
-            <a href="index.html" class="panel-cta panel-cta--current" aria-current="page">Licences</a>
-            <a href="../connexion/index.html" class="panel-cta">Se connecter</a>
-        </nav>
-    </header>
+    <script src="../../components/navbar/navbar.js"></script>
+    <script>NolimiNavbar.mount({ current: 'licences' });</script>
+
     <main class="page-main page-main--abonnement">
         <a href="../accueil/index.html" class="abo-back">← Retour</a>
+
         <section class="abo-hero" aria-labelledby="abo-title">
             <h1 id="abo-title">Choisissez votre abonnement</h1>
             <p class="abo-hero__lead">Accédez à Nolimi et concevez vos bouteilles en toute liberté.</p>
         </section>
+
         <div class="abo-plans">
             <article class="abo-plan">
                 <h2 class="abo-plan__name">1 licence</h2>
@@ -44,9 +34,10 @@
                     <li>Collaboration en temps réel</li>
                     <li>Projets illimités</li>
                 </ul>
-                <a href="https://buy.stripe.com/test_cNi3cua3b7T2cBbgNv7AI00" class="abo-plan__cta abo-plan__cta--secondary">S'abonner</a>
+                <a href="https://buy.stripe.com/test_cNi3cua3b7T2cBbgNv7AI00" class="abo-plan__cta">S'abonner</a>
             </article>
-            <article class="abo-plan abo-plan--has-save">
+
+            <article class="abo-plan">
                 <span class="abo-plan__save">Economiser 00€</span>
                 <h2 class="abo-plan__name">5 licences</h2>
                 <p class="abo-plan__price">00<span> / mois</span></p>
@@ -57,9 +48,10 @@
                     <li>Collaboration en temps réel</li>
                     <li>Projets illimités</li>
                 </ul>
-                <a href="https://buy.stripe.com/test_aFa5kC1wF4GQ7gR7cV7AI01" class="abo-plan__cta abo-plan__cta--secondary">S'abonner</a>
+                <a href="https://buy.stripe.com/test_aFa5kC1wF4GQ7gR7cV7AI01" class="abo-plan__cta">S'abonner</a>
             </article>
-            <article class="abo-plan abo-plan--has-save">
+
+            <article class="abo-plan">
                 <span class="abo-plan__save">Economiser 00€</span>
                 <h2 class="abo-plan__name">10 licences</h2>
                 <p class="abo-plan__price">00<span> / mois</span></p>
@@ -70,9 +62,10 @@
                     <li>Collaboration en temps réel</li>
                     <li>Projets illimités</li>
                 </ul>
-                <a href="https://buy.stripe.com/test_14A9AScbj4GQ0StdBj7AI02" class="abo-plan__cta abo-plan__cta--secondary">S'abonner</a>
+                <a href="https://buy.stripe.com/test_14A9AScbj4GQ0StdBj7AI02" class="abo-plan__cta">S'abonner</a>
             </article>
         </div>
+
         <p class="abo-legal">
             En vous abonnant, vous acceptez nos
             <a href="../mentions-legales/index.html#cgv">CGV</a>
@@ -81,9 +74,8 @@
             Abonnement mensuel à renouvellement automatique.
         </p>
     </main>
-    <footer class="home-footer">
-        <p class="home-footer__copyright">© 2026 Nolimi. Tous droits réservés.</p>
-        <a href="../mentions-legales/index.html" class="home-footer__link">Documents légaux</a>
-    </footer>
+
+    <script src="../../components/footer/footer.js"></script>
+    <script>NolimiFooter.mount();</script>
 </body>
 </html>

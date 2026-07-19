@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- website/pages/connexion/ — page de connexion (compte + lien de session). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -14,265 +15,47 @@
     <script src="../../../saas/lib/auth.js"></script>
 </head>
 <body class="page page--auth">
-    <header class="panel">
-        <a href="../accueil/index.html" class="panel-logo" aria-label="Nolimi — accueil">
-            <img
-                src="../../../assets/brand/nolimi-logo-wordmark.jpg"
-                alt=""
-                class="panel-logo__img"
-                width="1024"
-                height="300"
-                decoding="async"
-            >
-        </a>
-        <nav class="panel-actions" aria-label="Actions principales">
-            <a href="../abonnement/index.html" class="panel-cta panel-cta--secondary">Licences</a>
-            <a href="index.html" class="panel-cta panel-cta--current" aria-current="page">Se connecter</a>
-        </nav>
-    </header>
+    <script src="../../components/navbar/navbar.js"></script>
+    <script>NolimiNavbar.mount({ current: 'connexion' });</script>
+
     <main class="page-main page-main--auth">
         <a href="../accueil/index.html" class="auth-back">← Retour</a>
         <div class="auth-centre">
-        <form class="form-login" id="form-login">
-            <input type="email" id="email" name="email" placeholder="Adresse mail" required autocomplete="email" aria-label="Adresse mail">
-            <input type="password" id="password" name="password" placeholder="Mot de passe" required autocomplete="current-password" aria-label="Mot de passe">
-            <p class="login-forgot">
-                Mot de passe oublié ? Contactez-nous :
-                <a href="mailto:hello.nolimi+contact@gmail.com">hello.nolimi+contact@gmail.com</a>
-            </p>
-            <div id="error-msg" class="error-msg" aria-live="polite"></div>
-            <p class="login-legal">
-                En vous connectant, vous acceptez nos
-                <a href="../mentions-legales/index.html#cgu">CGU</a>
-                et notre <a href="../mentions-legales/index.html#confidentialite">Politique de confidentialité</a>.
-            </p>
-            <button type="submit" id="btn-submit">Connexion</button>
-            <details class="login-link-dropdown" id="login-link-dropdown">
-                <summary class="login-link-dropdown__trigger">J'ai un lien</summary>
-                <div class="login-link-dropdown__panel">
-                    <input
-                        type="text"
-                        id="login-session-link"
-                        placeholder="Collez le lien de session ici"
-                        autocomplete="off"
-                        aria-label="Lien de session"
-                    >
-                </div>
-            </details>
-        </form>
+            <form class="form-login" id="form-login">
+                <input type="email" id="email" name="email" placeholder="Adresse mail" required autocomplete="email" aria-label="Adresse mail">
+                <input type="password" id="password" name="password" placeholder="Mot de passe" required autocomplete="current-password" aria-label="Mot de passe">
+
+                <p class="login-forgot">
+                    Mot de passe oublié ? Contactez-nous :
+                    <a href="mailto:hello.nolimi+contact@gmail.com">hello.nolimi+contact@gmail.com</a>
+                </p>
+
+                <div id="error-msg" class="error-msg" aria-live="polite"></div>
+
+                <p class="login-legal">
+                    En vous connectant, vous acceptez nos
+                    <a href="../mentions-legales/index.html#cgu">CGU</a>
+                    et notre <a href="../mentions-legales/index.html#confidentialite">Politique de confidentialité</a>.
+                </p>
+
+                <button type="submit" id="btn-submit">Connexion</button>
+
+                <details class="login-link-dropdown" id="login-link-dropdown">
+                    <summary class="login-link-dropdown__trigger">J'ai un lien</summary>
+                    <div class="login-link-dropdown__panel">
+                        <input
+                            type="text"
+                            id="login-session-link"
+                            placeholder="Collez le lien de session ici"
+                            autocomplete="off"
+                            aria-label="Lien de session"
+                        >
+                    </div>
+                </details>
+            </form>
         </div>
     </main>
-    <script>
-        (function () {
-            var form = document.getElementById('form-login');
-            var errEl = document.getElementById('error-msg');
-            var submitBtn = document.getElementById('btn-submit');
-            var sessionInput = document.getElementById('login-session-link');
-            var linkDropdown = document.getElementById('login-link-dropdown');
-            var invalidInputTimer = null;
-            var autoJoinTimer = null;
-            var joinInProgress = false;
 
-            if (typeof NolimiAuth !== 'undefined' && NolimiAuth.consumeGuestExitMessage) {
-                var guestExitMsg = NolimiAuth.consumeGuestExitMessage();
-                if (guestExitMsg) errEl.textContent = guestExitMsg;
-            }
-
-            function parseSessionId(input) {
-                if (typeof NolimiAuth === 'undefined' || !NolimiAuth.parseSessionLink) return '';
-                return NolimiAuth.parseSessionLink(input);
-            }
-
-            function isValidSessionLink(input) {
-                var sessionId = parseSessionId(input);
-                return typeof NolimiAuth !== 'undefined'
-                    && NolimiAuth.isValidSessionId
-                    && NolimiAuth.isValidSessionId(sessionId);
-            }
-
-            function persistSession(sessionId) {
-                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.persistPendingSession) {
-                    NolimiAuth.persistPendingSession(sessionId);
-                }
-            }
-
-            function setSessionInputLoading(loading) {
-                if (!sessionInput) return;
-                sessionInput.disabled = !!loading;
-            }
-
-            function goToSession(sessionId) {
-                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.clearPendingSession) {
-                    NolimiAuth.clearPendingSession();
-                }
-                window.location.replace(NolimiAuth.getAppUrl(sessionId));
-            }
-
-            function showInvalidSessionInput() {
-                if (!sessionInput) return;
-                if (linkDropdown) linkDropdown.open = true;
-                if (invalidInputTimer) clearTimeout(invalidInputTimer);
-                sessionInput.classList.add('invalid');
-                invalidInputTimer = setTimeout(function () {
-                    sessionInput.classList.remove('invalid');
-                    invalidInputTimer = null;
-                }, 2000);
-            }
-
-            function tryJoinSession() {
-                if (joinInProgress) return;
-                if (!sessionInput || !isValidSessionLink(sessionInput.value)) {
-                    showInvalidSessionInput();
-                    return;
-                }
-
-                joinInProgress = true;
-                var sessionId = parseSessionId(sessionInput.value);
-                persistSession(sessionId);
-                errEl.textContent = '';
-
-                if (typeof NolimiAuth === 'undefined' || !NolimiAuth.getClient) {
-                    errEl.textContent = 'Service de connexion indisponible.';
-                    joinInProgress = false;
-                    return;
-                }
-
-                var sb = NolimiAuth.getClient();
-                if (!sb) {
-                    errEl.textContent = 'Configuration Supabase manquante.';
-                    joinInProgress = false;
-                    return;
-                }
-
-                setSessionInputLoading(true);
-                errEl.textContent = 'Ouverture de la session…';
-
-                var email = document.getElementById('email').value.trim();
-                var password = document.getElementById('password').value;
-
-                NolimiAuth.ensureAuthForSessionJoin(email, password).then(function (authResult) {
-                    if (authResult.error) {
-                        var guestMsg = typeof NolimiAuth.mapGuestAuthError === 'function'
-                            ? NolimiAuth.mapGuestAuthError(authResult.error)
-                            : (authResult.error.message || 'Impossible de rejoindre la session.');
-                        errEl.textContent = guestMsg;
-                        setSessionInputLoading(false);
-                        joinInProgress = false;
-                        return;
-                    }
-                    goToSession(sessionId);
-                }).catch(function () {
-                    errEl.textContent = 'Erreur réseau. Réessayez.';
-                    setSessionInputLoading(false);
-                    joinInProgress = false;
-                });
-            }
-
-            function scheduleAutoJoin() {
-                if (autoJoinTimer) clearTimeout(autoJoinTimer);
-                autoJoinTimer = setTimeout(function () {
-                    if (!sessionInput || !isValidSessionLink(sessionInput.value)) return;
-                    tryJoinSession();
-                }, 400);
-            }
-
-            function autoJoinFromValidLink() {
-                if (!sessionInput || !isValidSessionLink(sessionInput.value)) return;
-                tryJoinSession();
-            }
-
-            function getSessionForRedirect() {
-                var fromUrl = new URLSearchParams(window.location.search).get('session');
-                if (fromUrl && isValidSessionLink(fromUrl)) return parseSessionId(fromUrl);
-                if (typeof NolimiAuth !== 'undefined' && NolimiAuth.getPendingSession) {
-                    var pending = NolimiAuth.getPendingSession();
-                    if (pending) return pending;
-                }
-                if (sessionInput && isValidSessionLink(sessionInput.value)) {
-                    return parseSessionId(sessionInput.value);
-                }
-                return '';
-            }
-
-            if (sessionInput) {
-                var sessionFromUrl = new URLSearchParams(window.location.search).get('session');
-                if (sessionFromUrl) {
-                    sessionInput.value = sessionFromUrl;
-                    persistSession(sessionFromUrl);
-                    if (linkDropdown) linkDropdown.open = true;
-                }
-                sessionInput.addEventListener('input', function () {
-                    sessionInput.classList.remove('invalid');
-                    var sessionId = parseSessionId(sessionInput.value);
-                    if (isValidSessionLink(sessionInput.value)) {
-                        persistSession(sessionId);
-                        scheduleAutoJoin();
-                    }
-                });
-                sessionInput.addEventListener('paste', function () {
-                    if (linkDropdown) linkDropdown.open = true;
-                    setTimeout(scheduleAutoJoin, 50);
-                });
-            }
-
-            if (typeof NolimiAuth !== 'undefined' && NolimiAuth.redirectIfAlreadyLoggedIn) {
-                NolimiAuth.redirectIfAlreadyLoggedIn(getSessionForRedirect()).then(function () {
-                    autoJoinFromValidLink();
-                });
-            } else {
-                autoJoinFromValidLink();
-            }
-
-            if (sessionInput) {
-                sessionInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        tryJoinSession();
-                    }
-                });
-            }
-
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                var email = document.getElementById('email').value.trim();
-                var password = document.getElementById('password').value;
-                errEl.textContent = '';
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Connexion...';
-
-                if (typeof NolimiAuth === 'undefined' || !NolimiAuth.signInWithPassword) {
-                    errEl.textContent = 'Service de connexion indisponible.';
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Connexion';
-                    return;
-                }
-
-                NolimiAuth.signInWithPassword(email, password).then(function (result) {
-                    if (result.error) {
-                        errEl.textContent = result.error.message;
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Connexion';
-                        return;
-                    }
-                    var sessionId = '';
-                    if (sessionInput && isValidSessionLink(sessionInput.value)) {
-                        sessionId = parseSessionId(sessionInput.value);
-                    }
-                    if (sessionId) {
-                        goToSession(sessionId);
-                        return;
-                    }
-                    if (typeof NolimiAuth.clearPendingSession === 'function') {
-                        NolimiAuth.clearPendingSession();
-                    }
-                    window.location.replace(NolimiAuth.getAppUrl());
-                }).catch(function () {
-                    errEl.textContent = 'Erreur réseau. Réessayez.';
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Connexion';
-                });
-            });
-        })();
-    </script>
+    <script src="./connexion.js"></script>
 </body>
 </html>
