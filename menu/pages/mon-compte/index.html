@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- menu/pages/mon-compte/ — mon compte (déconnexion / retour site). -->
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolimi — Mon compte</title>
+    <link rel="icon" href="../../../assets/brand/favicon-64.png" type="image/png" sizes="64x64">
+    <link rel="icon" href="../../../assets/brand/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="../../../assets/brand/apple-touch-icon.png" sizes="180x180">
+    <link rel="stylesheet" href="../../main.css">
+    <link rel="stylesheet" href="./mon-compte.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../saas/config/supabase.config.js"></script>
+    <script src="../../../saas/lib/auth.js"></script>
+</head>
+<body class="page page--menu">
+    <script src="../../components/sidebar/sidebar.js"></script>
+    <script>NolimiMenuSidebar.mount({ current: 'mon-compte' });</script>
+
+    <main class="menu-main menu-main--mon-compte">
+        <header class="compte-header">
+            <h1 class="compte-title">Mon compte</h1>
+        </header>
+        <div class="compte-actions">
+            <button type="button" class="compte-btn compte-btn--secondary" id="btn-back-website">
+                Retour au site web
+            </button>
+            <button type="button" class="compte-btn compte-btn--danger" id="btn-logout">
+                Se déconnecter
+            </button>
+        </div>
+    </main>
+
+    <script src="./mon-compte.js"></script>
+</body>
+</html>

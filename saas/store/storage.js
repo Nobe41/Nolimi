@@ -482,170 +482,60 @@ async function initProjectFileHandleRestore() {
     await resolveLinkedProjectFileHandle();
 }
 
-// --- UI menu Fichier (ouvrir / enregistrer) ---
+// --- UI menu Fichier : Enregistrer → cloud (menu Fichiers) ---
 
-var btnOpenProject = document.getElementById('btn-open-project');
-var btnOpenWorkspace = document.getElementById('btn-open-workspace');
-var fileLoader = document.getElementById('file-loader');
 var btnSave = document.getElementById('btn-save');
-var btnSaveAs = document.getElementById('btn-save-as');
 var fichierDropdown = document.getElementById('fichier-dropdown');
-var pageMenuEl = document.getElementById('Page-menu');
-var pageBouteilleEl = document.getElementById('Page-Bouteille');
-var viewport2DEl = document.getElementById('viewport-2d');
 
 function hideFichierDropdown() {
     if (fichierDropdown) fichierDropdown.classList.add('hidden');
 }
 
-function loadProjectData(jsonString) {
+function getCloudProjectDisplayName() {
+    var titleInput = document.getElementById('cartouche-title');
+    if (titleInput && titleInput.value.trim()) return titleInput.value.trim();
+    if (typeof currentCloudProjectName === 'string' && currentCloudProjectName.trim()) {
+        return currentCloudProjectName.trim();
+    }
+    return 'Sans titre';
+}
+
+// Crée le projet cloud si nouveau (choix dossier si besoin), sinon écrase l’existant
+async function saveProjectToCloud() {
+    hideFichierDropdown();
+    if (typeof CloudProjects === 'undefined') {
+        alert('Module Fichiers indisponible.');
+        return;
+    }
+    var payload = (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.collectPayload)
+        ? WorkspaceAutosave.collectPayload()
+        : { version: 1, inputs: {} };
+    var name = getCloudProjectDisplayName();
+
     try {
-        var savedData = JSON.parse(jsonString);
-        if (pageMenuEl) pageMenuEl.classList.add('hidden');
-        if (pageBouteilleEl) pageBouteilleEl.classList.remove('hidden');
-        setTimeout(function () {
-            if (typeof initLogiciel === 'function' && !isLogicielInit) {
-                initLogiciel();
-                isLogicielInit = true;
-            }
-            if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.applyProjectPayload) {
-                WorkspaceAutosave.applyProjectPayload(savedData, function () {
-                    if (typeof draw2D === 'function' && viewport2DEl && !viewport2DEl.classList.contains('hidden')) draw2D();
-                    if (typeof WorkspaceAutosave !== 'undefined') WorkspaceAutosave.saveNow();
-                });
-            } else {
-                alert("Impossible de charger le projet (module de sauvegarde absent).");
-            }
-        }, 50);
+        var row;
+        if (typeof currentCloudProjectId === 'string' && currentCloudProjectId) {
+            row = await CloudProjects.update(currentCloudProjectId, { name: name, data: payload });
+        } else {
+            var folderId = await CloudProjects.askFolderId();
+            if (typeof folderId === 'undefined') return; // annulé
+            row = await CloudProjects.create(name, payload, folderId);
+            currentCloudProjectId = row.id;
+            CloudProjects.setProjectIdInUrl(row.id);
+        }
+        currentCloudProjectName = row.name || name;
+        showSavedFeedback();
     } catch (err) {
-        alert("Erreur : Le fichier de sauvegarde n'est pas valide.");
+        alert(CloudProjects.mapError(err));
         console.error(err);
     }
 }
 
-async function handleOpenProject() {
-    hideFichierDropdown();
-    if ('showOpenFilePicker' in window) {
-        try {
-            var fileHandle = (await window.showOpenFilePicker({
-                mode: 'readwrite',
-                types: [{ description: 'Fichier Bouteille JSON', accept: { 'application/json': ['.json'] } }]
-            }))[0];
-            await ensureWritePermission(fileHandle);
-            var file = await fileHandle.getFile();
-            await bindProjectFileHandle(fileHandle, file.name);
-            loadProjectData(await file.text());
-        } catch (err) {
-            console.log("Ouverture annulée", err);
-        }
-    } else {
-        fileLoader.click();
-    }
-}
-
-async function writeProjectToHandle(handle, jsonString) {
-    if (!(await ensureWritePermission(handle))) return false;
-    var writable = await handle.createWritable();
-    await writable.write(jsonString);
-    await writable.close();
-    return true;
-}
-
-async function saveProject(isSaveAs) {
-    if (typeof isSaveAs === 'undefined') isSaveAs = false;
-    hideFichierDropdown();
-    var payload = (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.collectPayload)
-        ? WorkspaceAutosave.collectPayload()
-        : { version: 1, inputs: {} };
-    var titleInput = document.getElementById('cartouche-title');
-    var fileName = (titleInput && titleInput.value.trim() !== '') ? titleInput.value.trim() : 'Bouteille_SansNom';
-    var jsonString = JSON.stringify(payload, null, 2);
-    var canUseFileSystemAccess = ('showOpenFilePicker' in window) || ('showSaveFilePicker' in window);
-
-    if (canUseFileSystemAccess) {
-        try {
-            if (!isSaveAs) {
-                var linkedHandle = await resolveLinkedProjectFileHandle();
-                if (linkedHandle) {
-                    if (await writeProjectToHandle(linkedHandle, jsonString)) {
-                        rememberProjectFileName(linkedHandle.name || fileName + '.json');
-                        showSavedFeedback();
-                    } else {
-                        alert("Impossible de modifier le fichier existant. Autorisez l'accès en écriture, ou choisissez le fichier via Fichier → Ouvrir.");
-                    }
-                    return;
-                }
-
-                if (hasKnownProjectFileContext()) {
-                    var existingHandle = await pickProjectFileHandleForWrite();
-                    if (!existingHandle) return;
-                    await ensureWritePermission(existingHandle);
-                    await bindProjectFileHandle(existingHandle, existingHandle.name);
-                    if (await writeProjectToHandle(currentFileHandle, jsonString)) showSavedFeedback();
-                    return;
-                }
-            }
-
-            if (!('showSaveFilePicker' in window)) {
-                alert("Votre navigateur ne permet pas d'enregistrer directement. Utilisez Chrome ou Edge, ou Fichier → Ouvrir puis Enregistrer.");
-                return;
-            }
-
-            var pickedHandle = await window.showSaveFilePicker({
-                suggestedName: getKnownProjectFileName(fileName) + '.json',
-                types: [{ description: 'Fichier Bouteille JSON', accept: { 'application/json': ['.json'] } }]
-            });
-            await bindProjectFileHandle(pickedHandle, pickedHandle.name || fileName + '.json');
-            if (await writeProjectToHandle(currentFileHandle, jsonString)) showSavedFeedback();
-        } catch (err) {
-            console.log('Sauvegarde annulée', err);
-        }
-        return;
-    }
-
-    var downloadName = fileName;
-    if (isSaveAs || !getKnownProjectFileName('')) {
-        var userFileName = prompt('Entrez le nom de la sauvegarde :', fileName);
-        if (!userFileName) return;
-        downloadName = userFileName;
-        rememberProjectFileName(downloadName + '.json');
-    } else {
-        downloadName = getKnownProjectFileName(fileName);
-    }
-
-    var blob = new Blob([jsonString], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = downloadName + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showSavedFeedback();
-}
-
-if (btnOpenProject) btnOpenProject.addEventListener('click', handleOpenProject);
-if (btnOpenWorkspace) btnOpenWorkspace.addEventListener('click', handleOpenProject);
-
-if (fileLoader) {
-    fileLoader.addEventListener('change', function (event) {
-        var file = event.target.files[0];
-        if (!file) return;
-        clearProjectFileBinding();
-        rememberProjectFileName(file.name);
-        try { sessionStorage.setItem('nolimi-project-file-linked', '1'); } catch (e) { /* ignore */ }
-        var reader = new FileReader();
-        reader.onload = function (e) {
-            loadProjectData(e.target.result);
-            fileLoader.value = '';
-        };
-        reader.readAsText(file);
+if (btnSave) {
+    btnSave.addEventListener('click', function () {
+        saveProjectToCloud();
     });
 }
-
-if (btnSave) btnSave.addEventListener('click', function () { saveProject(false); });
-if (btnSaveAs) btnSaveAs.addEventListener('click', function () { saveProject(true); });
 
 // Boot : restaure le handle fichier si présent ; démarre l’autosave (listeners seulement)
 initProjectFileHandleRestore();

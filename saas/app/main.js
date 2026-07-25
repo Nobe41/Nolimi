@@ -1,5 +1,47 @@
 // saas/app/ — démarrage de l’atelier (point d’entrée).
 // Ce fichier : après auth, lance 3D / 2D / realtime / autosave.
+// Si ?project=… → charge le projet cloud Stockage après init.
+
+function getCloudProjectIdFromBoot() {
+    if (typeof CloudProjects !== 'undefined' && CloudProjects.getProjectIdFromUrl) {
+        return CloudProjects.getProjectIdFromUrl();
+    }
+    try {
+        return new URLSearchParams(window.location.search).get('project') || '';
+    } catch (e) {
+        return '';
+    }
+}
+
+function loadCloudProjectIfNeeded(projectId, done) {
+    if (!projectId || typeof CloudProjects === 'undefined') {
+        if (typeof done === 'function') done();
+        return;
+    }
+
+    CloudProjects.get(projectId).then(function (row) {
+        currentCloudProjectId = row.id;
+        currentCloudProjectName = row.name || 'Sans titre';
+        if (typeof CloudProjects.setProjectIdInUrl === 'function') {
+            CloudProjects.setProjectIdInUrl(row.id);
+        }
+        if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.applyProjectPayload) {
+            WorkspaceAutosave.applyProjectPayload(row.data || {}, function () {
+                if (typeof done === 'function') done();
+            });
+        } else if (typeof done === 'function') {
+            done();
+        }
+    }).catch(function (err) {
+        console.error(err);
+        alert(typeof CloudProjects.mapError === 'function'
+            ? CloudProjects.mapError(err)
+            : 'Impossible de charger le projet.');
+        currentCloudProjectId = null;
+        currentCloudProjectName = null;
+        if (typeof done === 'function') done();
+    });
+}
 
 function bootAtelier() {
     // Page atelier absente → rien à faire
@@ -15,10 +57,12 @@ function bootAtelier() {
         RealtimeFeature.tryAutoJoinFromUrl();
     }
 
+    var cloudProjectId = getCloudProjectIdFromBoot();
+
     // 3) Lancer le logiciel (léger délai pour laisser le DOM / scripts prêts)
     setTimeout(function () {
         // Refresh = valeurs d’usine (pas de reprise autosave localStorage).
-        // Pour reprendre un projet : menu Ouvrir / fichier JSON.
+        // Pour reprendre un projet : menu Fichiers.
         if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.clear) {
             WorkspaceAutosave.clear();
         }
@@ -26,10 +70,19 @@ function bootAtelier() {
             initLogiciel();
             isLogicielInit = true;
         }
-        if (typeof updateBouteille === 'function') updateBouteille();
-        if (typeof draw2D === 'function') draw2D();
-        if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) {
-            WorkspaceAutosave.saveNow();
+
+        function afterReady() {
+            if (typeof updateBouteille === 'function') updateBouteille();
+            if (typeof draw2D === 'function') draw2D();
+            if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) {
+                WorkspaceAutosave.saveNow();
+            }
+        }
+
+        if (cloudProjectId) {
+            loadCloudProjectIfNeeded(cloudProjectId, afterReady);
+        } else {
+            afterReady();
         }
     }, 50);
 }

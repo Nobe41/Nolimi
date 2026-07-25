@@ -1,0 +1,212 @@
+/* menu/pages/fichiers/ — liste des projets / dossiers cloud. */
+
+.menu-main--fichiers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    width: 100%;
+}
+
+.fichiers-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.fichiers-header__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.fichiers-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--nolimi-ink);
+}
+
+.fichiers-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--nolimi-text-muted);
+}
+
+.fichiers-breadcrumb__link {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    color: var(--nolimi-accent);
+    cursor: pointer;
+}
+
+.fichiers-breadcrumb__link:hover {
+    text-decoration: underline;
+}
+
+.fichiers-breadcrumb__sep {
+    opacity: 0.55;
+}
+
+.fichiers-breadcrumb__current {
+    color: var(--nolimi-ink);
+}
+
+.fichiers-btn-folder {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid var(--nolimi-border);
+    background: var(--nolimi-surface);
+    color: var(--nolimi-ink);
+    flex-shrink: 0;
+}
+
+.fichiers-btn-folder:hover {
+    background: var(--nolimi-bg);
+}
+
+.fichiers-divider {
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--nolimi-border-subtle);
+    margin: 0;
+}
+
+.fichiers-status {
+    font-size: 0.9rem;
+    color: var(--nolimi-text-muted);
+}
+
+.fichiers-status--error {
+    color: var(--nolimi-danger);
+}
+
+.fichiers-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+}
+
+.fichiers-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.55rem 0.45rem 0.9rem;
+    background: var(--nolimi-surface);
+    border: 1px solid var(--nolimi-border-subtle);
+    border-radius: 8px;
+}
+
+.fichiers-item--folder {
+    cursor: pointer;
+}
+
+.fichiers-item--folder:hover {
+    background: var(--nolimi-accent-soft);
+}
+
+.fichiers-item__info {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+
+.fichiers-item__name {
+    font-size: 0.9rem;
+    font-weight: 560;
+    color: var(--nolimi-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fichiers-item__meta {
+    font-size: 0.7rem;
+    color: var(--nolimi-text-muted);
+}
+
+.fichiers-item__menu {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.fichiers-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--nolimi-text-muted);
+    font-size: 1.15rem;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+}
+
+.fichiers-menu-btn:hover,
+.fichiers-item__menu.is-open .fichiers-menu-btn {
+    background: var(--nolimi-bg);
+    color: var(--nolimi-ink);
+}
+
+.fichiers-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 0.2rem);
+    right: 0;
+    z-index: 20;
+    min-width: 8.5rem;
+    padding: 0.25rem;
+    background: var(--nolimi-surface);
+    border: 1px solid var(--nolimi-border-subtle);
+    border-radius: 8px;
+    box-shadow: var(--nolimi-shadow-md);
+}
+
+.fichiers-menu-dropdown[hidden] {
+    display: none;
+}
+
+.fichiers-menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.7rem;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--nolimi-ink);
+    font-size: 0.85rem;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.fichiers-menu-item:hover {
+    background: var(--nolimi-bg);
+}
+
+.fichiers-menu-item--danger {
+    color: var(--nolimi-danger);
+}
+
+.fichiers-menu-item--danger:hover {
+    background: var(--nolimi-danger-soft);
+}

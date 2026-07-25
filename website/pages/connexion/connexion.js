@@ -187,7 +187,7 @@
             }
 
             if (Auth.clearPendingSession) Auth.clearPendingSession();
-            window.location.replace(Auth.getAppUrl());
+            window.location.replace(Auth.getMenuUrl ? Auth.getMenuUrl() : Auth.getAppUrl());
         }).catch(function () {
             errEl.textContent = 'Erreur réseau. Réessayez.';
             resetSubmitBtn();

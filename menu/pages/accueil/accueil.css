@@ -1,0 +1,23 @@
+/* menu/pages/accueil/ — styles de la page accueil du menu. */
+
+.menu-main--accueil {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.menu-btn-nouveau {
+    padding: 0.55rem 1.15rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+    background: var(--nolimi-accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.menu-btn-nouveau:hover {
+    background: var(--nolimi-accent-hover);
+}

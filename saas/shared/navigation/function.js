@@ -59,9 +59,30 @@ var UIEvents = (function () {
             });
         }
 
+        function goToAppMenu() {
+            if (fichierDropdown) fichierDropdown.classList.add('hidden');
+            if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) WorkspaceAutosave.saveNow();
+            var menuUrl = (typeof NolimiAuth !== 'undefined' && NolimiAuth.getMenuUrl)
+                ? NolimiAuth.getMenuUrl()
+                : '../menu/pages/accueil/index.html';
+            window.location.href = menuUrl;
+        }
+
         if (btnBackMenu && !btnBackMenu.dataset.navBound) {
             btnBackMenu.dataset.navBound = '1';
-            btnBackMenu.addEventListener('click', function () {
+            btnBackMenu.addEventListener('click', goToAppMenu);
+        }
+
+        var btnSidebarHome = get(IDS.btnSidebarHome);
+        if (btnSidebarHome && !btnSidebarHome.dataset.navBound) {
+            btnSidebarHome.dataset.navBound = '1';
+            btnSidebarHome.addEventListener('click', goToAppMenu);
+        }
+
+        var btnBackWebsite = get(IDS.btnBackWebsite);
+        if (btnBackWebsite && !btnBackWebsite.dataset.navBound) {
+            btnBackWebsite.dataset.navBound = '1';
+            btnBackWebsite.addEventListener('click', function () {
                 if (fichierDropdown) fichierDropdown.classList.add('hidden');
                 if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) WorkspaceAutosave.saveNow();
                 window.location.href = '../website/pages/accueil/index.html';

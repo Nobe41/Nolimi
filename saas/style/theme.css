@@ -1156,19 +1156,20 @@ body.guide-modal-open {
     }
 
     .mobile-menu-panel__close:hover {
-        background: rgba(0, 0, 0, 0.1);
+        background: var(--nolimi-bg, #f7f7f8);
     }
 
     .mobile-menu-nav__trigger:hover {
-        background: var(--color-accent-soft) !important;
-        border-color: rgba(0, 120, 212, 0.25) !important;
+        background: var(--nolimi-accent-muted, rgba(92, 179, 255, 0.14)) !important;
+        color: var(--nolimi-ink, #0a0a0b) !important;
+        border: none !important;
     }
 
     .mobile-menu-subpanel button:hover,
     .mobile-menu-subpanel label:hover {
-        background: var(--color-accent-soft) !important;
-        border-color: rgba(0, 120, 212, 0.25) !important;
-        color: var(--color-accent) !important;
+        background: var(--nolimi-accent-muted, rgba(92, 179, 255, 0.14)) !important;
+        color: var(--nolimi-ink, #0a0a0b) !important;
+        border: none !important;
     }
 
     .mobile-menu-subpanel .realtime-leave-btn:hover {

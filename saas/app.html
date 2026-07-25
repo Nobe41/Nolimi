@@ -40,8 +40,6 @@
                 <div class="menu-left-panel">
                     <h1 class="menu-title">Nolimi</h1>
                     <button id="btn-new-project" class="menu-big-btn"><span>+</span> NOUVEAU</button>
-                    <button id="btn-open-project" class="menu-big-btn secondary"><span>📂</span> OUVRIR</button>
-                    <input type="file" id="file-loader" class="hidden-file">
                 </div>
             </div>
             <div class="menu-col-right"></div>
@@ -54,15 +52,17 @@
         <aside id="Panel-gauche">
             <!-- Sidebar : icônes cliquables pour afficher le contenu dans l'Inspector -->
             <div id="sidebar" class="panel-logo-col">
-                <div class="panel-brand-logo">
-                    <img
-                        src="assets/brand/nolimi-logo-viewport.png"
-                        alt="Nolimi"
-                        width="500"
-                        height="500"
-                        decoding="async"
-                    >
-                </div>
+                <button
+                    type="button"
+                    id="btn-sidebar-home"
+                    class="panel-sidebar-menu"
+                    title="Revenir au menu"
+                    aria-label="Revenir au menu"
+                >
+                    <span class="panel-sidebar-menu__bar" aria-hidden="true"></span>
+                    <span class="panel-sidebar-menu__bar" aria-hidden="true"></span>
+                    <span class="panel-sidebar-menu__bar" aria-hidden="true"></span>
+                </button>
                 <div class="panel-logo panel-col-tab active" id="panel-tab-sections" title="Section" role="button" tabindex="0">S</div>
                 <div class="panel-logo panel-col-tab" id="panel-tab-gravure" title="Gravure" role="button" tabindex="0">G</div>
                 <div class="panel-logo panel-col-tab" id="panel-tab-information" title="Plan" role="button" tabindex="0">P</div>
@@ -251,14 +251,13 @@
                     <div class="dropdown">
                         <button id="btn-fichier-menu" class="btn-fichier" type="button">Fichier</button>
                         <div id="fichier-dropdown" class="dropdown-content dropdown-right hidden">
-                            <button id="btn-open-workspace">Ouvrir</button>
-                            <button id="btn-save">Enregistrer</button>
-                            <button id="btn-save-as">Enregistrer sous...</button>
+                            <button id="btn-save" type="button">Enregistrer</button>
                             <button id="btn-export-3d">Exporter 3D</button>
                             <button id="btn-export-2d">Exporter 2D</button>
                             <hr style="border: none; border-top: 1px solid rgba(0,0,0,0.1); margin: 5px 0;">
+                            <button id="btn-back-menu" type="button">Revenir au menu</button>
+                            <button id="btn-back-website" type="button">Retour au site web</button>
                             <button id="btn-logout" type="button">Déconnexion</button>
-                            <button id="btn-back-menu">Retour au site web</button>
                         </div>
                     </div>
                     <div class="dropdown">
@@ -491,6 +490,7 @@
     <script src="layout/ui-controls.js"></script>
     <script src="layout/function.js"></script>
     <script src="store/storage.js"></script>
+    <script src="store/cloud-projects.js"></script>
 
     <!-- ========== Export / gravure / boot ========== -->
     <script src="features/export/rules.js"></script>

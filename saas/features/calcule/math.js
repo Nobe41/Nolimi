@@ -399,10 +399,32 @@ var CalculeVolumeMath = (function () {
         return Math.max(0, yTop - ((lo + hi) * 0.5));
     }
 
+    // Chambre d'expansion (%) : volume d'air entre le niveau utile et le bas du bouchon,
+    // rapporté à la capacité ras bord. Plus fiable qu'une proportion linéaire en hauteur.
+    function computeExpansionChamberPct(sectionsData, usefulCl, bouchonMm) {
+        var ctx = buildInteriorContext(sectionsData);
+        var e = eps();
+        var mm3PerCl = rules().MM3_PER_CL || 10000;
+        var yBottom = (ctx.innerSectionsData && ctx.innerSectionsData.sections && ctx.innerSectionsData.sections.length)
+            ? (ctx.innerSectionsData.sections[0].H || 0)
+            : 0;
+        var yTop = getTopBagueHeight(ctx);
+        var vTop = computeVolumeUpToHeightMm3(ctx, yTop);
+        if (vTop <= e) return 0;
+
+        var usefulMm3 = Math.max(0, Math.min(vTop, (usefulCl || 0) * mm3PerCl));
+        var corkMm = Math.max(0, bouchonMm || 0);
+        var yBelowCork = Math.max(yBottom, yTop - corkMm);
+        var vBelowCork = computeVolumeUpToHeightMm3(ctx, yBelowCork);
+        var chamberMm3 = Math.max(0, vBelowCork - usefulMm3);
+        return (chamberMm3 / vTop) * 100;
+    }
+
     return {
         computeTotalInteriorVolumeMm3: computeTotalInteriorVolumeMm3,
         computeTotalOuterVolumeMm3: computeTotalOuterVolumeMm3,
         computeDegarnieMmFromUsefulCapacityCl: computeDegarnieMmFromUsefulCapacityCl,
+        computeExpansionChamberPct: computeExpansionChamberPct,
         computeCanuleDiameterMm: computeCanuleDiameterMm
     };
 })();

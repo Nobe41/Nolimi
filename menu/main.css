@@ -1,0 +1,27 @@
+/* menu/main.css — styles communs à toutes les pages du menu. */
+
+@import url("../assets/brand/tokens.css");
+@import url("./components/sidebar/sidebar.css");
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html,
+body {
+    min-height: 100%;
+    min-height: 100dvh;
+}
+
+body.page--menu {
+    display: flex;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--nolimi-bg);
+    color: var(--nolimi-ink);
+    -webkit-font-smoothing: antialiased;
+}
+
+.menu-main {
+    flex: 1;
+    min-width: 0;
+    min-height: 100dvh;
+    padding: 1.5rem 1.75rem;
+}

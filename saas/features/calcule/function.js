@@ -8,6 +8,7 @@ var CalculeVolumeFeature = (function () {
         ? window.matchMedia(R.MOBILE_MQ || '(max-width: 768px)')
         : null;
     var lastResults = null;
+    var lastSectionsData = null;
     var mobileLayoutListenerBound = false;
 
     function id(key, fallback) {
@@ -144,12 +145,11 @@ var CalculeVolumeFeature = (function () {
             ? CalculeVolumeMath.computeDegarnieMmFromUsefulCapacityCl(data, capaciteUtileCl)
             : 0;
         var bouchonMm = st.bouchonRentrantOn ? clampBouchonRentrantMm(st.bouchonRentrantMm) : 0;
-        var chamberClRaw = Math.max(0, rasBordCl - capaciteUtileCl);
-        var chamberFactor = degarnieMmBrut > 1e-9
-            ? Math.max(0, (degarnieMmBrut - bouchonMm) / degarnieMmBrut)
+        // Dégarnie affichée = hauteur libre au-dessus du liquide, hors bouchon rentrant
+        var degarnieMm = Math.max(0, degarnieMmBrut - bouchonMm);
+        var chamberPct = CalculeVolumeMath.computeExpansionChamberPct
+            ? CalculeVolumeMath.computeExpansionChamberPct(data, capaciteUtileCl, bouchonMm)
             : 0;
-        var chamberCl = chamberClRaw * chamberFactor;
-        var chamberPct = rasBordCl > 1e-9 ? (chamberCl / rasBordCl) * 100 : 0;
         var canuleMm = CalculeVolumeMath.computeCanuleDiameterMm
             ? CalculeVolumeMath.computeCanuleDiameterMm()
             : 0;
@@ -162,7 +162,7 @@ var CalculeVolumeFeature = (function () {
             volumeMm3: volumeMm3,
             rasBordCl: rasBordCl,
             capaciteUtileCl: capaciteUtileCl,
-            degarnieMm: degarnieMmBrut,
+            degarnieMm: degarnieMm,
             chamberPct: chamberPct,
             canuleMm: canuleMm,
             poidsVerreG: poidsVerreG
@@ -171,9 +171,10 @@ var CalculeVolumeFeature = (function () {
 
     // Point d'entrée appelé quand les sections changent : recalcule et rafraîchit l'affichage.
     function updateFromSectionsData(sectionsData) {
-        lastResults = computeFromSectionsData(sectionsData);
+        if (sectionsData) lastSectionsData = sectionsData;
+        lastResults = computeFromSectionsData(lastSectionsData || sectionsData || {});
         updateOverlayDisplay();
-        if (isMobileLayout()) updateResultsPanel();
+        updateResultsPanel();
         if (typeof draw2D === 'function') draw2D();
     }
 
@@ -181,7 +182,13 @@ var CalculeVolumeFeature = (function () {
         return lastResults;
     }
 
-    function refreshBottle() {
+    // Recalcule à partir des dernières sections (densité / capacité / bouchon)
+    // sans reconstruire la 3D — obligatoire car updateBouteille court-circuite si géométrie inchangée.
+    function recompute() {
+        if (lastSectionsData) {
+            updateFromSectionsData(lastSectionsData);
+            return;
+        }
         if (typeof updateBouteille === 'function') updateBouteille();
     }
 
@@ -245,7 +252,7 @@ var CalculeVolumeFeature = (function () {
             s.capaciteUtileCl = clampCapaciteUtileCl(v);
             if (num) num.value = s.capaciteUtileCl;
             if (rng) rng.value = s.capaciteUtileCl;
-            refreshBottle();
+            recompute();
         }
         if (num && rng) {
             bindCalculeNum(num, applyCapaciteUtile);
@@ -260,7 +267,7 @@ var CalculeVolumeFeature = (function () {
             cb.addEventListener('change', function () {
                 getState().bouchonRentrantOn = !!cb.checked;
                 group.style.display = getState().bouchonRentrantOn ? '' : 'none';
-                refreshBottle();
+                recompute();
             });
         }
         function applyBouchon(v) {
@@ -268,7 +275,7 @@ var CalculeVolumeFeature = (function () {
             s.bouchonRentrantMm = clampBouchonRentrantMm(v);
             if (brNum) brNum.value = s.bouchonRentrantMm;
             if (brRng) brRng.value = s.bouchonRentrantMm;
-            refreshBottle();
+            recompute();
         }
         if (brNum && brRng) {
             bindCalculeNum(brNum, applyBouchon);
@@ -282,7 +289,7 @@ var CalculeVolumeFeature = (function () {
             s.densiteVerre = clampDensiteVerre(v);
             if (dNum) dNum.value = s.densiteVerre.toFixed(2);
             if (dRng) dRng.value = s.densiteVerre.toFixed(2);
-            refreshBottle();
+            recompute();
         }
         if (dNum && dRng) {
             bindCalculeNum(dNum, applyDensite);

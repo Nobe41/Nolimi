@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!-- menu/pages/fichiers/ — liste des projets / dossiers cloud. -->
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolimi — Fichiers</title>
+    <link rel="icon" href="../../../assets/brand/favicon-64.png" type="image/png" sizes="64x64">
+    <link rel="icon" href="../../../assets/brand/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="../../../assets/brand/apple-touch-icon.png" sizes="180x180">
+    <link rel="stylesheet" href="../../main.css">
+    <link rel="stylesheet" href="./fichiers.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../saas/config/supabase.config.js"></script>
+    <script src="../../../saas/lib/auth.js"></script>
+    <script src="../../../saas/store/cloud-projects.js"></script>
+</head>
+<body class="page page--menu">
+    <script src="../../components/sidebar/sidebar.js"></script>
+    <script>NolimiMenuSidebar.mount({ current: 'fichiers' });</script>
+
+    <main class="menu-main menu-main--fichiers">
+        <header class="fichiers-header">
+            <div class="fichiers-header__row">
+                <h1 class="fichiers-title">Fichiers</h1>
+                <button type="button" class="fichiers-btn-folder" id="btn-create-folder">Créer un dossier</button>
+            </div>
+            <nav id="fichiers-breadcrumb" class="fichiers-breadcrumb" aria-label="Emplacement" hidden></nav>
+        </header>
+
+        <hr class="fichiers-divider" aria-hidden="true">
+
+        <p id="fichiers-status" class="fichiers-status" aria-live="polite">Chargement…</p>
+        <ul id="fichiers-list" class="fichiers-list" hidden></ul>
+    </main>
+
+    <script src="./fichiers.js"></script>
+</body>
+</html>

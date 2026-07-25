@@ -10,6 +10,8 @@ var NavigationRules = (function () {
             pageBouteille: 'Page-Bouteille',
             btnNewProject: 'btn-new-project',
             btnBackMenu: 'btn-back-menu',
+            btnSidebarHome: 'btn-sidebar-home',
+            btnBackWebsite: 'btn-back-website',
             fichierDropdown: 'fichier-dropdown',
             // Vues 3D / 2D
             btn3D: 'btn-view-3d',
