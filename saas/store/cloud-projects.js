@@ -177,8 +177,9 @@ var CloudProjects = (function () {
         return requireUser().then(function (ctx) {
             var q = ctx.sb
                 .from(TABLE)
-                .select('id, name, folder_id, created_at, updated_at')
+                .select('id, name, folder_id, collab_workspace_id, created_at, updated_at')
                 .eq('user_id', ctx.user.id)
+                .is('collab_workspace_id', null)
                 .order('name', { ascending: true });
 
             if (folderId && isUuid(folderId)) {
@@ -210,6 +211,7 @@ var CloudProjects = (function () {
                     .from(TABLE)
                     .select('folder_id')
                     .eq('user_id', ctx.user.id)
+                    .is('collab_workspace_id', null)
                     .in('folder_id', ids)
                     .then(function (result) {
                         if (result.error) return Promise.reject(result.error);
@@ -231,9 +233,8 @@ var CloudProjects = (function () {
         return requireUser().then(function (ctx) {
             return ctx.sb
                 .from(TABLE)
-                .select('id, name, folder_id, data, created_at, updated_at')
+                .select('id, name, folder_id, collab_workspace_id, data, created_at, updated_at')
                 .eq('id', projectId)
-                .eq('user_id', ctx.user.id)
                 .maybeSingle()
                 .then(function (result) {
                     if (result.error) return Promise.reject(result.error);
@@ -250,12 +251,38 @@ var CloudProjects = (function () {
                 name: String(name || 'Sans titre').trim() || 'Sans titre',
                 data: data || {},
                 folder_id: (folderId && isUuid(folderId)) ? folderId : null,
+                collab_workspace_id: null,
                 updated_at: new Date().toISOString()
             };
             return ctx.sb
                 .from(TABLE)
                 .insert(row)
-                .select('id, name, folder_id, data, created_at, updated_at')
+                .select('id, name, folder_id, collab_workspace_id, data, created_at, updated_at')
+                .single()
+                .then(function (result) {
+                    if (result.error) return Promise.reject(result.error);
+                    return result.data;
+                });
+        });
+    }
+
+    function createCollabProject(workspaceId, name, data) {
+        if (!isUuid(workspaceId)) {
+            return Promise.reject(new Error('Dossier collaboratif invalide.'));
+        }
+        return requireUser().then(function (ctx) {
+            var row = {
+                user_id: ctx.user.id,
+                name: String(name || 'Sans titre').trim() || 'Sans titre',
+                data: data || {},
+                folder_id: null,
+                collab_workspace_id: workspaceId,
+                updated_at: new Date().toISOString()
+            };
+            return ctx.sb
+                .from(TABLE)
+                .insert(row)
+                .select('id, name, folder_id, collab_workspace_id, data, created_at, updated_at')
                 .single()
                 .then(function (result) {
                     if (result.error) return Promise.reject(result.error);
@@ -282,8 +309,7 @@ var CloudProjects = (function () {
                 .from(TABLE)
                 .update(patch)
                 .eq('id', projectId)
-                .eq('user_id', ctx.user.id)
-                .select('id, name, folder_id, data, created_at, updated_at')
+                .select('id, name, folder_id, collab_workspace_id, data, created_at, updated_at')
                 .single()
                 .then(function (result) {
                     if (result.error) return Promise.reject(result.error);
@@ -298,11 +324,129 @@ var CloudProjects = (function () {
                 .from(TABLE)
                 .delete()
                 .eq('id', projectId)
-                .eq('user_id', ctx.user.id)
                 .then(function (result) {
                     if (result.error) return Promise.reject(result.error);
                     return true;
                 });
+        });
+    }
+
+    // --- Collaboratif ---
+
+    function listCollabWorkspaces() {
+        return requireUser().then(function (ctx) {
+            return ctx.sb
+                .from('collab_workspaces')
+                .select('id, name, owner_id, created_at')
+                .order('name', { ascending: true })
+                .then(function (result) {
+                    if (result.error) return Promise.reject(result.error);
+                    var workspaces = result.data || [];
+                    if (!workspaces.length) return workspaces;
+
+                    var ids = workspaces.map(function (w) { return w.id; });
+                    return Promise.all([
+                        ctx.sb
+                            .from('collab_workspace_members')
+                            .select('workspace_id, email, user_id')
+                            .in('workspace_id', ids),
+                        ctx.sb
+                            .from(TABLE)
+                            .select('collab_workspace_id')
+                            .in('collab_workspace_id', ids)
+                    ]).then(function (parts) {
+                        if (parts[0].error) return Promise.reject(parts[0].error);
+                        if (parts[1].error) return Promise.reject(parts[1].error);
+
+                        var membersByWs = {};
+                        (parts[0].data || []).forEach(function (row) {
+                            if (!membersByWs[row.workspace_id]) membersByWs[row.workspace_id] = [];
+                            membersByWs[row.workspace_id].push(row.email);
+                        });
+
+                        var counts = {};
+                        (parts[1].data || []).forEach(function (row) {
+                            if (!row.collab_workspace_id) return;
+                            counts[row.collab_workspace_id] = (counts[row.collab_workspace_id] || 0) + 1;
+                        });
+
+                        workspaces.forEach(function (ws) {
+                            ws.members = membersByWs[ws.id] || [];
+                            ws.projectCount = counts[ws.id] || 0;
+                        });
+                        return workspaces;
+                    });
+                });
+        });
+    }
+
+    function listCollabProjects(workspaceId) {
+        if (!isUuid(workspaceId)) {
+            return Promise.reject(new Error('Dossier collaboratif invalide.'));
+        }
+        return requireUser().then(function (ctx) {
+            return ctx.sb
+                .from(TABLE)
+                .select('id, name, folder_id, collab_workspace_id, created_at, updated_at, user_id')
+                .eq('collab_workspace_id', workspaceId)
+                .order('name', { ascending: true })
+                .then(function (result) {
+                    if (result.error) return Promise.reject(result.error);
+                    return result.data || [];
+                });
+        });
+    }
+
+    function getCollabWorkspace(workspaceId) {
+        if (!isUuid(workspaceId)) return Promise.resolve(null);
+        return requireUser().then(function (ctx) {
+            return ctx.sb
+                .from('collab_workspaces')
+                .select('id, name, owner_id, created_at')
+                .eq('id', workspaceId)
+                .maybeSingle()
+                .then(function (result) {
+                    if (result.error) return Promise.reject(result.error);
+                    return result.data || null;
+                });
+        });
+    }
+
+    function removeCollabWorkspace(workspaceId) {
+        if (!isUuid(workspaceId)) {
+            return Promise.reject(new Error('Dossier collaboratif invalide.'));
+        }
+        return requireUser().then(function (ctx) {
+            return ctx.sb
+                .from('collab_workspaces')
+                .delete()
+                .eq('id', workspaceId)
+                .eq('owner_id', ctx.user.id)
+                .then(function (result) {
+                    if (result.error) return Promise.reject(result.error);
+                    return true;
+                });
+        });
+    }
+
+    function createCollabWorkspace(name, memberEmails, accessToken) {
+        return fetch(new URL('/api/create-collab-workspace', window.location.origin).href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + accessToken
+            },
+            body: JSON.stringify({
+                name: name,
+                memberEmails: memberEmails || []
+            })
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                if (!response.ok) {
+                    return Promise.reject(new Error((data && data.error) || 'Création impossible.'));
+                }
+                return data.workspace;
+            });
         });
     }
 
@@ -423,8 +567,14 @@ var CloudProjects = (function () {
         removeFolder: removeFolder,
         get: get,
         create: create,
+        createCollabProject: createCollabProject,
         update: update,
         remove: remove,
+        listCollabWorkspaces: listCollabWorkspaces,
+        listCollabProjects: listCollabProjects,
+        getCollabWorkspace: getCollabWorkspace,
+        removeCollabWorkspace: removeCollabWorkspace,
+        createCollabWorkspace: createCollabWorkspace,
         askFolderId: askFolderId,
         mapError: mapError,
         getProjectIdFromUrl: getProjectIdFromUrl,

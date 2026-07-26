@@ -4,6 +4,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    gap: 1.15rem;
 }
 
 .fichiers-panel {
@@ -252,6 +253,97 @@
 
 .fichiers-menu-item--danger:hover {
     background: var(--nolimi-danger-soft);
+}
+
+/* --- Modal collaboratif --- */
+.collab-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 10, 11, 0.35);
+    padding: 1rem;
+}
+
+.collab-modal[hidden] {
+    display: none;
+}
+
+.collab-modal__panel {
+    width: 100%;
+    max-width: 24rem;
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.2rem 1.25rem;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.collab-modal__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.collab-modal__label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #718096;
+}
+
+.collab-modal__input {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 400;
+    color: var(--nolimi-ink);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.collab-modal__lead {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #718096;
+}
+
+.collab-modal__members {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    max-height: 12rem;
+    overflow: auto;
+}
+
+.collab-modal__member {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.9rem;
+    color: var(--nolimi-ink);
+}
+
+.collab-modal__error {
+    min-height: 1.2em;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--nolimi-danger);
+}
+
+.collab-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
 }
 
 @media (max-width: 768px) {

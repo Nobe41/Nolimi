@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- menu/pages/fichiers/ — liste des projets / dossiers cloud. -->
+<!-- menu/pages/fichiers/ — projets perso + projets collaboratifs. -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -35,7 +35,42 @@
             <p id="fichiers-status" class="fichiers-status" aria-live="polite">Chargement…</p>
             <ul id="fichiers-list" class="fichiers-list" hidden></ul>
         </section>
+
+        <section class="fichiers-panel fichiers-panel--collab">
+            <header class="fichiers-header">
+                <div class="fichiers-header__row">
+                    <h2 class="fichiers-title" id="collab-title">Projets collaboratifs</h2>
+                    <div class="fichiers-header__actions" id="collab-actions-root">
+                        <button type="button" class="fichiers-btn-create" id="btn-create-collab">Créer un projet collaboratif</button>
+                    </div>
+                    <div class="fichiers-header__actions" id="collab-actions-inside" hidden>
+                        <button type="button" class="fichiers-btn-create" id="btn-new-collab-project">Nouveau projet</button>
+                    </div>
+                </div>
+                <nav id="collab-breadcrumb" class="fichiers-breadcrumb" aria-label="Projet collaboratif" hidden></nav>
+            </header>
+
+            <p id="collab-status" class="fichiers-status" aria-live="polite">Chargement…</p>
+            <ul id="collab-list" class="fichiers-list" hidden></ul>
+        </section>
     </main>
+
+    <div id="collab-modal" class="collab-modal" hidden>
+        <div class="collab-modal__panel" role="dialog" aria-modal="true" aria-labelledby="collab-modal-title">
+            <h2 id="collab-modal-title" class="collab-modal__title">Nouveau projet collaboratif</h2>
+            <label class="collab-modal__label">
+                <span>Nom</span>
+                <input type="text" id="collab-modal-name" class="collab-modal__input" placeholder="Nom du dossier collaboratif" maxlength="80">
+            </label>
+            <p class="collab-modal__lead">Personnes de votre équipe</p>
+            <div id="collab-modal-members" class="collab-modal__members"></div>
+            <p id="collab-modal-error" class="collab-modal__error" aria-live="polite"></p>
+            <div class="collab-modal__actions">
+                <button type="button" class="fichiers-btn-create fichiers-btn-create--secondary" id="collab-modal-cancel">Annuler</button>
+                <button type="button" class="fichiers-btn-create" id="collab-modal-submit">Créer</button>
+            </div>
+        </div>
+    </div>
 
     <script src="./fichiers.js"></script>
 </body>
