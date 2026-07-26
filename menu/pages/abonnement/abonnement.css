@@ -1,12 +1,12 @@
-/* menu/pages/mon-compte/ — style formulaire (carte + champs). */
+/* menu/pages/abonnement/ — style formulaire (carte + champs). */
 
-.menu-main--mon-compte {
+.menu-main--abonnement {
     display: flex;
     flex-direction: column;
     width: 100%;
 }
 
-.compte-panel {
+.abo-panel {
     width: 100%;
     max-width: 36rem;
     background: var(--nolimi-surface);
@@ -18,31 +18,31 @@
     gap: 1.25rem;
 }
 
-.compte-title {
+.abo-title {
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--nolimi-ink);
 }
 
-.compte-fields {
+.abo-fields {
     display: flex;
     flex-direction: column;
     gap: 1rem;
 }
 
-.compte-field {
+.abo-field {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
 }
 
-.compte-field__label {
+.abo-field__label {
     font-size: 0.82rem;
     font-weight: 600;
     color: #718096;
 }
 
-.compte-field__box {
+.abo-field__box {
     width: 100%;
     min-height: 2.65rem;
     padding: 0.65rem 0.85rem;
@@ -55,14 +55,25 @@
     word-break: break-word;
 }
 
-.compte-actions {
+.abo-hint {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--nolimi-text-muted);
+}
+
+.abo-status {
+    min-height: 1.2em;
+    font-size: 0.88rem;
+    color: var(--nolimi-danger);
+}
+
+.abo-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    padding-top: 0.15rem;
 }
 
-.compte-btn {
+.abo-btn {
     padding: 0.5rem 0.95rem;
     font-size: 0.875rem;
     font-weight: 600;
@@ -75,15 +86,27 @@
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.compte-btn--secondary:hover {
-    background: var(--nolimi-bg);
+.abo-btn--primary {
+    background: var(--nolimi-accent);
+    border-color: var(--nolimi-accent);
+    color: #fff;
 }
 
-.compte-btn--danger {
+.abo-btn--primary:hover {
+    background: var(--nolimi-accent-hover);
+    border-color: var(--nolimi-accent-hover);
+}
+
+.abo-btn--primary:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.abo-btn--danger {
     border-color: var(--nolimi-danger);
     color: var(--nolimi-danger);
 }
 
-.compte-btn--danger:hover {
+.abo-btn--danger:hover {
     background: var(--nolimi-danger-soft);
 }

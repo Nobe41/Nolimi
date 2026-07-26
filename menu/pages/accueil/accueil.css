@@ -1,4 +1,4 @@
-/* menu/pages/accueil/ — styles de la page accueil du menu. */
+/* menu/pages/accueil/ — salut + CTA Nouveau projet. */
 
 .menu-main--accueil {
     display: flex;
@@ -6,18 +6,60 @@
     align-items: flex-start;
 }
 
-.menu-btn-nouveau {
-    padding: 0.55rem 1.15rem;
-    font-size: 0.9rem;
+.accueil-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding-top: 0.35rem;
+}
+
+.accueil-greeting {
+    font-size: clamp(1.75rem, 3.2vw, 2.15rem);
+    font-weight: 750;
+    line-height: 1.2;
+    color: var(--nolimi-ink);
+    letter-spacing: -0.02em;
+    word-break: break-word;
+}
+
+.accueil-subtitle {
+    font-size: 1.05rem;
+    line-height: 1.45;
+    color: #718096;
+    margin-bottom: 0.55rem;
+}
+
+.accueil-btn-nouveau {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.8rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 650;
     font-family: inherit;
     cursor: pointer;
     background: var(--nolimi-accent);
     color: #fff;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     transition: background 0.2s ease;
 }
 
-.menu-btn-nouveau:hover {
+.accueil-btn-nouveau:hover {
     background: var(--nolimi-accent-hover);
+}
+
+.accueil-btn-nouveau__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.accueil-btn-nouveau__icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }

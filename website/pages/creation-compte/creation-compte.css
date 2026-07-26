@@ -30,16 +30,6 @@
 }
 
 /* --- Formulaire licences --- */
-.license-instructions {
-    width: 100%;
-    max-width: 320px;
-    margin: 0 0 1.25rem;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    text-align: center;
-    color: var(--nolimi-text-muted);
-}
-
 .form-licenses {
     max-width: 320px;
 }
@@ -49,6 +39,45 @@
     flex-direction: column;
     gap: 1rem;
     width: 100%;
+}
+
+.admin-field,
+.license-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.license-instructions {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: left;
+    color: var(--nolimi-text-muted);
+}
+
+.license-field__label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--nolimi-text-muted);
+    text-align: left;
+}
+
+.admin-field__box {
+    width: 100%;
+    min-height: 2.65rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    color: var(--nolimi-ink);
+    background: var(--nolimi-surface-muted, #f8f8f8);
+    border: 1px solid var(--nolimi-border);
+    border-radius: 6px;
+    word-break: break-word;
 }
 
 /* Beaucoup de champs (5 / 10) : aligner en haut */

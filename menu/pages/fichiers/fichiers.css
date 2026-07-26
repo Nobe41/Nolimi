@@ -1,16 +1,26 @@
-/* menu/pages/fichiers/ — liste des projets / dossiers cloud. */
+/* menu/pages/fichiers/ — liste des projets / dossiers (design carte). */
 
 .menu-main--fichiers {
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
     width: 100%;
+}
+
+.fichiers-panel {
+    width: 100%;
+    background: var(--nolimi-surface);
+    border: 1px solid var(--nolimi-border-subtle);
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
 .fichiers-header {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.4rem;
 }
 
 .fichiers-header__row {
@@ -21,8 +31,8 @@
 }
 
 .fichiers-title {
-    font-size: 1.35rem;
-    font-weight: 600;
+    font-size: 1.2rem;
+    font-weight: 700;
     color: var(--nolimi-ink);
 }
 
@@ -56,27 +66,40 @@
     color: var(--nolimi-ink);
 }
 
-.fichiers-btn-folder {
-    padding: 0.4rem 0.85rem;
-    font-size: 0.85rem;
-    font-family: inherit;
-    cursor: pointer;
-    border-radius: 6px;
-    border: 1px solid var(--nolimi-border);
-    background: var(--nolimi-surface);
-    color: var(--nolimi-ink);
+.fichiers-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     flex-shrink: 0;
 }
 
-.fichiers-btn-folder:hover {
-    background: var(--nolimi-bg);
+.fichiers-btn-create {
+    padding: 0.5rem 0.95rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+    border: none;
+    background: var(--nolimi-accent);
+    color: #fff;
+    flex-shrink: 0;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-.fichiers-divider {
-    width: 100%;
-    border: none;
-    border-top: 1px solid var(--nolimi-border-subtle);
-    margin: 0;
+.fichiers-btn-create:hover {
+    background: var(--nolimi-accent-hover);
+}
+
+.fichiers-btn-create--secondary {
+    background: transparent;
+    color: var(--nolimi-ink);
+    border: 1px solid var(--nolimi-border);
+}
+
+.fichiers-btn-create--secondary:hover {
+    background: var(--nolimi-bg);
+    color: var(--nolimi-ink);
 }
 
 .fichiers-status {
@@ -92,7 +115,7 @@
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.65rem;
     width: 100%;
 }
 
@@ -100,22 +123,42 @@
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.85rem;
     width: 100%;
-    min-height: 2.5rem;
-    padding: 0.45rem 0.55rem 0.45rem 0.9rem;
+    min-height: 3.75rem;
+    padding: 0.75rem 0.65rem 0.75rem 0.85rem;
     background: var(--nolimi-surface);
     border: 1px solid var(--nolimi-border-subtle);
-    border-radius: 8px;
+    border-radius: 12px;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .fichiers-item--folder {
     cursor: pointer;
 }
 
-.fichiers-item--folder:hover {
+.fichiers-item--folder:hover,
+.fichiers-item:hover {
     background: var(--nolimi-accent-soft);
+    border-color: rgba(92, 179, 255, 0.28);
+}
+
+.fichiers-item__icon {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
+    background: var(--nolimi-accent-muted);
+    color: var(--nolimi-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fichiers-item__icon svg {
+    display: block;
+    width: 1.2rem;
+    height: 1.2rem;
 }
 
 .fichiers-item__info {
@@ -123,12 +166,12 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.05rem;
+    gap: 0.15rem;
 }
 
 .fichiers-item__name {
-    font-size: 0.9rem;
-    font-weight: 560;
+    font-size: 0.95rem;
+    font-weight: 650;
     color: var(--nolimi-ink);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -136,7 +179,7 @@
 }
 
 .fichiers-item__meta {
-    font-size: 0.7rem;
+    font-size: 0.78rem;
     color: var(--nolimi-text-muted);
 }
 
@@ -149,16 +192,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    width: 2.1rem;
+    height: 2.1rem;
     padding: 0;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     background: transparent;
     color: var(--nolimi-text-muted);
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     line-height: 1;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     cursor: pointer;
 }
 
@@ -209,4 +252,24 @@
 
 .fichiers-menu-item--danger:hover {
     background: var(--nolimi-danger-soft);
+}
+
+@media (max-width: 768px) {
+    .fichiers-panel {
+        padding: 1rem;
+        border-radius: 12px;
+    }
+
+    .fichiers-title {
+        font-size: 1.05rem;
+    }
+
+    .fichiers-header__row {
+        flex-wrap: wrap;
+    }
+
+    .fichiers-header__actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }

@@ -19,7 +19,19 @@
     <script>NolimiMenuSidebar.mount({ current: 'accueil' });</script>
 
     <main class="menu-main menu-main--accueil">
-        <button type="button" class="menu-btn-nouveau" id="btn-nouveau">Nouveau</button>
+        <section class="accueil-hero">
+            <h1 class="accueil-greeting" id="accueil-greeting">Bonjour</h1>
+            <p class="accueil-subtitle">Prêt à créer de grandes choses aujourd’hui&nbsp;?</p>
+            <button type="button" class="accueil-btn-nouveau" id="btn-nouveau">
+                <span class="accueil-btn-nouveau__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="9.25"></circle>
+                        <path d="M12 8v8M8 12h8"></path>
+                    </svg>
+                </span>
+                Nouveau Projet
+            </button>
+        </section>
     </main>
 
     <script src="./accueil.js"></script>

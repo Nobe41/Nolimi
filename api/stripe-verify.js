@@ -92,8 +92,44 @@ async function verifyPaidCheckoutSession(stripeSecretKey, sessionId, licenseCoun
     return { ok: true, session: session };
 }
 
+// Email + ids Stripe utiles après un paiement (admin / portal).
+function extractCheckoutBuyerInfo(session) {
+    session = session || {};
+    var email = (
+        (session.customer_details && session.customer_details.email) ||
+        session.customer_email ||
+        ''
+    ).trim().toLowerCase();
+
+    var customerId = null;
+    if (typeof session.customer === 'string' && session.customer) {
+        customerId = session.customer;
+    } else if (session.customer && session.customer.id) {
+        customerId = session.customer.id;
+    }
+
+    var subscriptionId = null;
+    if (typeof session.subscription === 'string' && session.subscription) {
+        subscriptionId = session.subscription;
+    } else if (session.subscription && session.subscription.id) {
+        subscriptionId = session.subscription.id;
+    }
+
+    var licenseCount = session.metadata ? parseInt(session.metadata.licences, 10) : NaN;
+
+    return {
+        email: email,
+        customerId: customerId,
+        subscriptionId: subscriptionId,
+        licenseCount: ALLOWED_COUNTS.indexOf(licenseCount) === -1 ? null : licenseCount
+    };
+}
+
 module.exports = {
     ALLOWED_COUNTS: ALLOWED_COUNTS,
+    retrieveCheckoutSession: retrieveCheckoutSession,
     verifyPaidCheckoutSession: verifyPaidCheckoutSession,
-    markCheckoutSessionUsed: markCheckoutSessionUsed
+    markCheckoutSessionUsed: markCheckoutSessionUsed,
+    extractCheckoutBuyerInfo: extractCheckoutBuyerInfo,
+    stripeRequest: stripeRequest
 };

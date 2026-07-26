@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- menu/pages/abonnement/ — gestion abonnement (compte admin uniquement). -->
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolimi — Abonnement</title>
+    <link rel="icon" href="../../../assets/brand/favicon-64.png" type="image/png" sizes="64x64">
+    <link rel="icon" href="../../../assets/brand/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="../../../assets/brand/apple-touch-icon.png" sizes="180x180">
+    <link rel="stylesheet" href="../../main.css">
+    <link rel="stylesheet" href="./abonnement.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../saas/config/supabase.config.js"></script>
+    <script src="../../../saas/lib/auth.js"></script>
+</head>
+<body class="page page--menu">
+    <script src="../../components/sidebar/sidebar.js"></script>
+    <script>NolimiMenuSidebar.mount({ current: 'abonnement', role: 'admin' });</script>
+
+    <main class="menu-main menu-main--abonnement">
+        <section class="abo-panel">
+            <h1 class="abo-title">Abonnement</h1>
+
+            <div class="abo-fields">
+                <div class="abo-field">
+                    <span class="abo-field__label">Compte admin</span>
+                    <div class="abo-field__box" id="abo-email">—</div>
+                </div>
+                <div class="abo-field">
+                    <span class="abo-field__label">Type d’abonnement</span>
+                    <div class="abo-field__box" id="abo-plan">—</div>
+                </div>
+            </div>
+
+            <p class="abo-hint" id="abo-hint">
+                Gérez votre moyen de paiement, vos factures ou résiliez votre abonnement via le portail Stripe.
+            </p>
+            <p class="abo-status" id="abo-status" aria-live="polite"></p>
+
+            <div class="abo-actions">
+                <button type="button" class="abo-btn abo-btn--primary" id="btn-manage-subscription">
+                    Gérer mon abonnement
+                </button>
+                <button type="button" class="abo-btn abo-btn--danger" id="btn-logout">
+                    Se déconnecter
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script src="./abonnement.js"></script>
+</body>
+</html>

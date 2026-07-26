@@ -8,9 +8,26 @@ var NolimiLicenseApi = (function () {
             || '';
     }
 
-    // Lit et valide les champs email-1…email-N du formulaire.
-    function collectEmails(licenseCount) {
+    function fetchCheckoutSessionInfo(sessionId) {
+        return fetch(new URL('/api/checkout-session-info', window.location.origin).href, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: sessionId })
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                return { ok: response.ok, status: response.status, data: data };
+            }).catch(function () {
+                return { ok: false, status: response.status, data: { error: 'Réponse serveur invalide.' } };
+            });
+        }).catch(function () {
+            return { ok: false, status: 0, data: { error: 'Impossible de contacter le serveur. Réessayez plus tard.' } };
+        });
+    }
+
+    // Lit et valide les champs email-1…email-N du formulaire (+ ≠ admin).
+    function collectEmails(licenseCount, adminEmail) {
         var emails = [];
+        var admin = String(adminEmail || '').trim().toLowerCase();
 
         for (var i = 1; i <= licenseCount; i++) {
             var field = document.getElementById('email-' + i);
@@ -24,6 +41,9 @@ var NolimiLicenseApi = (function () {
                         ? 'Veuillez renseigner une adresse mail valide.'
                         : 'Veuillez renseigner les ' + licenseCount + ' adresses mail valides.'
                 };
+            }
+            if (admin && value === admin) {
+                return { error: 'Les licences doivent utiliser des adresses différentes du compte admin.' };
             }
             emails.push(value);
         }
@@ -71,7 +91,7 @@ var NolimiLicenseApi = (function () {
     }
 
     // Point d’entrée : valide les mails puis appelle l’API.
-    function submitLicenseAccounts(licenseCount) {
+    function submitLicenseAccounts(licenseCount, adminEmail) {
         var sessionId = getStripeSessionId();
         if (!sessionId) {
             return Promise.resolve({
@@ -80,7 +100,7 @@ var NolimiLicenseApi = (function () {
             });
         }
 
-        var collected = collectEmails(licenseCount);
+        var collected = collectEmails(licenseCount, adminEmail);
         if (collected.error) {
             return Promise.resolve({ ok: false, error: collected.error });
         }
@@ -101,14 +121,15 @@ var NolimiLicenseApi = (function () {
 
             return {
                 ok: true,
-                created: result.data.created || collected.emails.length,
-                message: 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.'
+                created: result.data.created || (collected.emails.length + 1),
+                message: 'Le compte admin et les licences ont été créés. Chaque adresse recevra ses identifiants par mail.'
             };
         });
     }
 
     return {
         getStripeSessionId: getStripeSessionId,
+        fetchCheckoutSessionInfo: fetchCheckoutSessionInfo,
         collectEmails: collectEmails,
         submitLicenseAccounts: submitLicenseAccounts
     };

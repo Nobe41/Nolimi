@@ -6,9 +6,14 @@
     var statusEl = document.getElementById('fichiers-status');
     var listEl = document.getElementById('fichiers-list');
     var breadcrumbEl = document.getElementById('fichiers-breadcrumb');
+    var titleEl = document.getElementById('fichiers-title');
     var btnCreateFolder = document.getElementById('btn-create-folder');
+    var btnNewProject = document.getElementById('btn-new-project');
     var openMenuWrap = null;
     var currentFolderId = null;
+
+    var ICON_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z"/></svg>';
+    var ICON_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h6l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z"/><path d="M13 3.5V9h5.5"/></svg>';
 
     function setStatus(text, isError) {
         if (!statusEl) return;
@@ -17,16 +22,27 @@
         statusEl.hidden = !text;
     }
 
-    function formatDate(iso) {
+    function formatCreatedDate(iso) {
         if (!iso) return '';
         try {
             var d = new Date(iso);
-            return d.toLocaleString('fr-FR', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+            return d.toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long'
+            });
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function formatModifiedDate(iso) {
+        if (!iso) return '';
+        try {
+            var d = new Date(iso);
+            return d.toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
             });
         } catch (e) {
             return '';
@@ -125,21 +141,32 @@
         return menuWrap;
     }
 
+    function buildIcon(svg) {
+        var wrap = document.createElement('div');
+        wrap.className = 'fichiers-item__icon';
+        wrap.innerHTML = svg;
+        return wrap;
+    }
+
     function renderBreadcrumb(crumbs) {
         if (!breadcrumbEl) return;
         breadcrumbEl.innerHTML = '';
 
         if (!crumbs || !crumbs.length) {
             breadcrumbEl.hidden = true;
+            if (titleEl) titleEl.textContent = 'Tous vos projets';
             return;
         }
 
         breadcrumbEl.hidden = false;
+        if (titleEl) {
+            titleEl.textContent = crumbs[crumbs.length - 1].name || 'Dossier';
+        }
 
         var rootBtn = document.createElement('button');
         rootBtn.type = 'button';
         rootBtn.className = 'fichiers-breadcrumb__link';
-        rootBtn.textContent = 'Fichiers';
+        rootBtn.textContent = 'Tous vos projets';
         rootBtn.addEventListener('click', function () {
             navigateTo(null);
         });
@@ -169,6 +196,13 @@
         });
     }
 
+    function folderMetaText(folder) {
+        var count = folder.projectCount || 0;
+        var label = count <= 1 ? (count + ' fichier') : (count + ' fichiers');
+        var created = formatCreatedDate(folder.created_at);
+        return created ? (label + ' • Créé le ' + created) : label;
+    }
+
     function renderList(contents) {
         if (!listEl) return;
         closeOpenMenu();
@@ -188,7 +222,6 @@
         setStatus('');
         listEl.hidden = false;
 
-        // Dossiers d’abord, puis fichiers A→Z
         folders.forEach(function (folder) {
             var li = document.createElement('li');
             li.className = 'fichiers-item fichiers-item--folder';
@@ -198,9 +231,14 @@
 
             var name = document.createElement('div');
             name.className = 'fichiers-item__name';
-            name.textContent = '📁 ' + (folder.name || 'Dossier');
+            name.textContent = folder.name || 'Dossier';
+
+            var meta = document.createElement('div');
+            meta.className = 'fichiers-item__meta';
+            meta.textContent = folderMetaText(folder);
 
             info.appendChild(name);
+            info.appendChild(meta);
 
             var menuWrap = buildMenu([
                 {
@@ -219,6 +257,7 @@
                 }
             ]);
 
+            li.appendChild(buildIcon(ICON_FOLDER));
             li.appendChild(info);
             li.appendChild(menuWrap);
             li.addEventListener('click', function (e) {
@@ -244,7 +283,7 @@
 
             var meta = document.createElement('div');
             meta.className = 'fichiers-item__meta';
-            meta.textContent = 'Modifié le ' + formatDate(row.updated_at);
+            meta.textContent = 'Modifié le ' + formatModifiedDate(row.updated_at);
 
             info.appendChild(name);
             info.appendChild(meta);
@@ -270,6 +309,7 @@
                 }
             ]);
 
+            li.appendChild(buildIcon(ICON_FILE));
             li.appendChild(info);
             li.appendChild(menuWrap);
             li.addEventListener('dblclick', function () {
@@ -326,6 +366,13 @@
         });
     }
 
+    if (btnNewProject) {
+        btnNewProject.addEventListener('click', function () {
+            if (!Auth || !Auth.getAppUrl) return;
+            window.location.href = Auth.getAppUrl();
+        });
+    }
+
     function boot() {
         if (!Cloud) {
             setStatus('Module Fichiers indisponible.', true);
@@ -334,7 +381,9 @@
         refresh();
     }
 
-    if (Auth && Auth.requireAccountSession) {
+    if (Auth && Auth.requireLicenseAccount) {
+        Auth.requireLicenseAccount().then(boot).catch(function () {});
+    } else if (Auth && Auth.requireAccountSession) {
         Auth.requireAccountSession().then(boot).catch(function () {});
     } else {
         boot();

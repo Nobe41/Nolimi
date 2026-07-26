@@ -20,18 +20,21 @@
     <script>NolimiMenuSidebar.mount({ current: 'fichiers' });</script>
 
     <main class="menu-main menu-main--fichiers">
-        <header class="fichiers-header">
-            <div class="fichiers-header__row">
-                <h1 class="fichiers-title">Fichiers</h1>
-                <button type="button" class="fichiers-btn-folder" id="btn-create-folder">Créer un dossier</button>
-            </div>
-            <nav id="fichiers-breadcrumb" class="fichiers-breadcrumb" aria-label="Emplacement" hidden></nav>
-        </header>
+        <section class="fichiers-panel">
+            <header class="fichiers-header">
+                <div class="fichiers-header__row">
+                    <h1 class="fichiers-title" id="fichiers-title">Tous vos projets</h1>
+                    <div class="fichiers-header__actions">
+                        <button type="button" class="fichiers-btn-create" id="btn-new-project">Nouveau projet</button>
+                        <button type="button" class="fichiers-btn-create fichiers-btn-create--secondary" id="btn-create-folder">Créer un dossier</button>
+                    </div>
+                </div>
+                <nav id="fichiers-breadcrumb" class="fichiers-breadcrumb" aria-label="Emplacement" hidden></nav>
+            </header>
 
-        <hr class="fichiers-divider" aria-hidden="true">
-
-        <p id="fichiers-status" class="fichiers-status" aria-live="polite">Chargement…</p>
-        <ul id="fichiers-list" class="fichiers-list" hidden></ul>
+            <p id="fichiers-status" class="fichiers-status" aria-live="polite">Chargement…</p>
+            <ul id="fichiers-list" class="fichiers-list" hidden></ul>
+        </section>
     </main>
 
     <script src="./fichiers.js"></script>

@@ -181,13 +181,18 @@
             var sessionId = (sessionInput && isValidLink(sessionInput.value))
                 ? sessionIdFrom(sessionInput.value)
                 : '';
-            if (sessionId) {
+            var user = result.data && result.data.session ? result.data.session.user : null;
+            if (sessionId && !(Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user))) {
                 goToSession(sessionId);
                 return;
             }
 
             if (Auth.clearPendingSession) Auth.clearPendingSession();
-            window.location.replace(Auth.getMenuUrl ? Auth.getMenuUrl() : Auth.getAppUrl());
+            if (Auth.getMenuUrl) {
+                window.location.replace(Auth.getMenuUrl(user));
+            } else {
+                window.location.replace(Auth.getAppUrl());
+            }
         }).catch(function () {
             errEl.textContent = 'Erreur réseau. Réessayez.';
             resetSubmitBtn();

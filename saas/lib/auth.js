@@ -47,8 +47,21 @@ var NolimiAuth = (function () {
         return resolveUrl('../website/pages/connexion/index.html');
     }
 
-    // Après login (sans lien de session) → menu
-    function getMenuUrl() {
+    // Après login (sans lien de session) → menu (accueil ou abonnement admin)
+    function getAdminMenuUrl() {
+        if (window.location.pathname.indexOf('/menu/') !== -1) {
+            return resolveUrl('../abonnement/index.html');
+        }
+        if (window.location.pathname.indexOf('/saas/') !== -1) {
+            return resolveUrl('../menu/pages/abonnement/index.html');
+        }
+        return resolveUrl('../../../menu/pages/abonnement/index.html');
+    }
+
+    function getMenuUrl(user) {
+        if (user && isSubscriptionAdmin(user)) {
+            return getAdminMenuUrl();
+        }
         if (window.location.pathname.indexOf('/menu/') !== -1) {
             return resolveUrl('../accueil/index.html');
         }
@@ -56,6 +69,19 @@ var NolimiAuth = (function () {
             return resolveUrl('../menu/pages/accueil/index.html');
         }
         return resolveUrl('../../../menu/pages/accueil/index.html');
+    }
+
+    function isSubscriptionAdmin(user) {
+        var meta = user && user.user_metadata ? user.user_metadata : {};
+        return meta.account_role === 'admin';
+    }
+
+    function getAccountRole(user) {
+        return isSubscriptionAdmin(user) ? 'admin' : 'license';
+    }
+
+    function redirectToMenuForUser(user) {
+        window.location.replace(getMenuUrl(user));
     }
 
     function getAppUrl(sessionId, projectId) {
@@ -226,10 +252,10 @@ var NolimiAuth = (function () {
             var session = result && result.data ? result.data.session : null;
             if (!session) return;
             if (!isAnonymousSession(session)) {
-                if (parsedSession && isValidSessionId(parsedSession)) {
+                if (parsedSession && isValidSessionId(parsedSession) && !isSubscriptionAdmin(session.user)) {
                     window.location.replace(getAppUrl(parsedSession));
                 } else {
-                    window.location.replace(getMenuUrl());
+                    redirectToMenuForUser(session.user);
                 }
                 return;
             }
@@ -387,6 +413,10 @@ var NolimiAuth = (function () {
         var sessionFromUrl = getSessionFromCurrentUrl();
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
+            if (session && !isAnonymousSession(session) && isSubscriptionAdmin(session.user)) {
+                redirectToMenuForUser(session.user);
+                return Promise.reject(new Error('admin_no_atelier'));
+            }
             if (session) {
                 // Anonyme sans ?session= → pas d’accès libre à l’atelier
                 if (isAnonymousSession(session) && !sessionFromUrl) {
@@ -428,16 +458,42 @@ var NolimiAuth = (function () {
         });
     }
 
+    // Pages menu licence (accueil, fichiers…) — pas le compte admin
+    function requireLicenseAccount() {
+        return requireAccountSession().then(function (session) {
+            if (isSubscriptionAdmin(session.user)) {
+                redirectToMenuForUser(session.user);
+                return Promise.reject(new Error('admin_restricted'));
+            }
+            return session;
+        });
+    }
+
+    // Page abonnement — uniquement le compte admin
+    function requireAdminAccount() {
+        return requireAccountSession().then(function (session) {
+            if (!isSubscriptionAdmin(session.user)) {
+                redirectToMenuForUser(session.user);
+                return Promise.reject(new Error('license_restricted'));
+            }
+            return session;
+        });
+    }
+
     return {
         getClient: getClient,
         requireSession: requireSession,
         requireAccountSession: requireAccountSession,
+        requireLicenseAccount: requireLicenseAccount,
+        requireAdminAccount: requireAdminAccount,
         signInWithPassword: signInWithPassword,
         ensureAuthForSessionJoin: ensureAuthForSessionJoin,
         mapGuestAuthError: mapGuestAuthError,
         signOut: signOut,
         exitGuestAccess: exitGuestAccess,
         isAnonymousUser: isAnonymousUser,
+        isSubscriptionAdmin: isSubscriptionAdmin,
+        getAccountRole: getAccountRole,
         markSessionGuestAccess: markSessionGuestAccess,
         clearSessionGuestAccess: clearSessionGuestAccess,
         isSessionGuestAccess: isSessionGuestAccess,
@@ -446,6 +502,7 @@ var NolimiAuth = (function () {
         bindLogoutButton: bindLogoutButton,
         getAppUrl: getAppUrl,
         getMenuUrl: getMenuUrl,
+        getAdminMenuUrl: getAdminMenuUrl,
         parseSessionLink: parseSessionLink,
         isValidSessionId: isValidSessionId,
         persistPendingSession: persistPendingSession,

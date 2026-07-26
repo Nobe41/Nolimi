@@ -1,4 +1,4 @@
-// website/pages/creation-compte/ — UI : champs emails + envoi après paiement Stripe.
+// website/pages/creation-compte/ — UI : admin figé + emails licences + envoi après paiement.
 
 (function () {
     var ALLOWED_COUNTS = [1, 5, 10];
@@ -6,6 +6,8 @@
 
     var form = document.getElementById('form-licenses');
     var fieldsEl = document.getElementById('license-fields');
+    var adminFieldEl = document.getElementById('admin-field');
+    var adminEmailEl = document.getElementById('admin-email');
     var instructionsEl = document.getElementById('license-instructions');
     var errEl = document.getElementById('error-msg');
     var successEl = document.getElementById('success-msg');
@@ -15,25 +17,37 @@
 
     var stripeSessionId = Api ? Api.getStripeSessionId() : '';
     var licenseCount = parseLicenseCount();
+    var adminEmail = '';
 
     function parseLicenseCount() {
         var count = parseInt(new URLSearchParams(window.location.search).get('licences'), 10);
         return ALLOWED_COUNTS.indexOf(count) === -1 ? 1 : count;
     }
 
+    function setAdminDisplay(text) {
+        if (adminEmailEl) adminEmailEl.textContent = text || '—';
+        if (adminFieldEl) adminFieldEl.hidden = false;
+    }
+
     function updateSubmitState() {
-        if (!stripeSessionId || !Api) {
+        if (!stripeSessionId || !Api || !adminEmail) {
             submitBtn.disabled = true;
             return;
         }
-        // Réutilise la même validation que l’API (pas de doublon de règles)
-        submitBtn.disabled = !!Api.collectEmails(licenseCount).error;
+        submitBtn.disabled = !!Api.collectEmails(licenseCount, adminEmail).error;
     }
 
-    function renderFields(count) {
-        instructionsEl.textContent = count === 1
-            ? 'Veuillez entrer l\'adresse mail de la licence souhaitée.'
-            : 'Veuillez entrer les ' + count + ' adresses mail des licences souhaitées.';
+    function renderAdminField(email) {
+        adminEmail = String(email || '').trim().toLowerCase();
+        setAdminDisplay(adminEmail || '—');
+    }
+
+    function renderLicenseFields(count) {
+        if (instructionsEl) {
+            instructionsEl.textContent = count === 1
+                ? 'Renseignez l’adresse mail de la licence (différente du compte admin).'
+                : 'Renseignez les ' + count + ' adresses mail des licences (différentes du compte admin).';
+        }
 
         fieldsEl.innerHTML = '';
 
@@ -41,34 +55,74 @@
         if (mainEl) mainEl.classList.toggle('page-main--licenses-many', count >= 5);
 
         for (var i = 1; i <= count; i++) {
+            var wrap = document.createElement('div');
+            wrap.className = 'license-field';
+
+            var label = document.createElement('label');
+            label.className = 'license-field__label';
+            label.setAttribute('for', 'email-' + i);
+            label.textContent = count === 1 ? 'Compte licence' : 'Compte licence ' + i;
+
             var input = document.createElement('input');
             input.type = 'email';
             input.id = 'email-' + i;
             input.name = 'email-' + i;
             input.required = true;
             input.autocomplete = 'email';
-            input.placeholder = count === 1
-                ? 'Adresse mail — licence'
-                : 'Adresse mail — licence ' + i;
-            input.setAttribute('aria-label', count === 1
-                ? 'Adresse mail licence'
-                : 'Adresse mail licence ' + i);
+            input.placeholder = 'Adresse mail';
+            input.setAttribute('aria-label', label.textContent);
             input.addEventListener('input', updateSubmitState);
             input.addEventListener('blur', updateSubmitState);
-            fieldsEl.appendChild(input);
+
+            wrap.appendChild(label);
+            wrap.appendChild(input);
+            fieldsEl.appendChild(wrap);
         }
 
         updateSubmitState();
     }
 
-    // Pas de session Stripe dans l’URL → message d’erreur
-    if (!stripeSessionId) {
+    function showFatal(message, hint) {
         if (paymentSuccessEl) paymentSuccessEl.hidden = true;
-        errEl.textContent = 'Paiement reçu, mais la session Stripe est introuvable dans l’URL. Vérifiez que l’URL de redirection Stripe contient bien : session_id={CHECKOUT_SESSION_ID}';
-        instructionsEl.textContent = 'Exemple d’URL Stripe : …/creation-compte/index.html?licences=1&session_id={CHECKOUT_SESSION_ID}';
+        errEl.textContent = message;
+        if (hint && instructionsEl) instructionsEl.textContent = hint;
         form.hidden = true;
+    }
+
+    // Affiche tout de suite la structure (admin + licences)
+    setAdminDisplay('Chargement…');
+    renderLicenseFields(licenseCount);
+    submitBtn.disabled = true;
+
+    if (!stripeSessionId) {
+        setAdminDisplay('Session Stripe manquante');
+        showFatal(
+            'Paiement reçu, mais la session Stripe est introuvable dans l’URL. Vérifiez que l’URL de redirection Stripe contient bien : session_id={CHECKOUT_SESSION_ID}',
+            'Exemple d’URL Stripe : …/creation-compte/index.html?licences=1&session_id={CHECKOUT_SESSION_ID}'
+        );
+    } else if (!Api || !Api.fetchCheckoutSessionInfo) {
+        setAdminDisplay('Service indisponible');
+        showFatal('Service de création de comptes indisponible.');
     } else {
-        renderFields(licenseCount);
+        Api.fetchCheckoutSessionInfo(stripeSessionId).then(function (result) {
+            if (!result.ok || !result.data || !result.data.email) {
+                var msg = (result.data && result.data.error) ||
+                    'Impossible de récupérer l’email du payeur Stripe.';
+                setAdminDisplay('Non récupéré');
+                errEl.textContent = msg;
+                adminEmail = '';
+                updateSubmitState();
+                return;
+            }
+            errEl.textContent = '';
+            renderAdminField(result.data.email);
+            updateSubmitState();
+        }).catch(function () {
+            setAdminDisplay('Erreur réseau');
+            errEl.textContent = 'Impossible de contacter le serveur pour récupérer le compte admin.';
+            adminEmail = '';
+            updateSubmitState();
+        });
     }
 
     form.addEventListener('submit', function (e) {
@@ -88,7 +142,7 @@
             return;
         }
 
-        Api.submitLicenseAccounts(licenseCount).then(function (result) {
+        Api.submitLicenseAccounts(licenseCount, adminEmail).then(function (result) {
             submitBtn.textContent = 'Valider';
 
             if (!result.ok) {
@@ -97,7 +151,8 @@
                 return;
             }
 
-            successEl.textContent = result.message || 'Vos comptes ont été créés. Vous recevrez vos identifiants par mail sous peu.';
+            successEl.textContent = result.message ||
+                'Le compte admin et les licences ont été créés. Chaque adresse recevra ses identifiants par mail.';
             submitBtn.disabled = true;
             if (loginBtn) loginBtn.hidden = false;
         });

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- menu/pages/mon-compte/ — mon compte (déconnexion / retour site). -->
+<!-- menu/pages/mon-compte/ — mon compte (infos licence + déconnexion). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -19,17 +19,33 @@
     <script>NolimiMenuSidebar.mount({ current: 'mon-compte' });</script>
 
     <main class="menu-main menu-main--mon-compte">
-        <header class="compte-header">
+        <section class="compte-panel">
             <h1 class="compte-title">Mon compte</h1>
-        </header>
-        <div class="compte-actions">
-            <button type="button" class="compte-btn compte-btn--secondary" id="btn-back-website">
-                Retour au site web
-            </button>
-            <button type="button" class="compte-btn compte-btn--danger" id="btn-logout">
-                Se déconnecter
-            </button>
-        </div>
+
+            <div class="compte-fields">
+                <div class="compte-field">
+                    <label class="compte-field__label" for="compte-email">Adresse mail du compte</label>
+                    <div class="compte-field__box" id="compte-email" role="text">—</div>
+                </div>
+                <div class="compte-field">
+                    <label class="compte-field__label" for="compte-manager">Gérant de l’abonnement</label>
+                    <div class="compte-field__box" id="compte-manager" role="text">—</div>
+                </div>
+                <div class="compte-field">
+                    <label class="compte-field__label" for="compte-plan">Type d’abonnement</label>
+                    <div class="compte-field__box" id="compte-plan" role="text">—</div>
+                </div>
+            </div>
+
+            <div class="compte-actions">
+                <button type="button" class="compte-btn compte-btn--secondary" id="btn-back-website">
+                    Retour au site web
+                </button>
+                <button type="button" class="compte-btn compte-btn--danger" id="btn-logout">
+                    Se déconnecter
+                </button>
+            </div>
+        </section>
     </main>
 
     <script src="./mon-compte.js"></script>

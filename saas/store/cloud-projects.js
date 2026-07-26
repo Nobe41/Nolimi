@@ -199,7 +199,31 @@ var CloudProjects = (function () {
             listFolders(folderId || null),
             list(folderId || null)
         ]).then(function (parts) {
-            return { folders: parts[0], projects: parts[1] };
+            var folders = parts[0] || [];
+            var projects = parts[1] || [];
+            if (!folders.length) {
+                return { folders: folders, projects: projects };
+            }
+            return requireUser().then(function (ctx) {
+                var ids = folders.map(function (f) { return f.id; });
+                return ctx.sb
+                    .from(TABLE)
+                    .select('folder_id')
+                    .eq('user_id', ctx.user.id)
+                    .in('folder_id', ids)
+                    .then(function (result) {
+                        if (result.error) return Promise.reject(result.error);
+                        var counts = {};
+                        (result.data || []).forEach(function (row) {
+                            if (!row.folder_id) return;
+                            counts[row.folder_id] = (counts[row.folder_id] || 0) + 1;
+                        });
+                        folders.forEach(function (folder) {
+                            folder.projectCount = counts[folder.id] || 0;
+                        });
+                        return { folders: folders, projects: projects };
+                    });
+            });
         });
     }
 

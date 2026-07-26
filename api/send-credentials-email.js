@@ -11,17 +11,20 @@ function escapeHtml(text) {
 }
 
 // Contenu HTML du mail d’accès (lien, email, mot de passe).
-function buildCredentialsEmailHtml(email, password, siteUrl) {
+function buildCredentialsEmailHtml(email, password, siteUrl, accountType) {
     var safeEmail = escapeHtml(email);
     var safePassword = escapeHtml(password);
     var safeSiteUrl = escapeHtml(siteUrl);
     var safeSiteHref = escapeHtml(siteUrl.replace(/\/$/, ''));
+    var isAdmin = accountType === 'admin';
 
     return [
         '<div style="font-family:sans-serif;line-height:1.65;color:#333;max-width:560px;">',
         '<h1 style="font-size:1.35rem;font-weight:700;margin:0 0 1.25rem;color:#0a0a0b;">Accès Nolimi</h1>',
         '<p style="margin:0 0 1rem;">Bonjour,</p>',
-        '<p style="margin:0 0 1.25rem;">Votre espace de travail sur la plateforme Nolimi est désormais actif. Vous trouverez ci-dessous vos identifiants de connexion personnels :</p>',
+        isAdmin
+            ? '<p style="margin:0 0 1.25rem;">Votre <strong>compte administrateur</strong> Nolimi est prêt. Il vous permet de gérer votre abonnement. Voici vos identifiants :</p>'
+            : '<p style="margin:0 0 1.25rem;">Votre espace de travail sur la plateforme Nolimi est désormais actif. Vous trouverez ci-dessous vos identifiants de connexion personnels :</p>',
         '<ul style="margin:0 0 1.5rem;padding-left:1.25rem;">',
         '<li style="margin-bottom:0.65rem;"><strong>Lien d\'accès :</strong> <a href="', safeSiteHref, '" style="color:#5cb3ff;text-decoration:none;">', safeSiteUrl, '</a></li>',
         '<li style="margin-bottom:0.65rem;"><strong>Identifiant :</strong> <code style="font-family:monospace;background:#f4f4f5;padding:0.15rem 0.35rem;border-radius:4px;">', safeEmail, '</code></li>',
@@ -43,6 +46,7 @@ async function sendCredentialsEmail(options) {
     var to = options.to;
     var password = options.password;
     var siteUrl = options.siteUrl;
+    var accountType = options.accountType || 'license';
 
     if (!apiKey || !from) {
         return { ok: false, error: 'Configuration Resend manquante (RESEND_API_KEY / RESEND_FROM_EMAIL).' };
@@ -57,8 +61,8 @@ async function sendCredentialsEmail(options) {
         body: JSON.stringify({
             from: from,
             to: [to],
-            subject: 'Accès Nolimi',
-            html: buildCredentialsEmailHtml(to, password, siteUrl)
+            subject: accountType === 'admin' ? 'Accès Nolimi — compte administrateur' : 'Accès Nolimi',
+            html: buildCredentialsEmailHtml(to, password, siteUrl, accountType)
         })
     });
 
