@@ -208,7 +208,8 @@ module.exports = async function handler(req, res) {
     var sharedMeta = {
         license_manager_email: managerEmail,
         license_count: licenseCount,
-        license_plan: planLabel
+        license_plan: planLabel,
+        team_license_emails: emails.slice()
     };
 
     var mailOpts = {

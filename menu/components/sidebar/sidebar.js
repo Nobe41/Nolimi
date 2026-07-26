@@ -21,6 +21,7 @@
             return [
                 '<nav class="menu-sidebar__nav" aria-label="Navigation">',
                 '  ' + link(current, 'abonnement', '../abonnement/index.html', 'Abonnement'),
+                '  ' + link(current, 'equipe', '../equipe/index.html', 'Équipe'),
                 '</nav>'
             ].join('');
         }
@@ -28,13 +29,14 @@
             '<nav class="menu-sidebar__nav" aria-label="Navigation">',
             '  ' + link(current, 'accueil', '../accueil/index.html', 'Accueil'),
             '  ' + link(current, 'fichiers', '../fichiers/index.html', 'Fichiers'),
+            '  ' + link(current, 'equipe', '../equipe/index.html', 'Équipe'),
             '  ' + link(current, 'mon-compte', '../mon-compte/index.html', 'Mon compte'),
             '  ' + link(current, 'parametres', '../parametres/index.html', 'Paramètres'),
             '</nav>'
         ].join('');
     }
 
-    // current : 'accueil' | 'fichiers' | 'mon-compte' | 'parametres' | 'abonnement'
+    // current : 'accueil' | 'fichiers' | 'mon-compte' | 'parametres' | 'abonnement' | 'equipe'
     // role : 'license' | 'admin'
     function buildHtml(current, role) {
         var home = homeHref(role);

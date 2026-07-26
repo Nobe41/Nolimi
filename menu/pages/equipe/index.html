@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- menu/pages/equipe/ — membres de l’abonnement (admin + licences). -->
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolimi — Équipe</title>
+    <link rel="icon" href="../../../assets/brand/favicon-64.png" type="image/png" sizes="64x64">
+    <link rel="icon" href="../../../assets/brand/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="../../../assets/brand/apple-touch-icon.png" sizes="180x180">
+    <link rel="stylesheet" href="../../main.css">
+    <link rel="stylesheet" href="./equipe.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../../saas/config/supabase.config.js"></script>
+    <script src="../../../saas/lib/auth.js"></script>
+</head>
+<body class="page page--menu">
+    <script src="../../components/sidebar/sidebar.js"></script>
+    <script>NolimiMenuSidebar.mount({ current: 'equipe' });</script>
+
+    <main class="menu-main menu-main--equipe">
+        <section class="equipe-panel">
+            <header class="equipe-header">
+                <h1 class="equipe-title">Équipe</h1>
+                <p class="equipe-plan" id="equipe-plan"></p>
+            </header>
+
+            <p class="equipe-status" id="equipe-status" aria-live="polite">Chargement…</p>
+
+            <div class="equipe-fields" id="equipe-fields" hidden>
+                <div class="equipe-field">
+                    <span class="equipe-field__label">Compte admin</span>
+                    <div class="equipe-field__box" id="equipe-admin">—</div>
+                </div>
+                <div class="equipe-licenses">
+                    <span class="equipe-field__label">Comptes licences</span>
+                    <ul class="equipe-list" id="equipe-licenses"></ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="./equipe.js"></script>
+</body>
+</html>
