@@ -654,40 +654,17 @@
             window.location.href = Auth.getAppUrl();
         });
     }
-    function startNewCollabProject(workspaceId) {
-        if (!workspaceId) return;
-        Cloud.createCollabProject(workspaceId, 'Sans titre', {}).then(function (project) {
-            openProject(project.id);
-        }).catch(function (err) {
-            alert(Cloud.mapError(err));
-        });
-    }
-
-    function newCollabProjectFromRoot() {
-        Cloud.askCollabWorkspaceId({
-            title: 'Nouveau projet',
-            lead: 'Dans quel projet collaboratif l’enregistrer ?'
-        }).then(function (workspaceId) {
-            if (typeof workspaceId === 'undefined') return;
-            if (!workspaceId) {
-                alert('Créez d’abord un projet collaboratif.');
-                return;
-            }
-            startNewCollabProject(workspaceId);
-        }).catch(function (err) {
-            alert(Cloud.mapError(err));
-        });
+    function openBlankAtelier() {
+        if (!Auth || !Auth.getAppUrl) return;
+        window.location.href = Auth.getAppUrl();
     }
 
     if (btnCreateCollab) btnCreateCollab.addEventListener('click', openCollabModal);
     if (btnNewCollabProjectRoot) {
-        btnNewCollabProjectRoot.addEventListener('click', newCollabProjectFromRoot);
+        btnNewCollabProjectRoot.addEventListener('click', openBlankAtelier);
     }
     if (btnNewCollabProject) {
-        btnNewCollabProject.addEventListener('click', function () {
-            if (!currentCollabId) return;
-            startNewCollabProject(currentCollabId);
-        });
+        btnNewCollabProject.addEventListener('click', openBlankAtelier);
     }
     if (collabModalCancel) collabModalCancel.addEventListener('click', closeCollabModal);
     if (collabModalSubmit) collabModalSubmit.addEventListener('click', submitCollabModal);

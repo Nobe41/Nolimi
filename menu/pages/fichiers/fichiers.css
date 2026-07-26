@@ -76,6 +76,10 @@
     margin-left: auto;
 }
 
+.fichiers-header__actions[hidden] {
+    display: none !important;
+}
+
 .fichiers-btn-create {
     padding: 0.5rem 0.95rem;
     font-size: 0.875rem;

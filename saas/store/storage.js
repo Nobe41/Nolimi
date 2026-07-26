@@ -517,9 +517,17 @@ async function saveProjectToCloud() {
         if (typeof currentCloudProjectId === 'string' && currentCloudProjectId) {
             row = await CloudProjects.update(currentCloudProjectId, { name: name, data: payload });
         } else {
-            var folderId = await CloudProjects.askFolderId();
-            if (typeof folderId === 'undefined') return; // annulé
-            row = await CloudProjects.create(name, payload, folderId);
+            var dest = await CloudProjects.askSaveDestination({
+                title: 'Enregistrer le projet',
+                lead: 'Choisir mes projets ou un projet collaboratif.'
+            });
+            if (typeof dest === 'undefined') return; // annulé
+            if (dest && dest.type === 'collab' && dest.workspaceId) {
+                row = await CloudProjects.createCollabProject(dest.workspaceId, name, payload);
+            } else {
+                var folderId = dest && dest.folderId ? dest.folderId : null;
+                row = await CloudProjects.create(name, payload, folderId);
+            }
             currentCloudProjectId = row.id;
             CloudProjects.setProjectIdInUrl(row.id);
         }

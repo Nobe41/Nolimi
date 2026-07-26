@@ -450,6 +450,97 @@ var CloudProjects = (function () {
         });
     }
 
+    // Destination d’enregistrement : perso (dossier) ou collaboratif.
+    // Retourne undefined si annulé, sinon { type:'personal', folderId } | { type:'collab', workspaceId }.
+    function askSaveDestination(options) {
+        return Promise.all([
+            listFoldersWithPaths(),
+            listCollabWorkspaces().catch(function () { return []; })
+        ]).then(function (parts) {
+            var folders = parts[0] || [];
+            var workspaces = parts[1] || [];
+
+            if (!folders.length && !workspaces.length) {
+                return { type: 'personal', folderId: null };
+            }
+
+            return new Promise(function (resolve) {
+                var personalOptions = [
+                    '<option value="personal:">' + escapeHtml('Mes projets — À la racine') + '</option>'
+                ].concat(folders.map(function (f) {
+                    return '<option value="personal:' + f.id + '">' +
+                        escapeHtml('Mes projets — ' + f.path) + '</option>';
+                }));
+
+                var collabOptions = workspaces.map(function (w) {
+                    return '<option value="collab:' + w.id + '">' +
+                        escapeHtml('Collaboratif — ' + (w.name || 'Sans titre')) + '</option>';
+                });
+
+                var overlay = document.createElement('div');
+                overlay.className = 'nolimi-folder-picker';
+                overlay.innerHTML = [
+                    '<div class="nolimi-folder-picker__panel" role="dialog" aria-modal="true" aria-labelledby="nolimi-save-dest-title">',
+                    '  <h2 id="nolimi-save-dest-title" class="nolimi-folder-picker__title">' +
+                        escapeHtml((options && options.title) || 'Enregistrer le projet') + '</h2>',
+                    '  <p class="nolimi-folder-picker__lead">' +
+                        escapeHtml((options && options.lead) || 'Où enregistrer ce projet ?') + '</p>',
+                    '  <label class="nolimi-folder-picker__label">',
+                    '    <span>Emplacement</span>',
+                    '    <select id="nolimi-save-dest-select" class="nolimi-folder-picker__select">',
+                    personalOptions.join(''),
+                    collabOptions.join(''),
+                    '    </select>',
+                    '  </label>',
+                    '  <div class="nolimi-folder-picker__actions">',
+                    '    <button type="button" class="nolimi-folder-picker__btn" data-action="cancel">Annuler</button>',
+                    '    <button type="button" class="nolimi-folder-picker__btn nolimi-folder-picker__btn--primary" data-action="ok">Valider</button>',
+                    '  </div>',
+                    '</div>'
+                ].join('');
+
+                ensurePickerStyles();
+                document.body.appendChild(overlay);
+
+                var select = overlay.querySelector('#nolimi-save-dest-select');
+                if (select && options && options.preferCollabId) {
+                    select.value = 'collab:' + options.preferCollabId;
+                }
+
+                function finish(value) {
+                    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                    resolve(value);
+                }
+
+                function parseValue(raw) {
+                    if (!raw || raw.indexOf('collab:') === 0) {
+                        var wsId = raw ? raw.slice(7) : '';
+                        if (!isUuid(wsId)) return null;
+                        return { type: 'collab', workspaceId: wsId };
+                    }
+                    if (raw.indexOf('personal:') === 0) {
+                        var folderId = raw.slice(9);
+                        return {
+                            type: 'personal',
+                            folderId: isUuid(folderId) ? folderId : null
+                        };
+                    }
+                    return { type: 'personal', folderId: null };
+                }
+
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) finish(undefined);
+                });
+                overlay.querySelector('[data-action="cancel"]').addEventListener('click', function () {
+                    finish(undefined);
+                });
+                overlay.querySelector('[data-action="ok"]').addEventListener('click', function () {
+                    finish(parseValue(select && select.value));
+                });
+            });
+        });
+    }
+
     // Demande le dossier cible (null = racine, undefined = annulé).
     // force=true → affiche même s’il n’y a aucun dossier (uniquement racine).
     function askFolderId(options) {
@@ -639,6 +730,7 @@ var CloudProjects = (function () {
         createCollabWorkspace: createCollabWorkspace,
         askFolderId: askFolderId,
         askCollabWorkspaceId: askCollabWorkspaceId,
+        askSaveDestination: askSaveDestination,
         mapError: mapError,
         getProjectIdFromUrl: getProjectIdFromUrl,
         setProjectIdInUrl: setProjectIdInUrl
