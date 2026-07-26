@@ -91,7 +91,7 @@ create policy "collab_workspaces_update"
 create policy "collab_workspaces_delete"
   on public.collab_workspaces for delete
   to authenticated
-  using (auth.uid() = owner_id);
+  using (auth.uid() = owner_id or public.is_collab_member(id));
 
 drop policy if exists "collab_members_select" on public.collab_workspace_members;
 drop policy if exists "collab_members_insert" on public.collab_workspace_members;

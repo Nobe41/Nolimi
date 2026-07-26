@@ -417,20 +417,18 @@
             info.appendChild(meta);
 
             var actions = [
-                { label: 'Ouvrir', onClick: function () { navigateCollab(ws.id); } }
-            ];
-            if (ws.owner_id && ws.owner_id === currentUserId) {
-                actions.push({
+                { label: 'Ouvrir', onClick: function () { navigateCollab(ws.id); } },
+                {
                     label: 'Supprimer',
                     danger: true,
                     onClick: function () {
-                        if (!confirm('Supprimer le projet collaboratif « ' + (ws.name || '') + ' » et tous ses fichiers pour tous les membres ?')) return;
+                        if (!confirm('Supprimer le dossier collaboratif « ' + (ws.name || '') + ' » et tous ses fichiers pour tous les membres ?')) return;
                         Cloud.removeCollabWorkspace(ws.id).then(refreshCollab).catch(function (err) {
                             alert(Cloud.mapError(err));
                         });
                     }
-                });
-            }
+                }
+            ];
 
             li.appendChild(buildIcon(ICON_FOLDER));
             li.appendChild(info);

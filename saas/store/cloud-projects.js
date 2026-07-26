@@ -421,9 +421,14 @@ var CloudProjects = (function () {
                 .from('collab_workspaces')
                 .delete()
                 .eq('id', workspaceId)
-                .eq('owner_id', ctx.user.id)
+                .select('id')
                 .then(function (result) {
                     if (result.error) return Promise.reject(result.error);
+                    if (!result.data || !result.data.length) {
+                        return Promise.reject(new Error(
+                            'Impossible de supprimer ce dossier collaboratif.'
+                        ));
+                    }
                     return true;
                 });
         });
