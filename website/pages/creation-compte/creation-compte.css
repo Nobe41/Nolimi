@@ -80,6 +80,11 @@
     word-break: break-word;
 }
 
+#btn-submit[hidden],
+.login-legal[hidden] {
+    display: none;
+}
+
 /* Beaucoup de champs (5 / 10) : aligner en haut */
 .page-main--auth.page-main--licenses-many {
     justify-content: flex-start;

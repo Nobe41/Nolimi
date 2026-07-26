@@ -42,9 +42,29 @@ var NolimiAuth = (function () {
             return resolveUrl('index.html');
         }
         if (window.location.pathname.indexOf('/menu/') !== -1) {
-            return resolveUrl('../../website/pages/connexion/index.html');
+            return resolveUrl('../../../website/pages/connexion/index.html');
+        }
+        if (window.location.pathname.indexOf('/saas/') !== -1) {
+            return resolveUrl('../website/pages/connexion/index.html');
         }
         return resolveUrl('../website/pages/connexion/index.html');
+    }
+
+    function getWebsiteUrl() {
+        if (window.location.pathname.indexOf('/menu/') !== -1) {
+            return resolveUrl('../../../website/pages/accueil/index.html');
+        }
+        if (window.location.pathname.indexOf('/saas/') !== -1) {
+            return resolveUrl('../website/pages/accueil/index.html');
+        }
+        if (window.location.pathname.indexOf('/website/') !== -1) {
+            return resolveUrl('../accueil/index.html');
+        }
+        return resolveUrl('../website/pages/accueil/index.html');
+    }
+
+    function redirectToWebsite() {
+        window.location.replace(getWebsiteUrl());
     }
 
     // Après login (sans lien de session) → menu (accueil ou abonnement admin)
@@ -317,13 +337,13 @@ var NolimiAuth = (function () {
     function signOut() {
         var sb = getClient();
         if (!sb) {
-            redirectToLogin();
+            redirectToWebsite();
             return Promise.resolve();
         }
         return sb.auth.signOut().then(function () {
-            redirectToLogin();
+            redirectToWebsite();
         }).catch(function () {
-            redirectToLogin();
+            redirectToWebsite();
         });
     }
 
@@ -503,6 +523,7 @@ var NolimiAuth = (function () {
         getAppUrl: getAppUrl,
         getMenuUrl: getMenuUrl,
         getAdminMenuUrl: getAdminMenuUrl,
+        getWebsiteUrl: getWebsiteUrl,
         parseSessionLink: parseSessionLink,
         isValidSessionId: isValidSessionId,
         persistPendingSession: persistPendingSession,

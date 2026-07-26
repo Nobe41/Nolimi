@@ -8,11 +8,11 @@
     var fieldsEl = document.getElementById('license-fields');
     var adminFieldEl = document.getElementById('admin-field');
     var adminEmailEl = document.getElementById('admin-email');
-    var instructionsEl = document.getElementById('license-instructions');
     var errEl = document.getElementById('error-msg');
     var successEl = document.getElementById('success-msg');
     var submitBtn = document.getElementById('btn-submit');
     var loginBtn = document.getElementById('btn-login');
+    var legalEl = document.getElementById('login-legal');
     var paymentSuccessEl = document.querySelector('.payment-success');
 
     var stripeSessionId = Api ? Api.getStripeSessionId() : '';
@@ -43,12 +43,6 @@
     }
 
     function renderLicenseFields(count) {
-        if (instructionsEl) {
-            instructionsEl.textContent = count === 1
-                ? 'Renseignez l’adresse mail de la licence (différente du compte admin).'
-                : 'Renseignez les ' + count + ' adresses mail des licences (différentes du compte admin).';
-        }
-
         fieldsEl.innerHTML = '';
 
         var mainEl = document.querySelector('.page-main--auth');
@@ -82,10 +76,9 @@
         updateSubmitState();
     }
 
-    function showFatal(message, hint) {
+    function showFatal(message) {
         if (paymentSuccessEl) paymentSuccessEl.hidden = true;
         errEl.textContent = message;
-        if (hint && instructionsEl) instructionsEl.textContent = hint;
         form.hidden = true;
     }
 
@@ -97,8 +90,7 @@
     if (!stripeSessionId) {
         setAdminDisplay('Session Stripe manquante');
         showFatal(
-            'Paiement reçu, mais la session Stripe est introuvable dans l’URL. Vérifiez que l’URL de redirection Stripe contient bien : session_id={CHECKOUT_SESSION_ID}',
-            'Exemple d’URL Stripe : …/creation-compte/index.html?licences=1&session_id={CHECKOUT_SESSION_ID}'
+            'Paiement reçu, mais la session Stripe est introuvable dans l’URL. Vérifiez que l’URL de redirection Stripe contient bien : session_id={CHECKOUT_SESSION_ID}'
         );
     } else if (!Api || !Api.fetchCheckoutSessionInfo) {
         setAdminDisplay('Service indisponible');
@@ -153,7 +145,8 @@
 
             successEl.textContent = result.message ||
                 'Le compte admin et les licences ont été créés. Chaque adresse recevra ses identifiants par mail.';
-            submitBtn.disabled = true;
+            submitBtn.hidden = true;
+            if (legalEl) legalEl.hidden = true;
             if (loginBtn) loginBtn.hidden = false;
         });
     });
