@@ -18,6 +18,7 @@
     var collabActionsInside = document.getElementById('collab-actions-inside');
     var btnCreateCollab = document.getElementById('btn-create-collab');
     var btnNewCollabProject = document.getElementById('btn-new-collab-project');
+    var btnNewCollabProjectRoot = document.getElementById('btn-new-collab-project-root');
 
     var collabModal = document.getElementById('collab-modal');
     var collabModalName = document.getElementById('collab-modal-name');
@@ -653,15 +654,39 @@
             window.location.href = Auth.getAppUrl();
         });
     }
+    function startNewCollabProject(workspaceId) {
+        if (!workspaceId) return;
+        Cloud.createCollabProject(workspaceId, 'Sans titre', {}).then(function (project) {
+            openProject(project.id);
+        }).catch(function (err) {
+            alert(Cloud.mapError(err));
+        });
+    }
+
+    function newCollabProjectFromRoot() {
+        Cloud.askCollabWorkspaceId({
+            title: 'Nouveau projet',
+            lead: 'Dans quel projet collaboratif l’enregistrer ?'
+        }).then(function (workspaceId) {
+            if (typeof workspaceId === 'undefined') return;
+            if (!workspaceId) {
+                alert('Créez d’abord un projet collaboratif.');
+                return;
+            }
+            startNewCollabProject(workspaceId);
+        }).catch(function (err) {
+            alert(Cloud.mapError(err));
+        });
+    }
+
     if (btnCreateCollab) btnCreateCollab.addEventListener('click', openCollabModal);
+    if (btnNewCollabProjectRoot) {
+        btnNewCollabProjectRoot.addEventListener('click', newCollabProjectFromRoot);
+    }
     if (btnNewCollabProject) {
         btnNewCollabProject.addEventListener('click', function () {
             if (!currentCollabId) return;
-            Cloud.createCollabProject(currentCollabId, 'Sans titre', {}).then(function (project) {
-                openProject(project.id);
-            }).catch(function (err) {
-                alert(Cloud.mapError(err));
-            });
+            startNewCollabProject(currentCollabId);
         });
     }
     if (collabModalCancel) collabModalCancel.addEventListener('click', closeCollabModal);

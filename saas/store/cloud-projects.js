@@ -511,6 +511,68 @@ var CloudProjects = (function () {
         });
     }
 
+    // Choisir un workspace collaboratif (undefined = annulé, null = aucun disponible).
+    function askCollabWorkspaceId(options) {
+        return listCollabWorkspaces().then(function (workspaces) {
+            workspaces = workspaces || [];
+            if (!workspaces.length) {
+                return Promise.resolve(null);
+            }
+            if (workspaces.length === 1) {
+                return Promise.resolve(workspaces[0].id);
+            }
+
+            return new Promise(function (resolve) {
+                var overlay = document.createElement('div');
+                overlay.className = 'nolimi-folder-picker';
+                overlay.innerHTML = [
+                    '<div class="nolimi-folder-picker__panel" role="dialog" aria-modal="true" aria-labelledby="nolimi-collab-picker-title">',
+                    '  <h2 id="nolimi-collab-picker-title" class="nolimi-folder-picker__title">' +
+                        escapeHtml((options && options.title) || 'Projet collaboratif') + '</h2>',
+                    '  <p class="nolimi-folder-picker__lead">' +
+                        escapeHtml((options && options.lead) || 'Dans quel projet collaboratif l’enregistrer ?') + '</p>',
+                    '  <label class="nolimi-folder-picker__label">',
+                    '    <span>Projet collaboratif</span>',
+                    '    <select id="nolimi-collab-picker-select" class="nolimi-folder-picker__select">',
+                    workspaces.map(function (w) {
+                        return '<option value="' + w.id + '">' + escapeHtml(w.name || 'Sans titre') + '</option>';
+                    }).join(''),
+                    '    </select>',
+                    '  </label>',
+                    '  <div class="nolimi-folder-picker__actions">',
+                    '    <button type="button" class="nolimi-folder-picker__btn" data-action="cancel">Annuler</button>',
+                    '    <button type="button" class="nolimi-folder-picker__btn nolimi-folder-picker__btn--primary" data-action="ok">Valider</button>',
+                    '  </div>',
+                    '</div>'
+                ].join('');
+
+                ensurePickerStyles();
+                document.body.appendChild(overlay);
+
+                var select = overlay.querySelector('#nolimi-collab-picker-select');
+                if (select && options && options.currentWorkspaceId) {
+                    select.value = options.currentWorkspaceId;
+                }
+
+                function finish(value) {
+                    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                    resolve(value);
+                }
+
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) finish(undefined);
+                });
+                overlay.querySelector('[data-action="cancel"]').addEventListener('click', function () {
+                    finish(undefined);
+                });
+                overlay.querySelector('[data-action="ok"]').addEventListener('click', function () {
+                    var val = select && select.value ? select.value : null;
+                    finish(val || null);
+                });
+            });
+        });
+    }
+
     function escapeHtml(str) {
         return String(str || '')
             .replace(/&/g, '&amp;')
@@ -576,6 +638,7 @@ var CloudProjects = (function () {
         removeCollabWorkspace: removeCollabWorkspace,
         createCollabWorkspace: createCollabWorkspace,
         askFolderId: askFolderId,
+        askCollabWorkspaceId: askCollabWorkspaceId,
         mapError: mapError,
         getProjectIdFromUrl: getProjectIdFromUrl,
         setProjectIdInUrl: setProjectIdInUrl
