@@ -241,7 +241,7 @@
         var isSelf = email.toLowerCase() === currentUserEmail;
         var label = isSelf
             ? 'Retirer votre siège licence ?\n\nVotre compte admin sera conservé, mais vous perdrez l’accès collaborateur (Fichiers, Accueil…).'
-            : 'Supprimer définitivement le compte « ' + email + ' » ?\n\n• Le compte sera effacé de Supabase\n• La personne ne pourra plus se connecter\n• Une place licence se libérera';
+            : 'Supprimer définitivement le compte « ' + email + ' » ?\n\n• La personne ne pourra plus se connecter\n• Une place licence se libérera';
         if (!confirm(label)) return;
 
         setStatus('Suppression…');
