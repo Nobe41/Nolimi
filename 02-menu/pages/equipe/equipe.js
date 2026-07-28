@@ -3,9 +3,31 @@
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
 
+    var openMenuWrap = null;
+
+    function closeOpenMenu() {
+        if (!openMenuWrap) return;
+        var dropdown = openMenuWrap.querySelector('.equipe-card__menu-dropdown');
+        var btn = openMenuWrap.querySelector('.equipe-card__menu-btn');
+        if (dropdown) dropdown.hidden = true;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        openMenuWrap.classList.remove('is-open');
+        openMenuWrap = null;
+    }
+
     window.__nolimiPageCleanup = function () {
+        closeOpenMenu();
+        document.removeEventListener('click', onDocumentClickCloseMenu);
         window.__nolimiPageCleanup = null;
     };
+
+    function onDocumentClickCloseMenu(e) {
+        if (!openMenuWrap) return;
+        if (openMenuWrap.contains(e.target)) return;
+        closeOpenMenu();
+    }
+
+    document.addEventListener('click', onDocumentClickCloseMenu);
 
     var statusEl = document.getElementById('equipe-status');
     var gridEl = document.getElementById('equipe-grid');
@@ -253,6 +275,7 @@
 
     function renderGrid() {
         if (!gridEl) return;
+        closeOpenMenu();
         var list = filteredMembers();
         gridEl.innerHTML = '';
 
@@ -355,29 +378,61 @@
             footer.appendChild(badge);
 
             if (canRemove) {
-                var actions = document.createElement('div');
-                actions.className = 'equipe-card__actions';
+                var menuWrap = document.createElement('div');
+                menuWrap.className = 'equipe-card__menu';
+
+                var menuBtn = document.createElement('button');
+                menuBtn.type = 'button';
+                menuBtn.className = 'equipe-card__menu-btn';
+                menuBtn.setAttribute('aria-haspopup', 'true');
+                menuBtn.setAttribute('aria-expanded', 'false');
+                menuBtn.setAttribute('aria-label', 'Actions pour ' + email);
+                menuBtn.textContent = '⋯';
+                menuBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var isOpen = menuWrap.classList.contains('is-open');
+                    closeOpenMenu();
+                    if (isOpen) return;
+                    menuWrap.classList.add('is-open');
+                    dropdown.hidden = false;
+                    menuBtn.setAttribute('aria-expanded', 'true');
+                    openMenuWrap = menuWrap;
+                });
+
+                var dropdown = document.createElement('div');
+                dropdown.className = 'equipe-card__menu-dropdown';
+                dropdown.hidden = true;
+                dropdown.setAttribute('role', 'menu');
 
                 if (!isAdmin) {
                     var resendBtn = document.createElement('button');
                     resendBtn.type = 'button';
-                    resendBtn.className = 'equipe-card__resend';
+                    resendBtn.className = 'equipe-card__menu-item';
+                    resendBtn.setAttribute('role', 'menuitem');
                     resendBtn.textContent = 'Renvoyer accès';
-                    resendBtn.addEventListener('click', function () {
+                    resendBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        closeOpenMenu();
                         resendCredentials(email);
                     });
-                    actions.appendChild(resendBtn);
+                    dropdown.appendChild(resendBtn);
                 }
 
                 var removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
-                removeBtn.className = 'equipe-card__remove';
+                removeBtn.className = 'equipe-card__menu-item equipe-card__menu-item--danger';
+                removeBtn.setAttribute('role', 'menuitem');
                 removeBtn.textContent = isAdmin ? 'Retirer le siège' : 'Supprimer';
-                removeBtn.addEventListener('click', function () {
+                removeBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    closeOpenMenu();
                     removeMember(email);
                 });
-                actions.appendChild(removeBtn);
-                footer.appendChild(actions);
+                dropdown.appendChild(removeBtn);
+
+                menuWrap.appendChild(menuBtn);
+                menuWrap.appendChild(dropdown);
+                footer.appendChild(menuWrap);
             }
 
             card.appendChild(top);

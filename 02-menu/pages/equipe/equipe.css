@@ -232,13 +232,15 @@
 
 .equipe-card__footer {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 0.5rem;
     margin-top: auto;
+    min-height: 1.75rem;
 }
 
 .equipe-card__badge {
+    align-self: flex-end;
     padding: 0.28rem 0.65rem;
     border-radius: 999px;
     background: #f3f4f6;
@@ -252,42 +254,77 @@
     color: #3b66c4;
 }
 
-.equipe-card__actions {
-    display: flex;
+.equipe-card__menu {
+    position: relative;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.equipe-card__menu-btn {
+    width: 1.85rem;
+    height: 1.85rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #98a2b3;
+    font: inherit;
+    font-size: 1.15rem;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: center;
 }
 
-.equipe-card__remove {
+.equipe-card__menu-btn:hover,
+.equipe-card__menu.is-open .equipe-card__menu-btn {
+    background: #f3f4f6;
+    color: var(--nolimi-ink);
+}
+
+.equipe-card__menu-dropdown {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.35rem);
+    z-index: 5;
+    min-width: 10.5rem;
+    padding: 0.3rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.equipe-card__menu-dropdown[hidden] {
+    display: none !important;
+}
+
+.equipe-card__menu-item {
+    display: block;
+    width: 100%;
     border: none;
+    border-radius: 7px;
     background: transparent;
+    text-align: left;
+    padding: 0.5rem 0.65rem;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 550;
+    color: var(--nolimi-ink);
+    cursor: pointer;
+}
+
+.equipe-card__menu-item:hover {
+    background: #f3f4f6;
+}
+
+.equipe-card__menu-item--danger {
     color: #b42318;
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0.2rem 0.35rem;
 }
 
-.equipe-card__remove:hover {
-    text-decoration: underline;
-}
-
-.equipe-card__resend {
-    border: none;
-    background: transparent;
-    color: #3b66c4;
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0.2rem 0.35rem;
-}
-
-.equipe-card__resend:hover {
-    text-decoration: underline;
+.equipe-card__menu-item--danger:hover {
+    background: #fef3f2;
 }
 
 .equipe-card--slot {
