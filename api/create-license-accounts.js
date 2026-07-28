@@ -1,5 +1,6 @@
 // api/ — Endpoints serveur (licences, Stripe, emails).
 // Ce fichier : après un paiement Stripe validé, crée le compte admin + les licences et envoie les identifiants.
+// Si l’admin a déjà un compte (nouveau paiement), on le réutilise et on ajoute les nouvelles licences.
 
 const crypto = require('crypto');
 const stripeVerify = require('./stripe-verify');
@@ -40,26 +41,50 @@ function normalizeEmails(emails) {
     }).filter(Boolean);
 }
 
-// Contrôle : bon nombre de licences, emails valides, différents, ≠ admin.
+function uniqueStrings(values) {
+    var out = [];
+    var seen = {};
+    (values || []).forEach(function (value) {
+        var v = String(value || '').trim();
+        if (!v || seen[v]) return;
+        seen[v] = true;
+        out.push(v);
+    });
+    return out;
+}
+
+function planLabelFromCount(count) {
+    var n = parseInt(count, 10) || 0;
+    if (n === 1) return '1 licence';
+    if (n > 1) return n + ' licences';
+    return null;
+}
+
+// Contrôle : emails valides et uniques, au plus licenseCount (les champs vides sont ignorés).
+// L’email admin est autorisé une fois (siège licence sur le compte admin).
 function validatePayload(emails, licenseCount, adminEmail) {
     if (ALLOWED_COUNTS.indexOf(licenseCount) === -1) {
         return 'Nombre de licences invalide.';
     }
-    if (emails.length !== licenseCount) {
-        return 'Le nombre d\'adresses mail ne correspond pas au nombre de licences.';
+    if (emails.length > licenseCount) {
+        return 'Trop d\'adresses mail pour le nombre de licences achetées.';
     }
     if (!adminEmail || !isValidEmail(adminEmail)) {
         return 'Email du compte admin introuvable.';
     }
 
     var seen = {};
+    var adminSeatCount = 0;
     for (var i = 0; i < emails.length; i++) {
         var email = emails[i];
         if (!isValidEmail(email)) {
             return 'Adresse mail invalide : ' + email;
         }
         if (email === adminEmail) {
-            return 'Les licences doivent utiliser des adresses différentes du compte admin.';
+            adminSeatCount += 1;
+            if (adminSeatCount > 1) {
+                return 'L’adresse admin ne peut être utilisée qu’une seule fois comme licence.';
+            }
         }
         if (seen[email]) {
             return 'Chaque licence doit avoir une adresse mail différente.';
@@ -67,6 +92,206 @@ function validatePayload(emails, licenseCount, adminEmail) {
         seen[email] = true;
     }
     return null; // null = tout est ok
+}
+
+async function findAuthUserByEmail(supabaseUrl, secretKey, email) {
+    var target = String(email || '').trim().toLowerCase();
+    if (!target) return null;
+
+    var base = supabaseUrl.replace(/\/$/, '') + '/auth/v1/admin/users';
+    var headers = {
+        Authorization: 'Bearer ' + secretKey,
+        apikey: secretKey
+    };
+
+    // Filtre email (GoTrue) puis secours par pagination.
+    var filtered = await fetch(base + '?email=' + encodeURIComponent(target), {
+        method: 'GET',
+        headers: headers
+    });
+    try {
+        var filteredData = await filtered.json();
+        var filteredUsers = (filteredData && filteredData.users) || [];
+        for (var i = 0; i < filteredUsers.length; i++) {
+            var u = filteredUsers[i];
+            if (String(u.email || '').trim().toLowerCase() === target) return u;
+        }
+    } catch (e) {}
+
+    var page = 1;
+    var perPage = 200;
+    while (page < 50) {
+        var response = await fetch(base + '?page=' + page + '&per_page=' + perPage, {
+            method: 'GET',
+            headers: headers
+        });
+        var data = null;
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = null;
+        }
+        if (!response.ok) return null;
+        var batch = (data && data.users) || [];
+        for (var j = 0; j < batch.length; j++) {
+            if (String(batch[j].email || '').trim().toLowerCase() === target) {
+                return batch[j];
+            }
+        }
+        if (batch.length < perPage) break;
+        page += 1;
+    }
+    return null;
+}
+
+async function updateSupabaseUserMetadata(supabaseUrl, secretKey, userId, userMetadata) {
+    var response = await fetch(
+        supabaseUrl.replace(/\/$/, '') + '/auth/v1/admin/users/' + encodeURIComponent(userId),
+        {
+            method: 'PUT',
+            headers: {
+                Authorization: 'Bearer ' + secretKey,
+                apikey: secretKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_metadata: userMetadata || {}
+            })
+        }
+    );
+
+    var data = null;
+    try {
+        data = await response.json();
+    } catch (e) {
+        data = null;
+    }
+
+    if (!response.ok) {
+        var message = (data && (data.msg || data.message || data.error_description || data.error)) ||
+            'Impossible de mettre à jour le compte admin.';
+        return { ok: false, error: String(message) };
+    }
+
+    return { ok: true, userId: userId, user: data };
+}
+
+function buildSubscriptionPack(buyer, licenseCount, sessionId) {
+    return {
+        id: (buyer && buyer.subscriptionId) || ('pack_' + Date.now()),
+        subscriptionId: (buyer && buyer.subscriptionId) || null,
+        customerId: (buyer && buyer.customerId) || null,
+        licenseCount: parseInt(licenseCount, 10) || 0,
+        checkoutSessionId: sessionId || null,
+        status: 'active',
+        createdAt: new Date().toISOString()
+    };
+}
+
+function mergeSubscriptionPacks(existingPacks, newPack) {
+    var packs = Array.isArray(existingPacks) ? existingPacks.slice() : [];
+    if (!newPack) return packs;
+    if (newPack.subscriptionId) {
+        for (var i = 0; i < packs.length; i++) {
+            if (packs[i] && packs[i].subscriptionId === newPack.subscriptionId) {
+                packs[i] = Object.assign({}, packs[i], newPack);
+                return packs;
+            }
+        }
+    }
+    packs.push(newPack);
+    return packs;
+}
+
+function activeLicenseCapacity(packs) {
+    var total = 0;
+    (packs || []).forEach(function (pack) {
+        if (!pack || pack.status === 'canceled' || pack.status === 'unpaid') return;
+        total += parseInt(pack.licenseCount, 10) || 0;
+    });
+    return total;
+}
+
+function mergeAdminMetadata(existingMeta, packMeta, buyer, sessionId) {
+    var existing = existingMeta || {};
+    var pack = packMeta || {};
+
+    var prevEmails = Array.isArray(existing.team_license_emails)
+        ? existing.team_license_emails
+        : [];
+    var packEmails = Array.isArray(pack.team_license_emails)
+        ? pack.team_license_emails
+        : [];
+    var mergedEmails = uniqueStrings(
+        prevEmails.map(function (e) { return String(e || '').trim().toLowerCase(); })
+            .concat(packEmails.map(function (e) { return String(e || '').trim().toLowerCase(); }))
+    );
+
+    var addCount = parseInt(pack.license_count, 10) || packEmails.length || 0;
+    var newPack = buildSubscriptionPack(buyer, addCount, sessionId);
+    var packs = Array.isArray(existing.subscription_packs) ? existing.subscription_packs.slice() : [];
+
+    // Reconstituer un pack legacy si besoin
+    if (!packs.length && (existing.stripe_subscription_id || existing.stripe_customer_id)) {
+        var legacyCount = parseInt(existing.license_count, 10) || 0;
+        var legacyOnly = Math.max(0, legacyCount - addCount);
+        packs.push({
+            id: existing.stripe_subscription_id || ('legacy_' + Date.now()),
+            subscriptionId: existing.stripe_subscription_id || null,
+            customerId: existing.stripe_customer_id || null,
+            licenseCount: legacyOnly > 0 ? legacyOnly : legacyCount,
+            checkoutSessionId: existing.stripe_checkout_session_id || null,
+            status: 'active',
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    packs = mergeSubscriptionPacks(packs, newPack);
+    var totalCount = activeLicenseCapacity(packs);
+    if (!totalCount) {
+        var prevCount = parseInt(existing.license_count, 10);
+        if (!prevCount || prevCount < 0) prevCount = prevEmails.length || 0;
+        totalCount = prevCount + addCount;
+    }
+    if (mergedEmails.length > totalCount) totalCount = mergedEmails.length;
+
+    var customers = uniqueStrings([].concat(
+        Array.isArray(existing.stripe_customer_ids) ? existing.stripe_customer_ids : [],
+        existing.stripe_customer_id ? [existing.stripe_customer_id] : [],
+        buyer && buyer.customerId ? [buyer.customerId] : []
+    ));
+
+    var subscriptions = uniqueStrings([].concat(
+        Array.isArray(existing.stripe_subscription_ids) ? existing.stripe_subscription_ids : [],
+        existing.stripe_subscription_id ? [existing.stripe_subscription_id] : [],
+        buyer && buyer.subscriptionId ? [buyer.subscriptionId] : []
+    ));
+
+    var sessions = uniqueStrings([].concat(
+        Array.isArray(existing.stripe_checkout_session_ids) ? existing.stripe_checkout_session_ids : [],
+        existing.stripe_checkout_session_id ? [existing.stripe_checkout_session_id] : [],
+        sessionId ? [sessionId] : []
+    ));
+
+    // Customer principal = le premier connu (évite de basculer le portail à chaque paiement)
+    var primaryCustomer = existing.stripe_customer_id || customers[0] || (buyer && buyer.customerId) || null;
+
+    return {
+        account_role: 'admin',
+        license_manager_email: pack.license_manager_email || existing.license_manager_email,
+        license_count: totalCount,
+        license_plan: planLabelFromCount(totalCount),
+        team_license_emails: mergedEmails,
+        has_license_seat: !!(existing.has_license_seat || pack.has_license_seat),
+        subscription_packs: packs,
+        stripe_customer_id: primaryCustomer,
+        stripe_subscription_id: (buyer && buyer.subscriptionId) || existing.stripe_subscription_id || subscriptions[0] || null,
+        stripe_checkout_session_id: sessionId || existing.stripe_checkout_session_id || null,
+        stripe_customer_ids: customers,
+        stripe_subscription_ids: subscriptions,
+        stripe_checkout_session_ids: sessions,
+        multiple_stripe_customers: customers.length > 1
+    };
 }
 
 // Crée un utilisateur dans Supabase Auth (API admin).
@@ -96,7 +321,7 @@ async function createSupabaseUser(supabaseUrl, secretKey, email, password, userM
     if (!response.ok) {
         var message = (data && (data.msg || data.message || data.error_description || data.error)) || 'Erreur Supabase';
         if (/already registered|already been registered|user already exists/i.test(String(message))) {
-            return { ok: false, email: email, error: 'Cette adresse mail est déjà utilisée : ' + email };
+            return { ok: false, email: email, error: 'Cette adresse mail est déjà utilisée : ' + email, alreadyExists: true };
         }
         return { ok: false, email: email, error: String(message) };
     }
@@ -114,7 +339,7 @@ async function createAndMailUser(options) {
         options.metadata
     );
     if (!result.ok) {
-        return { ok: false, error: result.error };
+        return { ok: false, error: result.error, alreadyExists: !!result.alreadyExists };
     }
 
     var mailResult = await resendMail.sendCredentialsEmail({
@@ -141,6 +366,61 @@ async function createAndMailUser(options) {
         email: result.email,
         userId: result.userId,
         emailSent: true
+    };
+}
+
+async function ensureAdminAccount(options) {
+    var existing = await findAuthUserByEmail(
+        options.supabaseUrl,
+        options.supabaseSecretKey,
+        options.email
+    );
+
+    if (!existing) {
+        var created = await createAndMailUser(options);
+        if (!created.ok) return created;
+        return {
+            ok: true,
+            reused: false,
+            email: created.email,
+            userId: created.userId,
+            emailSent: created.emailSent,
+            warning: created.warning
+        };
+    }
+
+    var existingMeta = existing.user_metadata || {};
+    var role = String(existingMeta.account_role || '').trim().toLowerCase();
+    if (role === 'license') {
+        return {
+            ok: false,
+            error: 'Cette adresse mail est déjà utilisée comme compte licence. Utilisez une autre adresse pour l’admin, ou contactez le support.'
+        };
+    }
+
+    var merged = mergeAdminMetadata(
+        existingMeta,
+        options.metadata,
+        options.buyer,
+        options.sessionId
+    );
+
+    var updated = await updateSupabaseUserMetadata(
+        options.supabaseUrl,
+        options.supabaseSecretKey,
+        existing.id,
+        merged
+    );
+    if (!updated.ok) {
+        return { ok: false, error: updated.error };
+    }
+
+    return {
+        ok: true,
+        reused: true,
+        email: options.email,
+        userId: existing.id,
+        emailSent: false
     };
 }
 
@@ -204,12 +484,14 @@ module.exports = async function handler(req, res) {
         return json(res, 400, { error: validationError });
     }
 
-    var planLabel = licenseCount === 1 ? '1 licence' : licenseCount + ' licences';
+    var planLabel = planLabelFromCount(licenseCount);
+    var adminTakesLicenseSeat = emails.indexOf(managerEmail) !== -1;
     var sharedMeta = {
         license_manager_email: managerEmail,
         license_count: licenseCount,
         license_plan: planLabel,
-        team_license_emails: emails.slice()
+        team_license_emails: emails.slice(),
+        has_license_seat: adminTakesLicenseSeat
     };
 
     var mailOpts = {
@@ -223,16 +505,25 @@ module.exports = async function handler(req, res) {
     var created = [];
     var errors = [];
 
-    // 1) Compte admin (payeur Stripe)
-    var adminResult = await createAndMailUser({
+    // 1) Compte admin (payeur Stripe) — créé ou réutilisé si déjà existant
+    var adminResult = await ensureAdminAccount({
         email: managerEmail,
         accountType: 'admin',
         metadata: Object.assign({}, sharedMeta, {
             account_role: 'admin',
+            has_license_seat: adminTakesLicenseSeat,
             stripe_customer_id: buyer.customerId || null,
             stripe_subscription_id: buyer.subscriptionId || null,
-            stripe_checkout_session_id: sessionId
+            stripe_checkout_session_id: sessionId,
+            subscription_packs: [
+                buildSubscriptionPack(buyer, licenseCount, sessionId)
+            ],
+            stripe_customer_ids: buyer.customerId ? [buyer.customerId] : [],
+            stripe_subscription_ids: buyer.subscriptionId ? [buyer.subscriptionId] : [],
+            stripe_checkout_session_ids: sessionId ? [sessionId] : []
         }),
+        buyer: buyer,
+        sessionId: sessionId,
         supabaseUrl: mailOpts.supabaseUrl,
         supabaseSecretKey: mailOpts.supabaseSecretKey,
         resendApiKey: mailOpts.resendApiKey,
@@ -246,19 +537,32 @@ module.exports = async function handler(req, res) {
     created.push({
         email: adminResult.email,
         userId: adminResult.userId,
-        emailSent: adminResult.emailSent,
-        role: 'admin'
+        emailSent: !!adminResult.emailSent,
+        role: 'admin',
+        reused: !!adminResult.reused,
+        hasLicenseSeat: adminTakesLicenseSeat || !!(adminResult.reused && adminTakesLicenseSeat)
     });
     if (adminResult.warning) errors.push(adminResult.warning);
 
-    // 2) Comptes licences
+    // 2) Comptes licences (sauf l’email admin déjà couvert par le siège admin)
     for (var i = 0; i < emails.length; i++) {
         var email = emails[i];
+        if (email === managerEmail) {
+            created.push({
+                email: email,
+                userId: adminResult.userId,
+                emailSent: false,
+                role: 'license',
+                seatOnAdmin: true
+            });
+            continue;
+        }
         var result = await createAndMailUser({
             email: email,
             accountType: 'license',
             metadata: Object.assign({}, sharedMeta, {
-                account_role: 'license'
+                account_role: 'license',
+                has_license_seat: false
             }),
             supabaseUrl: mailOpts.supabaseUrl,
             supabaseSecretKey: mailOpts.supabaseSecretKey,
@@ -284,13 +588,16 @@ module.exports = async function handler(req, res) {
         await stripeVerify.markCheckoutSessionUsed(stripeSecretKey, sessionId);
     }
 
-    if (errors.length && created.length <= 1 && created[0] && created[0].role === 'admin' && emails.length) {
-        // Admin ok mais aucune licence → partiel
+    var adminReused = !!adminResult.reused;
+    var licenseCreated = created.filter(function (c) { return c.role === 'license'; }).length;
+
+    if (errors.length && licenseCreated === 0 && emails.length) {
         return json(res, 207, {
             created: created.length,
             errors: errors,
             partial: true,
-            adminCreated: true
+            adminCreated: !adminReused,
+            adminReused: adminReused
         });
     }
 
@@ -299,13 +606,15 @@ module.exports = async function handler(req, res) {
             created: created.length,
             errors: errors,
             partial: true,
-            adminCreated: true
+            adminCreated: !adminReused,
+            adminReused: adminReused
         });
     }
 
     return json(res, 200, {
         created: created.length,
         success: true,
-        adminCreated: true
+        adminCreated: !adminReused,
+        adminReused: adminReused
     });
 };

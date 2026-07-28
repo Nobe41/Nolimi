@@ -1,4 +1,4 @@
-// 02-menu/components/sidebar/ — menu latéral + barre mobile (hamburger).
+// menu/components/sidebar/ — menu latéral + barre mobile (hamburger).
 // Ce fichier : HTML de la sidebar + injection dans la page.
 
 (function (global) {
@@ -109,6 +109,18 @@
                 '</nav>'
             ].join('');
         }
+        if (role === 'admin-license') {
+            return [
+                '<nav class="menu-sidebar__nav" aria-label="Navigation">',
+                '  ' + link(current, 'accueil', '../accueil/index.html', 'Accueil'),
+                '  ' + link(current, 'fichiers', '../fichiers/index.html', 'Fichiers'),
+                '  ' + link(current, 'equipe', '../equipe/index.html', 'Équipe'),
+                '  ' + link(current, 'notifications', '../notifications/index.html', 'Notifications', unreadNotifCount()),
+                '  ' + link(current, 'abonnement', '../abonnement/index.html', 'Abonnement'),
+                '  ' + link(current, 'mon-compte', '../mon-compte/index.html', 'Mon compte'),
+                '</nav>'
+            ].join('');
+        }
         return [
             '<nav class="menu-sidebar__nav" aria-label="Navigation">',
             '  ' + link(current, 'accueil', '../accueil/index.html', 'Accueil'),
@@ -121,7 +133,7 @@
     }
 
     // current : 'accueil' | 'fichiers' | 'mon-compte' | 'notifications' | 'abonnement' | 'equipe'
-    // role : 'license' | 'admin'
+    // role : 'license' | 'admin' | 'admin-license'
     function buildHtml(current, role) {
         var home = homeHref(role);
         return [
@@ -270,7 +282,7 @@
             return;
         }
 
-        // Détection auto du rôle (admin vs licence)
+        // Détection auto du rôle (admin / admin+licence / licence)
         inject(current, 'license');
         var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
         if (!Auth || !Auth.getClient) return;
@@ -280,8 +292,14 @@
             var user = result && result.data && result.data.session
                 ? result.data.session.user
                 : null;
-            if (Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user)) {
-                inject(current, 'admin');
+            var role = 'license';
+            if (Auth.getAccountRole) {
+                role = Auth.getAccountRole(user) || 'license';
+            } else if (Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user)) {
+                role = 'admin';
+            }
+            if (role !== 'license') {
+                inject(current, role);
             }
         }).catch(function () {});
     }

@@ -1,4 +1,4 @@
-// 02-menu/pages/equipe/ — grille de membres (admin + collaborateurs).
+// 02-menu/pages/equipe/ — grille de membres + gestion des sièges (admin).
 
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
@@ -9,15 +9,25 @@
 
     var statusEl = document.getElementById('equipe-status');
     var gridEl = document.getElementById('equipe-grid');
+    var slotsEl = document.getElementById('equipe-slots');
+    var addBtn = document.getElementById('equipe-btn-add');
     var filterAllBtn = document.getElementById('filter-all');
     var filterAdminBtn = document.getElementById('filter-admin');
     var filterCollabBtn = document.getElementById('filter-collab');
     var searchEl = document.getElementById('equipe-search');
+    var modal = document.getElementById('equipe-modal');
+    var modalEmail = document.getElementById('equipe-modal-email');
+    var modalError = document.getElementById('equipe-modal-error');
+    var modalCancel = document.getElementById('equipe-modal-cancel');
+    var modalSubmit = document.getElementById('equipe-modal-submit');
 
     var members = [];
+    var teamData = null;
+    var accessToken = '';
     var currentUserEmail = '';
     var searchQuery = '';
     var activeFilter = 'all';
+    var canManage = false;
 
     var AVATAR_COLORS = [
         { bg: '#dbeafe', fg: '#1d4ed8' },
@@ -65,7 +75,6 @@
             var normalized = String(email || '').trim().toLowerCase();
             if (!normalized) return;
             if (seen[normalized]) {
-                // Si déjà présent en collab et on ajoute admin, garder admin
                 if (role === 'admin') {
                     for (var i = 0; i < list.length; i++) {
                         if (list[i].email.toLowerCase() === normalized) {
@@ -123,12 +132,123 @@
         if (filterCollabBtn) filterCollabBtn.textContent = 'Collaborateur (' + countByRole('collab') + ')';
     }
 
+    function updateSlotsBar(data) {
+        if (!slotsEl) return;
+        var capacity = parseInt(data.licenseCount, 10) || 0;
+        var used = typeof data.usedSeats === 'number'
+            ? data.usedSeats
+            : ((data.licenses || []).length + (data.adminHasLicenseSeat ? 1 : 0));
+        var remaining = typeof data.remainingSlots === 'number'
+            ? data.remainingSlots
+            : Math.max(0, capacity - used);
+
+        if (!capacity) {
+            slotsEl.hidden = true;
+            slotsEl.textContent = '';
+            return;
+        }
+
+        slotsEl.hidden = false;
+        var text = used + ' / ' + capacity + ' licence' + (capacity > 1 ? 's' : '') +
+            ' utilisées · ' + remaining + ' place' + (remaining > 1 ? 's' : '') + ' restante' + (remaining > 1 ? 's' : '');
+        if (data.overCapacity) {
+            text += ' — trop de comptes actifs : les plus récents sont suspendus.';
+        }
+        slotsEl.textContent = text;
+        slotsEl.classList.toggle('equipe-slots--warn', !!data.overCapacity);
+    }
+
+    function updateAddButton(data) {
+        if (!addBtn) return;
+        var remaining = typeof data.remainingSlots === 'number' ? data.remainingSlots : 0;
+        canManage = !!data.canManage;
+        addBtn.hidden = !canManage;
+        addBtn.disabled = !canManage || remaining <= 0;
+        addBtn.textContent = remaining <= 0 ? 'Plus de place' : 'Ajouter une licence';
+    }
+
     function setActiveFilter(filter) {
         activeFilter = filter;
         document.querySelectorAll('.equipe-filter').forEach(function (btn) {
             btn.classList.toggle('is-active', btn.getAttribute('data-filter') === filter);
         });
         renderGrid();
+    }
+
+    function apiTeamLicense(action, email) {
+        return fetch(new URL('/api/team-license', window.location.origin).href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + accessToken
+            },
+            body: JSON.stringify({ action: action, email: email })
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                return { ok: response.ok || response.status === 207, status: response.status, data: data };
+            });
+        });
+    }
+
+    function refreshSessionThen(cb) {
+        if (!Auth || !Auth.getClient) {
+            if (cb) cb();
+            return;
+        }
+        var sb = Auth.getClient();
+        if (!sb || !sb.auth.refreshSession) {
+            if (cb) cb();
+            return;
+        }
+        sb.auth.refreshSession().then(function (result) {
+            var session = result && result.data ? result.data.session : null;
+            if (session && session.access_token) {
+                accessToken = session.access_token;
+                if (session.user && session.user.email) {
+                    currentUserEmail = String(session.user.email).trim().toLowerCase();
+                }
+            }
+            if (cb) cb();
+        }).catch(function () {
+            if (cb) cb();
+        });
+    }
+
+    function removeMember(email) {
+        if (!canManage) return;
+        var isSelf = email.toLowerCase() === currentUserEmail;
+        var label = isSelf
+            ? 'Retirer votre siège licence ?\n\nVotre compte admin sera conservé, mais vous perdrez l’accès collaborateur (Fichiers, Accueil…).'
+            : 'Supprimer définitivement le compte « ' + email + ' » ?\n\n• Le compte sera effacé de Supabase\n• La personne ne pourra plus se connecter\n• Une place licence se libérera';
+        if (!confirm(label)) return;
+
+        setStatus('Suppression…');
+        apiTeamLicense('remove', email).then(function (result) {
+            if (!result.ok) {
+                setStatus((result.data && result.data.error) || 'Impossible de supprimer.', true);
+                return;
+            }
+            refreshSessionThen(reloadTeam);
+        }).catch(function () {
+            setStatus('Erreur réseau. Réessayez.', true);
+        });
+    }
+
+    function resendCredentials(email) {
+        if (!canManage) return;
+        if (!confirm('Renvoyer un nouvel email d’accès à « ' + email + ' » ?\n\nUn nouveau mot de passe sera généré (l’ancien ne fonctionnera plus).')) {
+            return;
+        }
+        setStatus('Envoi du mail…');
+        apiTeamLicense('resend', email).then(function (result) {
+            if (!result.ok) {
+                setStatus((result.data && result.data.error) || 'Impossible de renvoyer le mail.', true);
+                return;
+            }
+            setStatus('Nouvel email d’accès envoyé à ' + email + '.');
+        }).catch(function () {
+            setStatus('Erreur réseau. Réessayez.', true);
+        });
     }
 
     function renderGrid() {
@@ -158,6 +278,10 @@
             var isAdmin = member.role === 'admin';
             var isYou = currentUserEmail && email.toLowerCase() === currentUserEmail;
             var colors = colorForEmail(email);
+            var canRemove = canManage && (
+                (!isAdmin) ||
+                (isAdmin && teamData && teamData.adminHasLicenseSeat && isYou)
+            );
 
             var card = document.createElement('article');
             card.className = 'equipe-card';
@@ -190,30 +314,99 @@
                 emailRow.appendChild(you);
             }
 
+            var suspended = false;
+            if (teamData && Array.isArray(teamData.licenseDetails)) {
+                for (var d = 0; d < teamData.licenseDetails.length; d++) {
+                    if (teamData.licenseDetails[d].email === email.toLowerCase() &&
+                        teamData.licenseDetails[d].suspended) {
+                        suspended = true;
+                        break;
+                    }
+                }
+            }
+            if (suspended) {
+                var sus = document.createElement('span');
+                sus.className = 'equipe-card__suspended';
+                sus.textContent = 'Suspendu';
+                emailRow.appendChild(sus);
+            }
+
             var sub = document.createElement('div');
             sub.className = 'equipe-card__sub';
-            sub.textContent = isAdmin
-                ? 'Gestion de l’espace et des fichiers'
-                : 'Accès aux projets partagés';
+            if (isAdmin && teamData && teamData.adminHasLicenseSeat) {
+                sub.textContent = 'Admin + accès collaborateur';
+            } else if (isAdmin) {
+                sub.textContent = 'Gestion de l’abonnement et de l’équipe';
+            } else {
+                sub.textContent = 'Accès aux projets partagés';
+            }
 
             info.appendChild(emailRow);
             info.appendChild(sub);
             top.appendChild(avatar);
             top.appendChild(info);
 
+            var footer = document.createElement('div');
+            footer.className = 'equipe-card__footer';
+
             var badge = document.createElement('span');
             badge.className = 'equipe-card__badge' + (isAdmin ? ' equipe-card__badge--admin' : '');
             badge.textContent = isAdmin ? 'Admin' : 'Collaborateur';
+            footer.appendChild(badge);
+
+            if (canRemove) {
+                var actions = document.createElement('div');
+                actions.className = 'equipe-card__actions';
+
+                if (!isAdmin) {
+                    var resendBtn = document.createElement('button');
+                    resendBtn.type = 'button';
+                    resendBtn.className = 'equipe-card__resend';
+                    resendBtn.textContent = 'Renvoyer accès';
+                    resendBtn.addEventListener('click', function () {
+                        resendCredentials(email);
+                    });
+                    actions.appendChild(resendBtn);
+                }
+
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'equipe-card__remove';
+                removeBtn.textContent = isAdmin ? 'Retirer le siège' : 'Supprimer';
+                removeBtn.addEventListener('click', function () {
+                    removeMember(email);
+                });
+                actions.appendChild(removeBtn);
+                footer.appendChild(actions);
+            }
 
             card.appendChild(top);
-            card.appendChild(badge);
+            card.appendChild(footer);
             gridEl.appendChild(card);
         });
+
+        // Cartes « place libre » pour l’admin
+        if (canManage && teamData && activeFilter !== 'admin' && !searchQuery.trim()) {
+            var remaining = parseInt(teamData.remainingSlots, 10) || 0;
+            for (var s = 0; s < remaining; s++) {
+                var slot = document.createElement('button');
+                slot.type = 'button';
+                slot.className = 'equipe-card equipe-card--slot';
+                slot.innerHTML =
+                    '<span class="equipe-card--slot__plus" aria-hidden="true">+</span>' +
+                    '<span class="equipe-card--slot__label">Place disponible</span>';
+                slot.addEventListener('click', openAddModal);
+                gridEl.appendChild(slot);
+            }
+        }
     }
 
     function renderTeam(data) {
-        members = buildMembers(data);
+        teamData = data || {};
+        members = buildMembers(teamData);
         updateFilterCounts();
+        updateSlotsBar(teamData);
+        updateAddButton(teamData);
         renderGrid();
     }
 
@@ -223,13 +416,43 @@
             (meta.account_role === 'admin' ? user.email : null) ||
             null;
         var licenses = Array.isArray(meta.team_license_emails)
-            ? meta.team_license_emails
+            ? meta.team_license_emails.filter(function (e) {
+                return String(e || '').trim().toLowerCase() !== String(adminEmail || '').toLowerCase();
+            })
             : [];
+        var capacity = parseInt(meta.license_count, 10) || 0;
+        var hasSelf = !!meta.has_license_seat;
+        var used = licenses.length + (hasSelf ? 1 : 0);
         return {
             adminEmail: adminEmail,
             licenses: licenses,
-            plan: meta.license_plan || null
+            plan: meta.license_plan || null,
+            licenseCount: capacity,
+            usedSeats: used,
+            remainingSlots: Math.max(0, capacity - used),
+            adminHasLicenseSeat: hasSelf,
+            canManage: meta.account_role === 'admin'
         };
+    }
+
+    function reloadTeam() {
+        if (!accessToken) return;
+        fetch(new URL('/api/team-members', window.location.origin).href, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken }
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                return { ok: response.ok, data: data };
+            });
+        }).then(function (result) {
+            if (result.ok && result.data) {
+                renderTeam(result.data);
+                return;
+            }
+            setStatus((result.data && result.data.error) || 'Impossible de charger l’équipe.', true);
+        }).catch(function () {
+            setStatus('Erreur réseau. Réessayez.', true);
+        });
     }
 
     function loadTeam(session) {
@@ -243,6 +466,7 @@
             return;
         }
 
+        accessToken = session.access_token;
         if (session.user && session.user.email) {
             currentUserEmail = String(session.user.email).trim().toLowerCase();
         }
@@ -250,7 +474,7 @@
         fetch(new URL('/api/team-members', window.location.origin).href, {
             method: 'GET',
             headers: {
-                Authorization: 'Bearer ' + session.access_token
+                Authorization: 'Bearer ' + accessToken
             }
         }).then(function (response) {
             return response.json().then(function (data) {
@@ -281,6 +505,62 @@
         });
     }
 
+    function openAddModal() {
+        if (!canManage || !teamData || (teamData.remainingSlots || 0) <= 0) return;
+        if (modalError) modalError.textContent = '';
+        if (modalEmail) modalEmail.value = '';
+        if (modal) modal.hidden = false;
+        if (modalSubmit) {
+            modalSubmit.disabled = false;
+            modalSubmit.textContent = 'Valider';
+        }
+        if (modalEmail) modalEmail.focus();
+    }
+
+    function closeAddModal() {
+        if (modal) modal.hidden = true;
+        if (modalError) modalError.textContent = '';
+    }
+
+    function submitAddModal() {
+        if (!modalEmail) return;
+        var email = modalEmail.value.trim().toLowerCase();
+        if (!email || !modalEmail.checkValidity()) {
+            if (modalError) modalError.textContent = 'Veuillez saisir une adresse mail valide.';
+            return;
+        }
+        if (modalError) modalError.textContent = '';
+        if (modalSubmit) {
+            modalSubmit.disabled = true;
+            modalSubmit.textContent = 'Envoi…';
+        }
+
+        apiTeamLicense('add', email).then(function (result) {
+            if (!result.ok) {
+                if (modalError) {
+                    modalError.textContent = (result.data && result.data.error) ||
+                        'Impossible d’ajouter cette licence.';
+                }
+                if (modalSubmit) {
+                    modalSubmit.disabled = false;
+                    modalSubmit.textContent = 'Valider';
+                }
+                return;
+            }
+            closeAddModal();
+            if (result.data && result.data.warning) {
+                setStatus(result.data.warning, true);
+            }
+            refreshSessionThen(reloadTeam);
+        }).catch(function () {
+            if (modalError) modalError.textContent = 'Erreur réseau. Réessayez.';
+            if (modalSubmit) {
+                modalSubmit.disabled = false;
+                modalSubmit.textContent = 'Valider';
+            }
+        });
+    }
+
     document.querySelectorAll('.equipe-filter').forEach(function (btn) {
         btn.addEventListener('click', function () {
             setActiveFilter(btn.getAttribute('data-filter') || 'all');
@@ -291,6 +571,23 @@
         searchEl.addEventListener('input', function () {
             searchQuery = searchEl.value || '';
             renderGrid();
+        });
+    }
+
+    if (addBtn) addBtn.addEventListener('click', openAddModal);
+    if (modalCancel) modalCancel.addEventListener('click', closeAddModal);
+    if (modalSubmit) modalSubmit.addEventListener('click', submitAddModal);
+    if (modal) {
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeAddModal();
+        });
+    }
+    if (modalEmail) {
+        modalEmail.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitAddModal();
+            }
         });
     }
 

@@ -24,7 +24,7 @@ var NolimiLicenseApi = (function () {
         });
     }
 
-    // Lit et valide les champs email-1…email-N du formulaire (+ ≠ admin).
+    // Lit les champs email-1…email-N : vides ignorés, pas de doublons, admin autorisé 1 fois.
     function collectEmails(licenseCount, adminEmail) {
         var emails = [];
         var admin = String(adminEmail || '').trim().toLowerCase();
@@ -35,27 +35,30 @@ var NolimiLicenseApi = (function () {
                 return { error: 'Champs de formulaire introuvables.' };
             }
             var value = field.value.trim().toLowerCase();
-            if (!value || !field.checkValidity()) {
-                return {
-                    error: licenseCount === 1
-                        ? 'Veuillez renseigner une adresse mail valide.'
-                        : 'Veuillez renseigner les ' + licenseCount + ' adresses mail valides.'
-                };
-            }
-            if (admin && value === admin) {
-                return { error: 'Les licences doivent utiliser des adresses différentes du compte admin.' };
+            if (!value) continue;
+            if (!field.checkValidity()) {
+                return { error: 'Adresse mail invalide : ' + field.value.trim() };
             }
             emails.push(value);
         }
 
-        if (licenseCount > 1) {
-            var seen = {};
-            for (var j = 0; j < emails.length; j++) {
-                if (seen[emails[j]]) {
-                    return { error: 'Chaque licence doit avoir une adresse mail différente.' };
+        if (emails.length > licenseCount) {
+            return { error: 'Trop d’adresses pour le nombre de licences achetées.' };
+        }
+
+        var seen = {};
+        var adminSeatCount = 0;
+        for (var j = 0; j < emails.length; j++) {
+            if (admin && emails[j] === admin) {
+                adminSeatCount += 1;
+                if (adminSeatCount > 1) {
+                    return { error: 'L’adresse admin ne peut être utilisée qu’une seule fois comme licence.' };
                 }
-                seen[emails[j]] = true;
             }
+            if (seen[emails[j]]) {
+                return { error: 'Chaque licence doit avoir une adresse mail différente.' };
+            }
+            seen[emails[j]] = true;
         }
 
         return { emails: emails };
@@ -90,6 +93,19 @@ var NolimiLicenseApi = (function () {
         return 'Impossible de créer les comptes.';
     }
 
+    function successMessage(result, filledCount) {
+        var reused = !!(result.data && result.data.adminReused);
+        if (filledCount <= 0) {
+            return reused
+                ? 'Votre compte admin est prêt. Vous pourrez ajouter les licences plus tard depuis la page Équipe.'
+                : 'Le compte admin a été créé. Vous pourrez ajouter les licences plus tard depuis la page Équipe.';
+        }
+        if (reused) {
+            return 'Les licences renseignées ont été ajoutées à votre compte admin. Chaque nouvelle adresse a reçu ses identifiants par mail. Les places restantes se gèrent dans Équipe.';
+        }
+        return 'Le compte admin et les licences renseignées ont été créés. Chaque adresse a reçu ses identifiants par mail. Les places restantes se gèrent dans Équipe.';
+    }
+
     // Point d’entrée : valide les mails puis appelle l’API.
     function submitLicenseAccounts(licenseCount, adminEmail) {
         var sessionId = getStripeSessionId();
@@ -119,10 +135,12 @@ var NolimiLicenseApi = (function () {
                 return { ok: false, error: mapApiError(result) };
             }
 
+            var reused = !!(result.data && result.data.adminReused);
             return {
                 ok: true,
-                created: result.data.created || (collected.emails.length + 1),
-                message: 'Le compte admin et les licences ont été créés. Chaque adresse recevra ses identifiants par mail.'
+                created: result.data.created || 0,
+                adminReused: reused,
+                message: successMessage(result, collected.emails.length)
             };
         });
     }

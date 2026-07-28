@@ -34,7 +34,9 @@
             submitBtn.disabled = true;
             return;
         }
-        submitBtn.disabled = !!Api.collectEmails(licenseCount, adminEmail).error;
+        // Les champs licences sont facultatifs : on peut valider même sans en remplir
+        var collected = Api.collectEmails(licenseCount, adminEmail);
+        submitBtn.disabled = !!collected.error;
     }
 
     function renderAdminField(email) {
@@ -48,6 +50,11 @@
         var mainEl = document.querySelector('.page-main--auth');
         if (mainEl) mainEl.classList.toggle('page-main--licenses-many', count >= 5);
 
+        var hint = document.createElement('p');
+        hint.className = 'license-fields-hint';
+        hint.textContent = 'Facultatif — vous pouvez en remplir une partie seulement. Les places restantes se gèrent ensuite dans Équipe. Pas de doublon.';
+        fieldsEl.appendChild(hint);
+
         for (var i = 1; i <= count; i++) {
             var wrap = document.createElement('div');
             wrap.className = 'license-field';
@@ -55,13 +62,13 @@
             var label = document.createElement('label');
             label.className = 'license-field__label';
             label.setAttribute('for', 'email-' + i);
-            label.textContent = count === 1 ? 'Compte licence' : 'Compte licence ' + i;
+            label.textContent = (count === 1 ? 'Compte licence' : 'Compte licence ' + i) + ' (facultatif)';
 
             var input = document.createElement('input');
             input.type = 'email';
             input.id = 'email-' + i;
             input.name = 'email-' + i;
-            input.required = true;
+            input.required = false;
             input.autocomplete = 'email';
             input.placeholder = 'Adresse mail';
             input.setAttribute('aria-label', label.textContent);

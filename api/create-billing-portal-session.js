@@ -1,4 +1,4 @@
-// api/ — crée une session Stripe Billing Portal pour le compte admin.
+// api/ — crée une session Stripe Billing Portal pour un customer lié à l’admin.
 
 const stripeVerify = require('./stripe-verify');
 
@@ -34,6 +34,27 @@ async function getSupabaseUser(supabaseUrl, anonOrSecretKey, accessToken) {
     return data;
 }
 
+function allowedCustomerIds(meta) {
+    var ids = [];
+    var seen = {};
+    function add(id) {
+        var v = String(id || '').trim();
+        if (!v || seen[v]) return;
+        seen[v] = true;
+        ids.push(v);
+    }
+    if (Array.isArray(meta.stripe_customer_ids)) {
+        meta.stripe_customer_ids.forEach(add);
+    }
+    add(meta.stripe_customer_id);
+    if (Array.isArray(meta.subscription_packs)) {
+        meta.subscription_packs.forEach(function (pack) {
+            if (pack) add(pack.customerId);
+        });
+    }
+    return ids;
+}
+
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') {
         return json(res, 405, { error: 'Méthode non autorisée.' });
@@ -66,11 +87,19 @@ module.exports = async function handler(req, res) {
         return json(res, 403, { error: 'Réservé au compte administrateur de l’abonnement.' });
     }
 
-    var customerId = meta.stripe_customer_id || null;
+    var allowed = allowedCustomerIds(meta);
+    var body = req.body || {};
+    var requested = String(body.customerId || '').trim();
+    var customerId = requested || allowed[0] || null;
+
     if (!customerId) {
         return json(res, 422, {
             error: 'Aucun client Stripe lié à ce compte. Vérifiez que le Payment Link crée bien un customer Stripe.'
         });
+    }
+
+    if (allowed.length && allowed.indexOf(customerId) === -1) {
+        return json(res, 403, { error: 'Ce client Stripe n’est pas lié à votre compte.' });
     }
 
     var returnUrl = siteUrl.replace(/\/$/, '') + '/02-menu/pages/abonnement/index.html';
@@ -88,5 +117,5 @@ module.exports = async function handler(req, res) {
         return json(res, 502, { error: String(message) });
     }
 
-    return json(res, 200, { url: portal.data.url });
+    return json(res, 200, { url: portal.data.url, customerId: customerId });
 };

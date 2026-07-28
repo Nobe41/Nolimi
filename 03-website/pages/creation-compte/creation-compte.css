@@ -41,6 +41,13 @@
     width: 100%;
 }
 
+.license-fields-hint {
+    margin: 0 0 0.25rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--nolimi-text-muted, #667085);
+}
+
 .admin-field,
 .license-field {
     display: flex;

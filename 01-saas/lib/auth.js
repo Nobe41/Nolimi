@@ -79,7 +79,7 @@ var NolimiAuth = (function () {
     }
 
     function getMenuUrl(user) {
-        if (user && isSubscriptionAdmin(user)) {
+        if (user && isSubscriptionAdmin(user) && !hasLicenseSeat(user)) {
             return getAdminMenuUrl();
         }
         if (window.location.pathname.indexOf('/02-menu/') !== -1) {
@@ -96,8 +96,36 @@ var NolimiAuth = (function () {
         return meta.account_role === 'admin';
     }
 
+    // Admin qui a aussi pris un siège licence (menu complet)
+    function hasLicenseSeat(user) {
+        var meta = user && user.user_metadata ? user.user_metadata : {};
+        return !!meta.has_license_seat;
+    }
+
+    function isAccessSuspended(user) {
+        var meta = user && user.user_metadata ? user.user_metadata : {};
+        return !!meta.access_suspended;
+    }
+
+    function isAdminWithLicenseSeat(user) {
+        return isSubscriptionAdmin(user) && hasLicenseSeat(user);
+    }
+
+    function redirectSuspendedLicense() {
+        var url = getLoginUrl();
+        try {
+            var u = new URL(url);
+            u.searchParams.set('error', 'license_suspended');
+            window.location.replace(u.href);
+        } catch (e) {
+            window.location.replace(url);
+        }
+    }
+
     function getAccountRole(user) {
-        return isSubscriptionAdmin(user) ? 'admin' : 'license';
+        if (isAdminWithLicenseSeat(user)) return 'admin-license';
+        if (isSubscriptionAdmin(user)) return 'admin';
+        return 'license';
     }
 
     function redirectToMenuForUser(user) {
@@ -272,7 +300,12 @@ var NolimiAuth = (function () {
             var session = result && result.data ? result.data.session : null;
             if (!session) return;
             if (!isAnonymousSession(session)) {
-                if (parsedSession && isValidSessionId(parsedSession) && !isSubscriptionAdmin(session.user)) {
+                if (isAccessSuspended(session.user) && !isSubscriptionAdmin(session.user)) {
+                    return sb.auth.signOut().catch(function () {}).then(function () {
+                        redirectSuspendedLicense();
+                    });
+                }
+                if (parsedSession && isValidSessionId(parsedSession) && (!isSubscriptionAdmin(session.user) || hasLicenseSeat(session.user))) {
                     window.location.replace(getAppUrl(parsedSession));
                 } else {
                     redirectToMenuForUser(session.user);
@@ -433,9 +466,13 @@ var NolimiAuth = (function () {
         var sessionFromUrl = getSessionFromCurrentUrl();
         return sb.auth.getSession().then(function (result) {
             var session = result && result.data ? result.data.session : null;
-            if (session && !isAnonymousSession(session) && isSubscriptionAdmin(session.user)) {
+            if (session && !isAnonymousSession(session) && isSubscriptionAdmin(session.user) && !hasLicenseSeat(session.user)) {
                 redirectToMenuForUser(session.user);
-                return Promise.reject(new Error('admin_no_atelier'));
+                return Promise.reject(new Error('admin_restricted'));
+            }
+            if (session && !isAnonymousSession(session) && isAccessSuspended(session.user)) {
+                redirectSuspendedLicense();
+                return Promise.reject(new Error('license_suspended'));
             }
             if (session) {
                 // Anonyme sans ?session= → pas d’accès libre à l’atelier
@@ -474,14 +511,22 @@ var NolimiAuth = (function () {
                 redirectToLogin(null);
                 return Promise.reject(new Error('no_account_session'));
             }
+            if (isAccessSuspended(session.user) && !isSubscriptionAdmin(session.user)) {
+                redirectSuspendedLicense();
+                return Promise.reject(new Error('license_suspended'));
+            }
             return session;
         });
     }
 
-    // Pages menu licence (accueil, fichiers…) — pas le compte admin
+    // Pages menu licence (accueil, fichiers…) — licences + admin avec siège licence
     function requireLicenseAccount() {
         return requireAccountSession().then(function (session) {
-            if (isSubscriptionAdmin(session.user)) {
+            if (isAccessSuspended(session.user)) {
+                redirectSuspendedLicense();
+                return Promise.reject(new Error('license_suspended'));
+            }
+            if (isSubscriptionAdmin(session.user) && !hasLicenseSeat(session.user)) {
                 redirectToMenuForUser(session.user);
                 return Promise.reject(new Error('admin_restricted'));
             }
@@ -513,6 +558,9 @@ var NolimiAuth = (function () {
         exitGuestAccess: exitGuestAccess,
         isAnonymousUser: isAnonymousUser,
         isSubscriptionAdmin: isSubscriptionAdmin,
+        hasLicenseSeat: hasLicenseSeat,
+        isAdminWithLicenseSeat: isAdminWithLicenseSeat,
+        isAccessSuspended: isAccessSuspended,
         getAccountRole: getAccountRole,
         markSessionGuestAccess: markSessionGuestAccess,
         clearSessionGuestAccess: clearSessionGuestAccess,

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 02-menu/pages/abonnement/ — gestion abonnement (compte admin uniquement). -->
+<!-- 02-menu/pages/abonnement/ — gestion abonnement(s) (compte admin uniquement). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16,7 +16,7 @@
 </head>
 <body class="page page--menu">
     <script src="../../components/sidebar/sidebar.js"></script>
-    <script>NolimiMenuSidebar.mount({ current: 'abonnement', role: 'admin' });</script>
+    <script>NolimiMenuSidebar.mount({ current: 'abonnement' });</script>
 
     <main class="menu-main menu-main--abonnement">
         <section class="abo-panel">
@@ -28,20 +28,21 @@
                     <div class="abo-field__box" id="abo-email">—</div>
                 </div>
                 <div class="abo-field">
-                    <span class="abo-field__label">Type d’abonnement</span>
+                    <span class="abo-field__label">Total licences</span>
                     <div class="abo-field__box" id="abo-plan">—</div>
                 </div>
             </div>
 
+            <div class="abo-subs" id="abo-subs" aria-live="polite">
+                <p class="abo-hint">Chargement des abonnements…</p>
+            </div>
+
             <p class="abo-hint" id="abo-hint">
-                Gérez votre moyen de paiement, vos factures ou résiliez votre abonnement via le portail Stripe.
+                Chaque abonnement a son propre portail Stripe (paiement, factures, résiliation).
             </p>
             <p class="abo-status" id="abo-status" aria-live="polite"></p>
 
             <div class="abo-actions">
-                <button type="button" class="abo-btn abo-btn--primary" id="btn-manage-subscription">
-                    Gérer mon abonnement
-                </button>
                 <button type="button" class="abo-btn abo-btn--danger" id="btn-logout">
                     Se déconnecter
                 </button>

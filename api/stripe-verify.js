@@ -125,11 +125,27 @@ function extractCheckoutBuyerInfo(session) {
     };
 }
 
+/** Recherche des customers Stripe pour un email (réutilisation / détection doublons). */
+async function findCustomersByEmail(stripeSecretKey, email) {
+    var target = String(email || '').trim().toLowerCase();
+    if (!target || !stripeSecretKey) return [];
+    var result = await stripeRequest(
+        stripeSecretKey,
+        'GET',
+        '/customers?email=' + encodeURIComponent(target) + '&limit=10'
+    );
+    if (!result.ok || !result.data || !Array.isArray(result.data.data)) return [];
+    return result.data.data.filter(function (c) {
+        return c && c.id && !c.deleted;
+    });
+}
+
 module.exports = {
     ALLOWED_COUNTS: ALLOWED_COUNTS,
     retrieveCheckoutSession: retrieveCheckoutSession,
     verifyPaidCheckoutSession: verifyPaidCheckoutSession,
     markCheckoutSessionUsed: markCheckoutSessionUsed,
     extractCheckoutBuyerInfo: extractCheckoutBuyerInfo,
+    findCustomersByEmail: findCustomersByEmail,
     stripeRequest: stripeRequest
 };

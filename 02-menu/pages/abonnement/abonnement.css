@@ -55,6 +55,64 @@
     word-break: break-word;
 }
 
+.abo-subs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.abo-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 1.05rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.abo-sub__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.abo-sub__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--nolimi-ink);
+}
+
+.abo-sub__badge {
+    flex-shrink: 0;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 650;
+}
+
+.abo-sub__badge--ok {
+    background: #e8f8ef;
+    color: #157347;
+}
+
+.abo-sub__badge--warn {
+    background: #fff4e5;
+    color: #b54708;
+}
+
+.abo-sub__badge--danger {
+    background: #fee4e2;
+    color: #b42318;
+}
+
+.abo-sub__meta {
+    font-size: 0.85rem;
+    color: var(--nolimi-text-muted);
+    line-height: 1.4;
+}
+
 .abo-hint {
     font-size: 0.88rem;
     line-height: 1.5;
@@ -84,22 +142,22 @@
     background: transparent;
     color: var(--nolimi-ink);
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    align-self: flex-start;
 }
 
 .abo-btn--primary {
-    background: var(--nolimi-accent);
-    border-color: var(--nolimi-accent);
+    background: #5CB3FF;
+    border-color: #5CB3FF;
     color: #fff;
 }
 
 .abo-btn--primary:hover {
-    background: var(--nolimi-accent-hover);
-    border-color: var(--nolimi-accent-hover);
+    filter: brightness(0.96);
 }
 
 .abo-btn--primary:disabled {
     opacity: 0.65;
-    cursor: wait;
+    cursor: not-allowed;
 }
 
 .abo-btn--danger {

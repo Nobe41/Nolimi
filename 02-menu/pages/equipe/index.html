@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 02-menu/pages/equipe/ — membres de l’équipe (cartes). -->
+<!-- 02-menu/pages/equipe/ — membres de l’équipe (cartes + gestion sièges admin). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -19,6 +19,16 @@
     <script>NolimiMenuSidebar.mount({ current: 'equipe' });</script>
 
     <main class="menu-main menu-main--equipe">
+        <header class="equipe-header">
+            <div class="equipe-header__text">
+                <h1 class="equipe-title">Équipe</h1>
+                <p class="equipe-slots" id="equipe-slots" hidden></p>
+            </div>
+            <button type="button" class="equipe-btn-add" id="equipe-btn-add" hidden>
+                Ajouter une licence
+            </button>
+        </header>
+
         <div class="equipe-toolbar">
             <div class="equipe-filters" role="tablist" aria-label="Filtres">
                 <button type="button" class="equipe-filter is-active" data-filter="all" id="filter-all">Tous (0)</button>
@@ -34,6 +44,22 @@
         <p class="equipe-status" id="equipe-status" aria-live="polite">Chargement…</p>
         <div class="equipe-grid" id="equipe-grid" hidden></div>
     </main>
+
+    <div id="equipe-modal" class="equipe-modal" hidden>
+        <div class="equipe-modal__panel" role="dialog" aria-modal="true" aria-labelledby="equipe-modal-title">
+            <h2 id="equipe-modal-title" class="equipe-modal__title">Ajouter une licence</h2>
+            <p class="equipe-modal__lead">Un email avec le mot de passe sera envoyé à cette adresse.</p>
+            <label class="equipe-modal__label">
+                <span>Adresse mail</span>
+                <input type="email" id="equipe-modal-email" class="equipe-modal__input" placeholder="collegue@entreprise.com" autocomplete="email">
+            </label>
+            <p id="equipe-modal-error" class="equipe-modal__error" aria-live="polite"></p>
+            <div class="equipe-modal__actions">
+                <button type="button" class="equipe-btn equipe-btn--secondary" id="equipe-modal-cancel">Annuler</button>
+                <button type="button" class="equipe-btn equipe-btn--primary" id="equipe-modal-submit">Valider</button>
+            </div>
+        </div>
+    </div>
 
     <script src="./equipe.js"></script>
 </body>

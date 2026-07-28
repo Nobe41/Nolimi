@@ -100,9 +100,10 @@ module.exports = async function handler(req, res) {
     }
 
     var meta = currentUser.user_metadata || {};
+    var isAdmin = meta.account_role === 'admin';
     var managerEmail = String(
         meta.license_manager_email ||
-        (meta.account_role === 'admin' ? currentUser.email : '') ||
+        (isAdmin ? currentUser.email : '') ||
         ''
     ).trim().toLowerCase();
 
@@ -123,8 +124,12 @@ module.exports = async function handler(req, res) {
 
     var adminEmail = managerEmail;
     var licenses = [];
+    var licenseUsers = [];
     var plan = planLabelFromMeta(meta);
-    var licenseCount = parseInt(meta.license_count, 10) || null;
+    var licenseCount = parseInt(meta.license_count, 10) || 0;
+    var adminHasLicenseSeat = false;
+    var adminUserId = null;
+    var adminMetaFull = meta;
 
     for (var i = 0; i < users.length; i++) {
         var user = users[i];
@@ -136,32 +141,109 @@ module.exports = async function handler(req, res) {
 
         if (email === managerEmail || (role === 'admin' && userManager === managerEmail)) {
             adminEmail = email;
-            if (!plan) plan = planLabelFromMeta(um);
-            if (!licenseCount) licenseCount = parseInt(um.license_count, 10) || null;
+            if (role === 'admin' || email === managerEmail) {
+                adminUserId = user.id;
+                adminMetaFull = um;
+                var adminPlan = planLabelFromMeta(um);
+                var adminCount = parseInt(um.license_count, 10) || 0;
+                if (adminPlan) plan = adminPlan;
+                if (adminCount) licenseCount = adminCount;
+                adminHasLicenseSeat = !!um.has_license_seat;
+            }
             continue;
         }
 
-        if (userManager === managerEmail && role !== 'admin') {
+        if (userManager === managerEmail && role === 'license') {
             licenses.push(email);
-            if (!plan) plan = planLabelFromMeta(um);
-            if (!licenseCount) licenseCount = parseInt(um.license_count, 10) || null;
+            licenseUsers.push({
+                id: user.id,
+                email: email,
+                created_at: user.created_at,
+                user_metadata: um,
+                suspended: !!um.access_suspended
+            });
         }
     }
 
-    // Fallback metadata (comptes créés avec team_license_emails)
+    // Fallback metadata
     if (!licenses.length && Array.isArray(meta.team_license_emails)) {
         licenses = meta.team_license_emails.map(function (e) {
             return String(e || '').trim().toLowerCase();
-        }).filter(Boolean);
+        }).filter(function (email) {
+            return email && email !== managerEmail;
+        });
+        if (meta.has_license_seat) adminHasLicenseSeat = true;
+    } else {
+        licenses = licenses.filter(function (email) {
+            return email && email !== managerEmail;
+        });
     }
 
     licenses.sort();
+
+    // Capacité depuis packs actifs si possible
+    var helpers = null;
+    var syncMod = null;
+    try {
+        helpers = require('./_lib/subscription-helpers');
+        syncMod = require('./_lib/sync-suspensions');
+    } catch (e) {}
+
+    var overCapacity = false;
+    var suspendedEmails = [];
+    if (helpers) {
+        var normalized = helpers.normalizeAdminMeta(adminMetaFull);
+        adminMetaFull = normalized.meta;
+        var capacity = helpers.activeLicenseCapacity(adminMetaFull.subscription_packs);
+        if (capacity > 0) licenseCount = capacity;
+        if (normalized.migrated && isAdmin && adminUserId && syncMod) {
+            await syncMod.updateUserMetadata(supabaseUrl, supabaseSecretKey, adminUserId, adminMetaFull);
+        }
+        if (isAdmin && syncMod && licenseUsers.length) {
+            try {
+                var syncResult = await syncMod.syncLicenseSuspensions(
+                    supabaseUrl,
+                    supabaseSecretKey,
+                    adminMetaFull,
+                    licenseUsers
+                );
+                overCapacity = !!syncResult.overCapacity;
+                suspendedEmails = syncResult.suspendedEmails || [];
+                // refresh suspended flags
+                licenseUsers.forEach(function (lu) {
+                    lu.suspended = suspendedEmails.indexOf(lu.email) !== -1;
+                });
+            } catch (e) {}
+        } else {
+            suspendedEmails = licenseUsers.filter(function (lu) {
+                return lu.suspended;
+            }).map(function (lu) { return lu.email; });
+            overCapacity = suspendedEmails.length > 0 ||
+                (licenseCount > 0 && (licenses.length + (adminHasLicenseSeat ? 1 : 0)) > licenseCount);
+        }
+    }
+
+    if (!plan && licenseCount) {
+        plan = licenseCount === 1 ? '1 licence' : licenseCount + ' licences';
+    }
+
+    var usedSeats = licenses.length + (adminHasLicenseSeat ? 1 : 0);
+    var remainingSlots = Math.max(0, licenseCount - usedSeats);
 
     return json(res, 200, {
         adminEmail: adminEmail,
         licenses: licenses,
         plan: plan,
         licenseCount: licenseCount,
-        seats: 1 + licenses.length
+        usedSeats: usedSeats,
+        remainingSlots: remainingSlots,
+        seats: 1 + licenses.length,
+        adminHasLicenseSeat: adminHasLicenseSeat,
+        canManage: isAdmin,
+        overCapacity: overCapacity,
+        suspendedEmails: suspendedEmails,
+        licenseDetails: licenseUsers.map(function (lu) {
+            return { email: lu.email, suspended: !!lu.suspended };
+        })
     });
 };

@@ -17,6 +17,14 @@
         if (guestMsg) errEl.textContent = guestMsg;
     }
 
+    // Accès licence suspendu (capacité d’abonnement dépassée)
+    try {
+        var errParam = new URLSearchParams(window.location.search).get('error');
+        if (errParam === 'license_suspended') {
+            errEl.textContent = 'Votre accès licence est temporairement suspendu : votre abonnement n’a plus assez de places. Contactez l’administrateur de votre équipe.';
+        }
+    } catch (e) {}
+
     function sessionIdFrom(input) {
         return Auth && Auth.parseSessionLink ? Auth.parseSessionLink(input) : '';
     }
@@ -182,6 +190,15 @@
                 ? sessionIdFrom(sessionInput.value)
                 : '';
             var user = result.data && result.data.session ? result.data.session.user : null;
+            if (user && Auth.isAccessSuspended && Auth.isAccessSuspended(user) &&
+                !(Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user))) {
+                errEl.textContent = 'Votre accès licence est temporairement suspendu : votre abonnement n’a plus assez de places. Contactez l’administrateur de votre équipe.';
+                if (Auth.getClient && Auth.getClient()) {
+                    Auth.getClient().auth.signOut().catch(function () {});
+                }
+                resetSubmitBtn();
+                return;
+            }
             if (sessionId && !(Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user))) {
                 goToSession(sessionId);
                 return;
