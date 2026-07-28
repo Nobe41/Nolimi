@@ -1,4 +1,4 @@
-// saas/shared/navigation/rules.js
+// 01-saas/shared/navigation/rules.js
 // Constantes navigation atelier (IDs DOM pages, vues, onglets). Pas de logique.
 // Consommé par UIEvents (navigation/function.js).
 

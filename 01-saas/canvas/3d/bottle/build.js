@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — reconstruction meshes (corps, piqûre, bague, intérieur).
+// 01-saas/canvas/3d/bottle/ — reconstruction meshes (corps, piqûre, bague, intérieur).
 // Appelé uniquement par BottleView3D quand la géométrie change.
 // Globals persistés : bottleGroup (corps), ctx.bottleInnerGlassMesh.
 

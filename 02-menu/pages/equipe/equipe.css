@@ -1,42 +1,81 @@
-/* menu/pages/equipe/ — liste admin + licences de l’abonnement. */
+/* 02-menu/pages/equipe/ — grille de cartes membres. */
 
 .menu-main--equipe {
     display: flex;
     flex-direction: column;
     width: 100%;
+    gap: 1.25rem;
 }
 
-.equipe-panel {
-    width: 100%;
-    max-width: 36rem;
-    background: var(--nolimi-surface);
+.equipe-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.equipe-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.equipe-filter {
+    padding: 0.45rem 0.9rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: #98a2b3;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 550;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.equipe-filter:hover {
+    color: var(--nolimi-ink);
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.equipe-filter.is-active {
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.equipe-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: min(100%, 16rem);
+    padding: 0.5rem 0.9rem;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1.35rem 1.4rem 1.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.15rem;
+    border-radius: 999px;
+    background: #fff;
 }
 
-.equipe-header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+.equipe-search__icon {
+    width: 1rem;
+    height: 1rem;
+    color: #98a2b3;
+    flex-shrink: 0;
 }
 
-.equipe-title {
-    font-size: 1.05rem;
-    font-weight: 700;
+.equipe-search__input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 0.88rem;
     color: var(--nolimi-ink);
 }
 
-.equipe-plan {
-    font-size: 0.88rem;
-    color: #718096;
-}
-
-.equipe-plan:empty {
-    display: none;
+.equipe-search__input::placeholder {
+    color: #98a2b3;
 }
 
 .equipe-status {
@@ -48,49 +87,116 @@
     color: var(--nolimi-danger);
 }
 
-.equipe-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.equipe-field,
-.equipe-licenses {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.equipe-field__label {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #718096;
-}
-
-.equipe-field__box,
-.equipe-list__item {
+.equipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr));
+    gap: 0.85rem;
     width: 100%;
-    min-height: 2.65rem;
-    padding: 0.65rem 0.85rem;
-    font-size: 0.95rem;
-    line-height: 1.35;
-    color: var(--nolimi-ink);
-    background: var(--nolimi-surface);
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    word-break: break-word;
 }
 
-.equipe-list {
-    list-style: none;
+.equipe-card {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin: 0;
-    padding: 0;
+    gap: 1.1rem;
+    min-height: 7.5rem;
+    padding: 1rem 1.05rem 0.95rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
 }
 
-.equipe-list__empty {
+.equipe-card__top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.equipe-card__avatar {
+    flex-shrink: 0;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.equipe-card__info {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding-top: 0.1rem;
+}
+
+.equipe-card__email-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.equipe-card__email {
     font-size: 0.9rem;
-    color: var(--nolimi-text-muted);
+    font-weight: 650;
+    color: var(--nolimi-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.equipe-card__you {
+    flex-shrink: 0;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: #e8f1ff;
+    color: #3b66c4;
+    font-size: 0.68rem;
+    font-weight: 650;
+}
+
+.equipe-card__sub {
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: #98a2b3;
+}
+
+.equipe-card__badge {
+    align-self: flex-end;
+    margin-top: auto;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.equipe-card__badge--admin {
+    background: #e8f1ff;
+    color: #3b66c4;
+}
+
+@media (max-width: 768px) {
+    .equipe-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .equipe-search {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .equipe-grid {
+        grid-template-columns: 1fr;
+    }
 }

@@ -1,8 +1,16 @@
-// menu/pages/fichiers/ — dossiers + projets perso + collaboratifs.
+// 02-menu/pages/fichiers/ — dossiers + projets perso + collaboratifs.
 
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
     var Cloud = typeof CloudProjects !== 'undefined' ? CloudProjects : null;
+    var pageAbort = new AbortController();
+    var pageSignal = pageAbort.signal;
+
+    window.__nolimiPageCleanup = function () {
+        pageAbort.abort();
+        window.__nolimiPageCleanup = null;
+    };
+
     var statusEl = document.getElementById('fichiers-status');
     var listEl = document.getElementById('fichiers-list');
     var breadcrumbEl = document.getElementById('fichiers-breadcrumb');
@@ -14,18 +22,17 @@
     var collabListEl = document.getElementById('collab-list');
     var collabTitleEl = document.getElementById('collab-title');
     var collabBreadcrumbEl = document.getElementById('collab-breadcrumb');
-    var collabActionsRoot = document.getElementById('collab-actions-root');
-    var collabActionsInside = document.getElementById('collab-actions-inside');
-    var btnCreateCollab = document.getElementById('btn-create-collab');
     var btnNewCollabProject = document.getElementById('btn-new-collab-project');
-    var btnNewCollabProjectRoot = document.getElementById('btn-new-collab-project-root');
 
-    var collabModal = document.getElementById('collab-modal');
-    var collabModalName = document.getElementById('collab-modal-name');
-    var collabModalMembers = document.getElementById('collab-modal-members');
-    var collabModalError = document.getElementById('collab-modal-error');
-    var collabModalCancel = document.getElementById('collab-modal-cancel');
-    var collabModalSubmit = document.getElementById('collab-modal-submit');
+    var folderModal = document.getElementById('folder-modal');
+    var folderModalName = document.getElementById('folder-modal-name');
+    var folderModalParent = document.getElementById('folder-modal-parent');
+    var folderModalPersonal = document.getElementById('folder-modal-personal');
+    var folderModalCollab = document.getElementById('folder-modal-collab');
+    var folderModalMembers = document.getElementById('folder-modal-members');
+    var folderModalError = document.getElementById('folder-modal-error');
+    var folderModalCancel = document.getElementById('folder-modal-cancel');
+    var folderModalSubmit = document.getElementById('folder-modal-submit');
 
     var openMenuWrap = null;
     var currentFolderId = null;
@@ -34,41 +41,53 @@
     var currentUserId = '';
     var accessToken = '';
 
-    var ICON_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z"/></svg>';
-    var ICON_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h6l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z"/><path d="M13 3.5V9h5.5"/></svg>';
+    var ICON_FOLDER = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.4 5.5H5.8A2.3 2.3 0 0 0 3.5 7.8v8.9A2.3 2.3 0 0 0 5.8 19h12.4a2.3 2.3 0 0 0 2.3-2.3V9.6a2.3 2.3 0 0 0-2.3-2.3h-6.1l-1.7-1.8Z"/></svg>';
+    var ICON_FILE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v15A1.5 1.5 0 0 0 7 21.5h10A1.5 1.5 0 0 0 18.5 20V8.5L14 3.5Zm0 1.6 3.4 3.4H14.5a.5.5 0 0 1-.5-.5V5.1Z"/></svg>';
+    var ICON_EMPTY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8A2.5 2.5 0 0 1 6 5.5h4l2 2h6A2.5 2.5 0 0 1 20.5 10v7A2.5 2.5 0 0 1 18 19.5H6A2.5 2.5 0 0 1 3.5 17V8Z"/></svg>';
 
-    function setStatus(text, isError) {
+    function setStatus(text, isError, isEmpty) {
         if (!statusEl) return;
-        statusEl.textContent = text || '';
         statusEl.classList.toggle('fichiers-status--error', !!isError);
+        statusEl.classList.toggle('fichiers-status--empty', !!isEmpty && !isError);
+        if (isEmpty && text && !isError) {
+            statusEl.innerHTML = ICON_EMPTY + '<span>' + text + '</span>';
+        } else {
+            statusEl.textContent = text || '';
+        }
         statusEl.hidden = !text;
     }
 
-    function setCollabStatus(text, isError) {
+    function setCollabStatus(text, isError, isEmpty) {
         if (!collabStatusEl) return;
-        collabStatusEl.textContent = text || '';
         collabStatusEl.classList.toggle('fichiers-status--error', !!isError);
+        collabStatusEl.classList.toggle('fichiers-status--empty', !!isEmpty && !isError);
+        if (isEmpty && text && !isError) {
+            collabStatusEl.innerHTML = ICON_EMPTY + '<span>' + text + '</span>';
+        } else {
+            collabStatusEl.textContent = text || '';
+        }
         collabStatusEl.hidden = !text;
     }
 
-    function formatCreatedDate(iso) {
-        if (!iso) return '';
-        try {
-            return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-        } catch (e) {
-            return '';
-        }
+    function pad2(n) {
+        return n < 10 ? '0' + n : String(n);
     }
 
     function formatModifiedDate(iso) {
-        if (!iso) return '';
+        if (!iso) return '—';
         try {
-            return new Date(iso).toLocaleDateString('fr-FR', {
-                day: 'numeric', month: 'long', year: 'numeric'
-            });
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return '—';
+            return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() +
+                ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
         } catch (e) {
-            return '';
+            return '—';
         }
+    }
+
+    function filesLabel(count) {
+        var n = count || 0;
+        return n <= 1 ? (n + ' fichier') : (n + ' fichiers');
     }
 
     function sortByName(items) {
@@ -100,10 +119,36 @@
         if (!openMenuWrap) return;
         var dropdown = openMenuWrap.querySelector('.fichiers-menu-dropdown');
         var btn = openMenuWrap.querySelector('.fichiers-menu-btn');
-        if (dropdown) dropdown.hidden = true;
+        if (dropdown) {
+            dropdown.hidden = true;
+            dropdown.style.position = '';
+            dropdown.style.top = '';
+            dropdown.style.left = '';
+            dropdown.style.right = '';
+            dropdown.style.bottom = '';
+        }
         if (btn) btn.setAttribute('aria-expanded', 'false');
         openMenuWrap.classList.remove('is-open');
         openMenuWrap = null;
+    }
+
+    function positionMenuDropdown(wrap, dropdown) {
+        var btn = wrap.querySelector('.fichiers-menu-btn');
+        if (!btn) return;
+        var rect = btn.getBoundingClientRect();
+        var menuWidth = Math.max(dropdown.offsetWidth || 136, 136);
+        var menuHeight = dropdown.offsetHeight || 120;
+        var left = Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8);
+        left = Math.max(8, left);
+        var top = rect.bottom + 4;
+        if (top + menuHeight > window.innerHeight - 8) {
+            top = Math.max(8, rect.top - menuHeight - 4);
+        }
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = top + 'px';
+        dropdown.style.left = left + 'px';
+        dropdown.style.right = 'auto';
+        dropdown.style.bottom = 'auto';
     }
 
     function toggleMenu(wrap) {
@@ -119,6 +164,7 @@
         btn.setAttribute('aria-expanded', 'true');
         wrap.classList.add('is-open');
         openMenuWrap = wrap;
+        positionMenuDropdown(wrap, dropdown);
     }
 
     function buildMenu(actions) {
@@ -144,7 +190,8 @@
             btn.className = 'fichiers-menu-item' + (action.danger ? ' fichiers-menu-item--danger' : '');
             btn.setAttribute('role', 'menuitem');
             btn.textContent = action.label;
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
                 closeOpenMenu();
                 action.onClick();
             });
@@ -156,37 +203,60 @@
             toggleMenu(menuWrap);
         });
 
+        dropdown.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+
         menuWrap.appendChild(menuBtn);
         menuWrap.appendChild(dropdown);
         return menuWrap;
     }
 
-    function buildIcon(svg) {
+    function buildIcon(svg, kind) {
         var wrap = document.createElement('div');
-        wrap.className = 'fichiers-item__icon';
+        wrap.className = 'fichiers-item__icon fichiers-item__icon--' + (kind || 'folder');
         wrap.innerHTML = svg;
         return wrap;
+    }
+
+    function buildRow(options) {
+        var li = document.createElement('li');
+        li.className = 'fichiers-item' + (options.folder ? ' fichiers-item--folder' : '');
+
+        var nameCell = document.createElement('div');
+        nameCell.className = 'fichiers-item__name-cell';
+        nameCell.appendChild(buildIcon(options.icon, options.iconKind));
+        var name = document.createElement('div');
+        name.className = 'fichiers-item__name';
+        name.textContent = options.name;
+        nameCell.appendChild(name);
+
+        var count = document.createElement('div');
+        count.className = 'fichiers-item__count';
+        count.textContent = options.countText;
+
+        var date = document.createElement('div');
+        date.className = 'fichiers-item__date';
+        date.textContent = options.dateText;
+
+        li.appendChild(nameCell);
+        li.appendChild(count);
+        li.appendChild(date);
+        li.appendChild(options.menu);
+        return li;
     }
 
     function renderBreadcrumb(crumbs) {
         if (!breadcrumbEl) return;
         breadcrumbEl.innerHTML = '';
+        if (titleEl) titleEl.textContent = 'Mes projets';
 
         if (!crumbs || !crumbs.length) {
             breadcrumbEl.hidden = true;
-            if (titleEl) titleEl.textContent = 'Tous vos projets';
             return;
         }
 
         breadcrumbEl.hidden = false;
-        if (titleEl) titleEl.textContent = crumbs[crumbs.length - 1].name || 'Dossier';
-
-        var rootBtn = document.createElement('button');
-        rootBtn.type = 'button';
-        rootBtn.className = 'fichiers-breadcrumb__link';
-        rootBtn.textContent = 'Tous vos projets';
-        rootBtn.addEventListener('click', function () { navigateTo(null); });
-        breadcrumbEl.appendChild(rootBtn);
 
         crumbs.forEach(function (crumb, index) {
             var sep = document.createElement('span');
@@ -210,11 +280,21 @@
         });
     }
 
+    function renameFolder(folder) {
+        var next = prompt('Nouveau nom du dossier :', folder.name || 'Dossier');
+        if (next == null) return;
+        next = String(next).trim();
+        if (!next) {
+            alert('Le nom du dossier ne peut pas être vide.');
+            return;
+        }
+        Cloud.renameFolder(folder.id, next).then(refreshPersonal).catch(function (err) {
+            alert(Cloud.mapError(err));
+        });
+    }
+
     function folderMetaText(folder) {
-        var count = folder.projectCount || 0;
-        var label = count <= 1 ? (count + ' fichier') : (count + ' fichiers');
-        var created = formatCreatedDate(folder.created_at);
-        return created ? (label + ' • Créé le ' + created) : label;
+        return filesLabel(folder.projectCount);
     }
 
     function renderList(contents) {
@@ -229,7 +309,7 @@
             listEl.hidden = true;
             setStatus(currentFolderId
                 ? 'Ce dossier est vide.'
-                : 'Aucun projet pour le moment. Dans l’atelier : Fichier → Enregistrer.');
+                : 'Aucun projet pour le moment. Dans l’atelier : Fichier → Enregistrer.', false, true);
             return;
         }
 
@@ -237,22 +317,9 @@
         listEl.hidden = false;
 
         folders.forEach(function (folder) {
-            var li = document.createElement('li');
-            li.className = 'fichiers-item fichiers-item--folder';
-
-            var info = document.createElement('div');
-            info.className = 'fichiers-item__info';
-            var name = document.createElement('div');
-            name.className = 'fichiers-item__name';
-            name.textContent = folder.name || 'Dossier';
-            var meta = document.createElement('div');
-            meta.className = 'fichiers-item__meta';
-            meta.textContent = folderMetaText(folder);
-            info.appendChild(name);
-            info.appendChild(meta);
-
             var menuWrap = buildMenu([
                 { label: 'Ouvrir', onClick: function () { navigateTo(folder.id); } },
+                { label: 'Renommer', onClick: function () { renameFolder(folder); } },
                 {
                     label: 'Supprimer',
                     danger: true,
@@ -265,9 +332,15 @@
                 }
             ]);
 
-            li.appendChild(buildIcon(ICON_FOLDER));
-            li.appendChild(info);
-            li.appendChild(menuWrap);
+            var li = buildRow({
+                folder: true,
+                icon: ICON_FOLDER,
+                iconKind: 'folder',
+                name: folder.name || 'Dossier',
+                countText: folderMetaText(folder),
+                dateText: formatModifiedDate(folder.updated_at || folder.created_at),
+                menu: menuWrap
+            });
             li.addEventListener('click', function (e) {
                 if (e.target.closest('.fichiers-item__menu')) return;
                 navigateTo(folder.id);
@@ -276,20 +349,6 @@
         });
 
         projects.forEach(function (row) {
-            var li = document.createElement('li');
-            li.className = 'fichiers-item';
-
-            var info = document.createElement('div');
-            info.className = 'fichiers-item__info';
-            var name = document.createElement('div');
-            name.className = 'fichiers-item__name';
-            name.textContent = row.name || 'Sans titre';
-            var meta = document.createElement('div');
-            meta.className = 'fichiers-item__meta';
-            meta.textContent = 'Modifié le ' + formatModifiedDate(row.updated_at);
-            info.appendChild(name);
-            info.appendChild(meta);
-
             var menuWrap = buildMenu([
                 { label: 'Ouvrir', onClick: function () { openProject(row.id); } },
                 { label: 'Déplacer', onClick: function () { moveProject(row); } },
@@ -305,9 +364,15 @@
                 }
             ]);
 
-            li.appendChild(buildIcon(ICON_FILE));
-            li.appendChild(info);
-            li.appendChild(menuWrap);
+            var li = buildRow({
+                folder: false,
+                icon: ICON_FILE,
+                iconKind: 'file',
+                name: row.name || 'Sans titre',
+                countText: '1 fichier',
+                dateText: formatModifiedDate(row.updated_at),
+                menu: menuWrap
+            });
             li.addEventListener('dblclick', function () { openProject(row.id); });
             listEl.appendChild(li);
         });
@@ -329,36 +394,31 @@
 
     function navigateTo(folderId) {
         currentFolderId = folderId || null;
-        setStatus('Chargement…');
+        closeOpenMenu();
         refreshPersonal();
     }
 
     // --- Collaboratif ---
 
     function setCollabMode(inside) {
-        if (collabActionsRoot) collabActionsRoot.hidden = !!inside;
-        if (collabActionsInside) collabActionsInside.hidden = !inside;
+        if (btnNewProject) btnNewProject.hidden = !!inside;
+        if (btnNewCollabProject) btnNewCollabProject.hidden = !inside;
         if (collabTitleEl) {
-            collabTitleEl.textContent = inside ? 'Projet collaboratif' : 'Projets collaboratifs';
+            collabTitleEl.textContent = 'Projets collaboratifs';
         }
     }
 
     function renderCollabBreadcrumb(workspace) {
         if (!collabBreadcrumbEl) return;
         collabBreadcrumbEl.innerHTML = '';
+        if (collabTitleEl) collabTitleEl.textContent = 'Projets collaboratifs';
+
         if (!workspace) {
             collabBreadcrumbEl.hidden = true;
             return;
         }
-        collabBreadcrumbEl.hidden = false;
-        if (collabTitleEl) collabTitleEl.textContent = workspace.name || 'Projet collaboratif';
 
-        var rootBtn = document.createElement('button');
-        rootBtn.type = 'button';
-        rootBtn.className = 'fichiers-breadcrumb__link';
-        rootBtn.textContent = 'Projets collaboratifs';
-        rootBtn.addEventListener('click', function () { navigateCollab(null); });
-        collabBreadcrumbEl.appendChild(rootBtn);
+        collabBreadcrumbEl.hidden = false;
 
         var sep = document.createElement('span');
         sep.className = 'fichiers-breadcrumb__sep';
@@ -372,16 +432,7 @@
     }
 
     function collabWorkspaceMeta(ws) {
-        var count = ws.projectCount || 0;
-        var files = count <= 1 ? (count + ' fichier') : (count + ' fichiers');
-        var members = (ws.members && ws.members.length)
-            ? (ws.members.length + ' membre' + (ws.members.length > 1 ? 's' : ''))
-            : '';
-        var created = formatCreatedDate(ws.created_at);
-        var parts = [files];
-        if (members) parts.push(members);
-        if (created) parts.push('Créé le ' + created);
-        return parts.join(' • ');
+        return filesLabel(ws.projectCount);
     }
 
     function renderCollabRoot(workspaces) {
@@ -394,7 +445,7 @@
         var items = sortByName(workspaces || []);
         if (!items.length) {
             collabListEl.hidden = true;
-            setCollabStatus('Aucun projet collaboratif. Créez-en un avec des personnes de votre équipe.');
+            setCollabStatus('Aucun projet collaboratif. Créez-en un avec des personnes de votre équipe.', false, true);
             return;
         }
 
@@ -402,20 +453,6 @@
         collabListEl.hidden = false;
 
         items.forEach(function (ws) {
-            var li = document.createElement('li');
-            li.className = 'fichiers-item fichiers-item--folder';
-
-            var info = document.createElement('div');
-            info.className = 'fichiers-item__info';
-            var name = document.createElement('div');
-            name.className = 'fichiers-item__name';
-            name.textContent = ws.name || 'Projet collaboratif';
-            var meta = document.createElement('div');
-            meta.className = 'fichiers-item__meta';
-            meta.textContent = collabWorkspaceMeta(ws);
-            info.appendChild(name);
-            info.appendChild(meta);
-
             var actions = [
                 { label: 'Ouvrir', onClick: function () { navigateCollab(ws.id); } },
                 {
@@ -430,9 +467,15 @@
                 }
             ];
 
-            li.appendChild(buildIcon(ICON_FOLDER));
-            li.appendChild(info);
-            li.appendChild(buildMenu(actions));
+            var li = buildRow({
+                folder: true,
+                icon: ICON_FOLDER,
+                iconKind: 'folder',
+                name: ws.name || 'Projet collaboratif',
+                countText: collabWorkspaceMeta(ws),
+                dateText: formatModifiedDate(ws.updated_at || ws.created_at),
+                menu: buildMenu(actions)
+            });
             li.addEventListener('click', function (e) {
                 if (e.target.closest('.fichiers-item__menu')) return;
                 navigateCollab(ws.id);
@@ -451,7 +494,7 @@
         var items = sortByName(projects || []);
         if (!items.length) {
             collabListEl.hidden = true;
-            setCollabStatus('Ce dossier collaboratif est vide.');
+            setCollabStatus('Ce dossier collaboratif est vide.', false, true);
             return;
         }
 
@@ -459,20 +502,6 @@
         collabListEl.hidden = false;
 
         items.forEach(function (row) {
-            var li = document.createElement('li');
-            li.className = 'fichiers-item';
-
-            var info = document.createElement('div');
-            info.className = 'fichiers-item__info';
-            var name = document.createElement('div');
-            name.className = 'fichiers-item__name';
-            name.textContent = row.name || 'Sans titre';
-            var meta = document.createElement('div');
-            meta.className = 'fichiers-item__meta';
-            meta.textContent = 'Modifié le ' + formatModifiedDate(row.updated_at);
-            info.appendChild(name);
-            info.appendChild(meta);
-
             var menuWrap = buildMenu([
                 { label: 'Ouvrir', onClick: function () { openProject(row.id); } },
                 {
@@ -487,9 +516,15 @@
                 }
             ]);
 
-            li.appendChild(buildIcon(ICON_FILE));
-            li.appendChild(info);
-            li.appendChild(menuWrap);
+            var li = buildRow({
+                folder: false,
+                icon: ICON_FILE,
+                iconKind: 'file',
+                name: row.name || 'Sans titre',
+                countText: '1 fichier',
+                dateText: formatModifiedDate(row.updated_at),
+                menu: menuWrap
+            });
             li.addEventListener('dblclick', function () { openProject(row.id); });
             collabListEl.appendChild(li);
         });
@@ -497,7 +532,6 @@
 
     function refreshCollab() {
         if (!Cloud) return Promise.resolve();
-        setCollabStatus('Chargement…');
 
         if (!currentCollabId) {
             return Cloud.listCollabWorkspaces().then(function (workspaces) {
@@ -530,19 +564,30 @@
 
     function navigateCollab(workspaceId) {
         currentCollabId = workspaceId || null;
+        closeOpenMenu();
         refreshCollab();
     }
 
-    function openCollabModal() {
-        if (!collabModal) return;
-        collabModalError.textContent = '';
-        collabModalName.value = '';
-        collabModalMembers.innerHTML = '';
-        collabModal.hidden = false;
-        collabModalSubmit.disabled = true;
-        collabModalSubmit.textContent = 'Chargement…';
+    function getFolderType() {
+        var checked = folderModal && folderModal.querySelector('input[name="folder-type"]:checked');
+        return checked ? checked.value : 'personal';
+    }
 
-        fetch(new URL('/api/team-members', window.location.origin).href, {
+    function syncFolderModalType() {
+        var type = getFolderType();
+        var isCollab = type === 'collab';
+        if (folderModalPersonal) folderModalPersonal.hidden = isCollab;
+        if (folderModalCollab) folderModalCollab.hidden = !isCollab;
+        if (folderModalError) folderModalError.textContent = '';
+    }
+
+    function loadTeamMembers() {
+        if (!folderModalMembers) return Promise.resolve();
+        folderModalMembers.innerHTML = '';
+        folderModalSubmit.disabled = true;
+        folderModalSubmit.textContent = 'Chargement…';
+
+        return fetch(new URL('/api/team-members', window.location.origin).href, {
             method: 'GET',
             headers: { Authorization: 'Bearer ' + accessToken }
         }).then(function (response) {
@@ -550,11 +595,11 @@
                 return { ok: response.ok, data: data };
             });
         }).then(function (result) {
-            collabModalSubmit.textContent = 'Créer';
-            collabModalSubmit.disabled = false;
+            folderModalSubmit.textContent = 'Créer';
+            folderModalSubmit.disabled = false;
 
             if (!result.ok || !result.data) {
-                collabModalError.textContent = (result.data && result.data.error) || 'Impossible de charger l’équipe.';
+                folderModalError.textContent = (result.data && result.data.error) || 'Impossible de charger l’équipe.';
                 return;
             }
 
@@ -567,8 +612,8 @@
             });
 
             if (!others.length) {
-                collabModalError.textContent = 'Aucune autre personne dans votre équipe pour collaborer.';
-                collabModalSubmit.disabled = true;
+                folderModalError.textContent = 'Aucune autre personne dans votre équipe pour collaborer.';
+                folderModalSubmit.disabled = true;
                 return;
             }
 
@@ -582,70 +627,122 @@
                 span.textContent = email;
                 label.appendChild(input);
                 label.appendChild(span);
-                collabModalMembers.appendChild(label);
+                folderModalMembers.appendChild(label);
             });
         }).catch(function () {
-            collabModalSubmit.textContent = 'Créer';
-            collabModalError.textContent = 'Erreur réseau.';
+            folderModalSubmit.textContent = 'Créer';
+            folderModalSubmit.disabled = false;
+            folderModalError.textContent = 'Erreur réseau.';
         });
     }
 
-    function closeCollabModal() {
-        if (collabModal) collabModal.hidden = true;
+    function loadParentFolders() {
+        if (!folderModalParent || !Cloud || !Cloud.listFoldersWithPaths) {
+            return Promise.resolve();
+        }
+        return Cloud.listFoldersWithPaths().then(function (folders) {
+            folderModalParent.innerHTML = '<option value="">À la racine</option>';
+            (folders || []).forEach(function (f) {
+                var opt = document.createElement('option');
+                opt.value = f.id;
+                opt.textContent = f.path || f.name || 'Dossier';
+                if (currentFolderId && f.id === currentFolderId) opt.selected = true;
+                folderModalParent.appendChild(opt);
+            });
+            if (currentFolderId && !folderModalParent.value) {
+                folderModalParent.value = currentFolderId;
+            }
+        }).catch(function () {});
     }
 
-    function submitCollabModal() {
-        var name = String(collabModalName.value || '').trim();
+    function openFolderModal() {
+        if (!folderModal) return;
+        folderModalError.textContent = '';
+        folderModalName.value = '';
+        folderModalMembers.innerHTML = '';
+        var personalRadio = folderModal.querySelector('input[name="folder-type"][value="personal"]');
+        if (personalRadio) personalRadio.checked = true;
+        syncFolderModalType();
+        folderModal.hidden = false;
+        folderModalSubmit.disabled = false;
+        folderModalSubmit.textContent = 'Créer';
+        loadParentFolders();
+        if (folderModalName) {
+            setTimeout(function () { folderModalName.focus(); }, 30);
+        }
+    }
+
+    function closeFolderModal() {
+        if (folderModal) folderModal.hidden = true;
+    }
+
+    function submitFolderModal() {
+        var name = String(folderModalName.value || '').trim();
         if (!name) {
-            collabModalError.textContent = 'Indiquez un nom.';
+            folderModalError.textContent = 'Indiquez un nom.';
             return;
         }
+
+        var type = getFolderType();
+
+        if (type === 'personal') {
+            var parentId = folderModalParent && folderModalParent.value
+                ? folderModalParent.value
+                : null;
+            folderModalSubmit.disabled = true;
+            folderModalSubmit.textContent = 'Création…';
+            folderModalError.textContent = '';
+            Cloud.createFolder(name, parentId).then(function () {
+                closeFolderModal();
+                return refreshPersonal();
+            }).catch(function (err) {
+                folderModalError.textContent = Cloud.mapError(err);
+                folderModalSubmit.disabled = false;
+                folderModalSubmit.textContent = 'Créer';
+            });
+            return;
+        }
+
         var selected = [];
-        collabModalMembers.querySelectorAll('input[type="checkbox"]:checked').forEach(function (input) {
+        folderModalMembers.querySelectorAll('input[type="checkbox"]:checked').forEach(function (input) {
             selected.push(input.value);
         });
         if (!selected.length) {
-            collabModalError.textContent = 'Choisissez au moins une personne.';
+            folderModalError.textContent = 'Choisissez au moins une personne.';
             return;
         }
 
-        collabModalSubmit.disabled = true;
-        collabModalSubmit.textContent = 'Création…';
-        collabModalError.textContent = '';
+        folderModalSubmit.disabled = true;
+        folderModalSubmit.textContent = 'Création…';
+        folderModalError.textContent = '';
 
         Cloud.createCollabWorkspace(name, selected, accessToken).then(function (workspace) {
-            closeCollabModal();
+            closeFolderModal();
             currentCollabId = workspace.id;
             return refreshCollab();
         }).catch(function (err) {
-            collabModalError.textContent = Cloud.mapError(err);
-            collabModalSubmit.disabled = false;
-            collabModalSubmit.textContent = 'Créer';
+            folderModalError.textContent = Cloud.mapError(err);
+            folderModalSubmit.disabled = false;
+            folderModalSubmit.textContent = 'Créer';
         });
     }
 
-    function createFolderHere() {
-        var name = prompt('Nom du dossier :', 'Nouveau dossier');
-        if (name == null) return;
-        name = String(name).trim();
-        if (!name) {
-            alert('Le nom du dossier ne peut pas être vide.');
-            return;
+    function onFolderTypeChange() {
+        syncFolderModalType();
+        if (getFolderType() === 'collab' && folderModalMembers && !folderModalMembers.children.length) {
+            loadTeamMembers();
         }
-        Cloud.createFolder(name, currentFolderId).then(refreshPersonal).catch(function (err) {
-            alert(Cloud.mapError(err));
-        });
     }
 
-    document.addEventListener('click', function () { closeOpenMenu(); });
+    document.addEventListener('click', function () { closeOpenMenu(); }, { signal: pageSignal });
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             closeOpenMenu();
-            closeCollabModal();
+            closeFolderModal();
         }
-    });
+    }, { signal: pageSignal });
 
-    if (btnCreateFolder) btnCreateFolder.addEventListener('click', createFolderHere);
+    if (btnCreateFolder) btnCreateFolder.addEventListener('click', openFolderModal);
     if (btnNewProject) {
         btnNewProject.addEventListener('click', function () {
             if (!Auth || !Auth.getAppUrl) return;
@@ -657,20 +754,41 @@
         window.location.href = Auth.getAppUrl();
     }
 
-    if (btnCreateCollab) btnCreateCollab.addEventListener('click', openCollabModal);
-    if (btnNewCollabProjectRoot) {
-        btnNewCollabProjectRoot.addEventListener('click', openBlankAtelier);
-    }
     if (btnNewCollabProject) {
         btnNewCollabProject.addEventListener('click', openBlankAtelier);
     }
-    if (collabModalCancel) collabModalCancel.addEventListener('click', closeCollabModal);
-    if (collabModalSubmit) collabModalSubmit.addEventListener('click', submitCollabModal);
-    if (collabModal) {
-        collabModal.addEventListener('click', function (e) {
-            if (e.target === collabModal) closeCollabModal();
+    if (folderModalCancel) folderModalCancel.addEventListener('click', closeFolderModal);
+    if (folderModalSubmit) folderModalSubmit.addEventListener('click', submitFolderModal);
+    if (folderModal) {
+        folderModal.addEventListener('click', function (e) {
+            if (e.target === folderModal) closeFolderModal();
+        });
+        folderModal.querySelectorAll('input[name="folder-type"]').forEach(function (input) {
+            input.addEventListener('change', onFolderTypeChange);
         });
     }
+
+    var fichiersTitleBtn = document.getElementById('fichiers-title-btn');
+    if (fichiersTitleBtn) {
+        fichiersTitleBtn.addEventListener('click', function () {
+            if (currentFolderId) navigateTo(null);
+        });
+    }
+    var collabTitleBtn = document.getElementById('collab-title-btn');
+    if (collabTitleBtn) {
+        collabTitleBtn.addEventListener('click', function () {
+            if (currentCollabId) navigateCollab(null);
+        });
+    }
+
+    document.querySelectorAll('[data-collapsible]').forEach(function (panel) {
+        var toggle = panel.querySelector('.fichiers-panel__toggle');
+        if (!toggle) return;
+        toggle.addEventListener('click', function () {
+            var collapsed = panel.classList.toggle('is-collapsed');
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+    });
 
     function boot(session) {
         if (!Cloud) {

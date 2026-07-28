@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — profils pour le plan 2D + maillage STL.
+// 01-saas/canvas/3d/bottle/ — profils pour le plan 2D + maillage STL.
 // Consommé par features/2d et features/export.
 
 var BottleViewExport = (function () {

@@ -1,4 +1,4 @@
-// saas/features/sections/bloc.js
+// 01-saas/features/sections/bloc.js
 // Génération HTML des cartes inspecteur (sections, liaisons, footer « + »).
 // Constantes / options → SectionsRules. Pas d’événements ici.
 //

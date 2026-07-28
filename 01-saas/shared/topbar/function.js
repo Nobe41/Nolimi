@@ -1,4 +1,4 @@
-// saas/shared/topbar/function.js
+// 01-saas/shared/topbar/function.js
 // Topbar atelier : menus Fichier/Affichage/Realtime, undo/redo slots, mobile hamburger.
 // Guide modal + contact mail. API : TopbarShared.init()
 

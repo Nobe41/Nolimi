@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- menu/pages/equipe/ — membres de l’abonnement (admin + licences). -->
+<!-- 02-menu/pages/equipe/ — membres de l’équipe (cartes). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -11,33 +11,28 @@
     <link rel="stylesheet" href="../../main.css">
     <link rel="stylesheet" href="./equipe.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../../../saas/config/supabase.config.js"></script>
-    <script src="../../../saas/lib/auth.js"></script>
+    <script src="../../../01-saas/config/supabase.config.js"></script>
+    <script src="../../../01-saas/lib/auth.js"></script>
 </head>
 <body class="page page--menu">
     <script src="../../components/sidebar/sidebar.js"></script>
     <script>NolimiMenuSidebar.mount({ current: 'equipe' });</script>
 
     <main class="menu-main menu-main--equipe">
-        <section class="equipe-panel">
-            <header class="equipe-header">
-                <h1 class="equipe-title">Équipe</h1>
-                <p class="equipe-plan" id="equipe-plan"></p>
-            </header>
-
-            <p class="equipe-status" id="equipe-status" aria-live="polite">Chargement…</p>
-
-            <div class="equipe-fields" id="equipe-fields" hidden>
-                <div class="equipe-field">
-                    <span class="equipe-field__label">Compte admin</span>
-                    <div class="equipe-field__box" id="equipe-admin">—</div>
-                </div>
-                <div class="equipe-licenses">
-                    <span class="equipe-field__label">Comptes licences</span>
-                    <ul class="equipe-list" id="equipe-licenses"></ul>
-                </div>
+        <div class="equipe-toolbar">
+            <div class="equipe-filters" role="tablist" aria-label="Filtres">
+                <button type="button" class="equipe-filter is-active" data-filter="all" id="filter-all">Tous (0)</button>
+                <button type="button" class="equipe-filter" data-filter="admin" id="filter-admin">Admin (0)</button>
+                <button type="button" class="equipe-filter" data-filter="collab" id="filter-collab">Collaborateur (0)</button>
             </div>
-        </section>
+            <label class="equipe-search">
+                <svg class="equipe-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16.5 16.5 4 4"/></svg>
+                <input type="search" id="equipe-search" class="equipe-search__input" placeholder="Rechercher un email…" autocomplete="off">
+            </label>
+        </div>
+
+        <p class="equipe-status" id="equipe-status" aria-live="polite">Chargement…</p>
+        <div class="equipe-grid" id="equipe-grid" hidden></div>
     </main>
 
     <script src="./equipe.js"></script>

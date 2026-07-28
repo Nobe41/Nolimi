@@ -1,4 +1,4 @@
-// website/pages/creation-compte/ — UI : admin figé + emails licences + envoi après paiement.
+// 03-website/pages/creation-compte/ — UI : admin figé + emails licences + envoi après paiement.
 
 (function () {
     var ALLOWED_COUNTS = [1, 5, 10];

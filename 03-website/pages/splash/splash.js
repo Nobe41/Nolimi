@@ -1,4 +1,4 @@
-// website/pages/splash/ — affiche le logo puis redirige vers l’accueil.
+// 03-website/pages/splash/ — affiche le logo puis redirige vers l’accueil.
 
 (function () {
     var TARGET = '../accueil/index.html';

@@ -1,4 +1,4 @@
-// saas/canvas/3d/ — réglages (qualité maillage, couleurs, caméra, grille).
+// 01-saas/canvas/3d/ — réglages (qualité maillage, couleurs, caméra, grille).
 // Source unique des constantes 3D ; pas de logique métier ici.
 
 var Canvas3DRules = (function () {

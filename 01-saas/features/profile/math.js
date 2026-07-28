@@ -1,4 +1,4 @@
-// saas/features/profile/math.js
+// 01-saas/features/profile/math.js
 // ProfileMath = géométrie métier du profil bouteille (sections → méridien 2D, surfaces 3D).
 // GeomKernel (kernel.js) = primitives 2D. LiaisonsFeature = raccords entre sections (ligne/rayon/courbeS/spline).
 // Constantes → ProfileRules. Point d'entrée stable pour le reste de l'app → BottleMaths (function.js).

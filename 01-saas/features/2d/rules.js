@@ -1,4 +1,4 @@
-// saas/features/2d/rules.js
+// 01-saas/features/2d/rules.js
 // Source UNIQUE des constantes du plan (papier, styles, IDs panneau, échelles).
 // Pas de logique. Ne pas recopier PAPER_FORMATS / DRAW_STYLE ailleurs
 // (canvas/2d lit ici via Plans2DFeature ou Plans2DRules).
@@ -38,7 +38,7 @@ var Plans2DRules = (function () {
             '2:1': 2
         },
 
-        // Logo cartouche (chemin relatif depuis saas/app.html)
+        // Logo cartouche (chemin relatif depuis 01-saas/app.html)
         CARTOUCHE_LOGO_SRC: '../assets/brand/nolimi-logo-cartouche.png',
 
         // Grille cartouche

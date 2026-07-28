@@ -1,4 +1,4 @@
-// saas/config/ — credentials Supabase (navigateur).
+// 01-saas/config/ — credentials Supabase (navigateur).
 // Clé anon = publique ; la sécurité vient du RLS. Aucune logique ici.
 // Consommé par : lib/auth.js (NolimiAuth). Ne pas y mettre de secret service_role.
 

@@ -1,7 +1,11 @@
-// menu/pages/abonnement/ — infos abo + portail Stripe (admin uniquement).
+// 02-menu/pages/abonnement/ — infos abo + portail Stripe (admin uniquement).
 
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
+
+    window.__nolimiPageCleanup = function () {
+        window.__nolimiPageCleanup = null;
+    };
 
     function setText(id, value) {
         var el = document.getElementById(id);

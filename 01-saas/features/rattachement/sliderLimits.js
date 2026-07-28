@@ -1,4 +1,4 @@
-// saas/features/rattachement/sliderLimits.js
+// 01-saas/features/rattachement/sliderLimits.js
 // Indicateur UI : marque une carte « courbe S impossible » (classe CSS courbe-s-impossible).
 // Lit les champs DOM des sections ; les bornes min/max du slider rho sont dans layout/function.js.
 // Appelé par le store/validator via applyRhoMinConstraints.

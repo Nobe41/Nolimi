@@ -1,4 +1,4 @@
-// saas/features/profile/rules.js
+// 01-saas/features/profile/rules.js
 // Constantes du profil bouteille : formes, rayons min, résolution d'échantillonnage.
 // Utilisées par ProfileMath (math.js). Pas de logique ici, seulement des valeurs par défaut.
 // Pour les liaisons entre sections → RattachementRules (rattachement/rules.js).

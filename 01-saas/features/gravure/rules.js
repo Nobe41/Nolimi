@@ -1,4 +1,4 @@
-// saas/features/gravure/rules.js
+// 01-saas/features/gravure/rules.js
 // Constantes gravure : deux couches séparées.
 // DEFAULTS / LIMITS / IDS → panneau UI (cartes, sliders, PNG).
 // MESH → qualité du relief 3D (grille masque, tessellation, liaisons complexes).

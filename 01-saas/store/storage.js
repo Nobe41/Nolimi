@@ -1,4 +1,4 @@
-// saas/store/storage.js
+// 01-saas/store/storage.js
 // Persistance projet :
 //   1) WorkspaceAutosave — localStorage (debounce + intervalle). Un refresh repart des défauts
 //      (clear au boot). Reprise = Ouvrir un fichier JSON. resetToDefaults = bouton NOUVEAU.

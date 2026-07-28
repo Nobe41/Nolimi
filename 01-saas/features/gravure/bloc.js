@@ -1,4 +1,4 @@
-// saas/features/gravure/bloc.js
+// 01-saas/features/gravure/bloc.js
 // Couche UI pure : génère le HTML d’une carte gravure (accordion + sliders).
 // Chaque carte = une gravure dans le panneau latéral (PNG, Y, angle, relief…).
 // Les valeurs saisies ici sont relues par events.js puis mesh.js pour le 3D.

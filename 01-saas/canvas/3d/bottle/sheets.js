@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — feuilles (piqûre, col→bague, bandes réglées).
+// 01-saas/canvas/3d/bottle/ — feuilles (piqûre, col→bague, bandes réglées).
 // Surfaces hors corps de révolution principal ; matériaux via BottleMaterials.
 
 var BottleViewSheets = (function () {

@@ -1,4 +1,4 @@
-// saas/canvas/3d/ — matériau de base de la bouteille (édition, hors mode rendu).
+// 01-saas/canvas/3d/ — matériau de base de la bouteille (édition, hors mode rendu).
 // Mode verre / Physical → features/render/materials.js (RenderMaterials).
 
 var BottleMaterials = (function () {

@@ -1,4 +1,4 @@
-// saas/features/2d/function.js
+// 01-saas/features/2d/function.js
 // Façade plan : lit le DOM (papier, échelle, vue dessous) + bind contrôles.
 // Constantes → Plans2DRules. Rendu / caméra → canvas/2d (pas ici).
 

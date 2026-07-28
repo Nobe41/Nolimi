@@ -1,4 +1,4 @@
-// saas/features/sections/rules.js
+// 01-saas/features/sections/rules.js
 // Constantes métier des sections. Pas de DOM ni de calcul.
 //
 // Vocabulaire :

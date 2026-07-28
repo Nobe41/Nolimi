@@ -1,4 +1,4 @@
-// saas/features/3d/data.js
+// 01-saas/features/3d/data.js
 // Source UNIQUE : lit le panneau HTML → données sections pour la bouteille 3D.
 // canvas/3d/bottle/panel.js = façade compat (BottleViewPanel → ici).
 // Ne pas recopier la lecture DOM ailleurs.

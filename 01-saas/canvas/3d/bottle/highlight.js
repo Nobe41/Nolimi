@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — surbrillance (sélection / survol section & liaison).
+// 01-saas/canvas/3d/bottle/ — surbrillance (sélection / survol section & liaison).
 // Anneaux / joints = overlays ; liaisons = teinte rouge de la feuille (coupe pile aux H).
 
 var BottleViewHighlight = (function () {

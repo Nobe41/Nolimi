@@ -1,4 +1,4 @@
-// saas/features/2d/data.js
+// 01-saas/features/2d/data.js
 // Profils bouteille pour le plan 2D (sections, piqûre, bague, extents).
 // Préfère BottleView3D ; sinon lit les inputs DOM (même IDs que sections).
 // Le dessin du profil est dans canvas/2d/render.js.

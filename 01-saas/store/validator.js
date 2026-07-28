@@ -1,4 +1,4 @@
-// saas/store/validator.js
+// 01-saas/store/validator.js
 // Contraintes UI : hauteurs monotones + plafonds diamètres (piqûre / bague).
 // Appelé par layout (saisie), sections (ajout), storage (restore), canvas 3D.
 // API : validateSectionHeights, validatePiqureHeight, applyAllUserConstraints

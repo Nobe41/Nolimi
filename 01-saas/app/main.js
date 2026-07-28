@@ -1,4 +1,4 @@
-// saas/app/ — démarrage de l’atelier (point d’entrée).
+// 01-saas/app/ — démarrage de l’atelier (point d’entrée).
 // Ce fichier : après auth, lance 3D / 2D / realtime / autosave.
 // Si ?project=… → charge le projet cloud Stockage après init.
 

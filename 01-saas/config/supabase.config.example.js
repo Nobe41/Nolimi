@@ -1,4 +1,4 @@
-// saas/config/ — modèle à copier en supabase.config.js (fichier réellement chargé).
+// 01-saas/config/ — modèle à copier en supabase.config.js (fichier réellement chargé).
 // Remplir url + anonKey : Supabase → Project Settings → API.
 // Aucune logique ici ; même forme que supabase.config.js.
 //

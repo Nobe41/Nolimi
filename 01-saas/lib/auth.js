@@ -1,7 +1,7 @@
-// saas/lib/auth.js
+// 01-saas/lib/auth.js
 // Auth Supabase (navigateur) — aucun identifiant en dur ici.
 // Config → config/supabase.config.js (window.NOLIMI_SUPABASE_CONFIG).
-// Utilisé par : app/main.js, features/realtime, website/pages/connexion, menu/*.
+// Utilisé par : app/main.js, features/realtime, 03-website/pages/connexion, 02-menu/*.
 //
 // Vocabulaire :
 //   session compte  = utilisateur connecté (email) ou anonyme
@@ -41,26 +41,26 @@ var NolimiAuth = (function () {
         if (window.location.pathname.indexOf('/connexion/') !== -1) {
             return resolveUrl('index.html');
         }
-        if (window.location.pathname.indexOf('/menu/') !== -1) {
-            return resolveUrl('../../../website/pages/connexion/index.html');
+        if (window.location.pathname.indexOf('/02-menu/') !== -1) {
+            return resolveUrl('../../../03-website/pages/connexion/index.html');
         }
-        if (window.location.pathname.indexOf('/saas/') !== -1) {
-            return resolveUrl('../website/pages/connexion/index.html');
+        if (window.location.pathname.indexOf('/01-saas/') !== -1) {
+            return resolveUrl('../03-website/pages/connexion/index.html');
         }
-        return resolveUrl('../website/pages/connexion/index.html');
+        return resolveUrl('../03-website/pages/connexion/index.html');
     }
 
     function getWebsiteUrl() {
-        if (window.location.pathname.indexOf('/menu/') !== -1) {
-            return resolveUrl('../../../website/pages/accueil/index.html');
+        if (window.location.pathname.indexOf('/02-menu/') !== -1) {
+            return resolveUrl('../../../03-website/pages/accueil/index.html');
         }
-        if (window.location.pathname.indexOf('/saas/') !== -1) {
-            return resolveUrl('../website/pages/accueil/index.html');
+        if (window.location.pathname.indexOf('/01-saas/') !== -1) {
+            return resolveUrl('../03-website/pages/accueil/index.html');
         }
-        if (window.location.pathname.indexOf('/website/') !== -1) {
+        if (window.location.pathname.indexOf('/03-website/') !== -1) {
             return resolveUrl('../accueil/index.html');
         }
-        return resolveUrl('../website/pages/accueil/index.html');
+        return resolveUrl('../03-website/pages/accueil/index.html');
     }
 
     function redirectToWebsite() {
@@ -69,26 +69,26 @@ var NolimiAuth = (function () {
 
     // Après login (sans lien de session) → menu (accueil ou abonnement admin)
     function getAdminMenuUrl() {
-        if (window.location.pathname.indexOf('/menu/') !== -1) {
+        if (window.location.pathname.indexOf('/02-menu/') !== -1) {
             return resolveUrl('../abonnement/index.html');
         }
-        if (window.location.pathname.indexOf('/saas/') !== -1) {
-            return resolveUrl('../menu/pages/abonnement/index.html');
+        if (window.location.pathname.indexOf('/01-saas/') !== -1) {
+            return resolveUrl('../02-menu/pages/abonnement/index.html');
         }
-        return resolveUrl('../../../menu/pages/abonnement/index.html');
+        return resolveUrl('../../../02-menu/pages/abonnement/index.html');
     }
 
     function getMenuUrl(user) {
         if (user && isSubscriptionAdmin(user)) {
             return getAdminMenuUrl();
         }
-        if (window.location.pathname.indexOf('/menu/') !== -1) {
+        if (window.location.pathname.indexOf('/02-menu/') !== -1) {
             return resolveUrl('../accueil/index.html');
         }
-        if (window.location.pathname.indexOf('/saas/') !== -1) {
-            return resolveUrl('../menu/pages/accueil/index.html');
+        if (window.location.pathname.indexOf('/01-saas/') !== -1) {
+            return resolveUrl('../02-menu/pages/accueil/index.html');
         }
-        return resolveUrl('../../../menu/pages/accueil/index.html');
+        return resolveUrl('../../../02-menu/pages/accueil/index.html');
     }
 
     function isSubscriptionAdmin(user) {
@@ -106,10 +106,10 @@ var NolimiAuth = (function () {
 
     function getAppUrl(sessionId, projectId) {
         var url;
-        if (window.location.pathname.indexOf('/saas/') !== -1) {
+        if (window.location.pathname.indexOf('/01-saas/') !== -1) {
             url = resolveUrl('app.html?start=1');
         } else {
-            url = resolveUrl('../../../saas/app.html?start=1');
+            url = resolveUrl('../../../01-saas/app.html?start=1');
         }
         var u = new URL(url);
         if (sessionId) {

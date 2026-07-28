@@ -1,4 +1,4 @@
-// saas/features/render/materials.js
+// 01-saas/features/render/materials.js
 // Matériaux du mode rendu : verre réaliste (transmission, reflets studio).
 // Mode « base » : délègue au matériau d’édition (BottleMaterials).
 // La carte d’environnement rectangulaire simule des softboxes, sans charger d’EXR.

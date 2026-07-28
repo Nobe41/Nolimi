@@ -1,0 +1,262 @@
+/* 02-menu/pages/notifications/ — liste d’annonces expansibles. */
+
+.menu-main--notifications {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 1.35rem;
+}
+
+.notif-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.notif-header__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+.notif-title {
+    font-size: 1.45rem;
+    font-weight: 750;
+    color: var(--nolimi-ink);
+    letter-spacing: -0.02em;
+}
+
+.notif-lead {
+    font-size: 0.92rem;
+    color: #98a2b3;
+    line-height: 1.4;
+}
+
+.notif-mark-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.9rem;
+    border: none;
+    border-radius: 8px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notif-mark-all:hover {
+    background: #e8eaed;
+    color: var(--nolimi-ink);
+}
+
+.notif-mark-all__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.notif-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.notif-item {
+    display: grid;
+    grid-template-columns: 2.6rem minmax(0, 1fr) auto;
+    gap: 0.85rem;
+    align-items: start;
+    width: 100%;
+    padding: 1rem 1.1rem;
+    border: none;
+    border-bottom: 1px solid #eef0f3;
+    background: #fff;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.notif-item:last-child {
+    border-bottom: none;
+}
+
+.notif-item:not(.is-read) {
+    background: #f0f6ff;
+}
+
+.notif-item:hover {
+    background: #fafbfc;
+}
+
+.notif-item:not(.is-read):hover {
+    background: #e8f1ff;
+}
+
+.notif-item.is-expanded {
+    background: #f8fafc;
+}
+
+.notif-item:not(.is-read).is-expanded {
+    background: #e8f1ff;
+}
+
+.notif-item__icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notif-item__icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.notif-item__icon--equipe {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.notif-item__icon--maintenance {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.notif-item__icon--securite {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.notif-item__icon--welcome {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.notif-item__body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding-top: 0.15rem;
+}
+
+.notif-item__cat-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.notif-item__category {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.notif-item__category--equipe { color: #2563eb; }
+.notif-item__category--maintenance { color: #ea580c; }
+.notif-item__category--securite { color: #16a34a; }
+.notif-item__category--welcome { color: #7c3aed; }
+
+.notif-item__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #3b66c4;
+    flex-shrink: 0;
+}
+
+.notif-item.is-read .notif-item__dot {
+    display: none;
+}
+
+.notif-item__title {
+    font-size: 0.95rem;
+    font-weight: 650;
+    color: var(--nolimi-ink);
+    line-height: 1.35;
+}
+
+.notif-empty {
+    margin: 0;
+    padding: 1.5rem 1.1rem;
+    font-size: 0.9rem;
+    color: #98a2b3;
+    text-align: center;
+}
+
+.notif-item__content {
+    display: none;
+    margin-top: 0.55rem;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #6b7280;
+    max-width: 42rem;
+    white-space: pre-line;
+}
+
+.notif-item.is-expanded .notif-item__content {
+    display: block;
+}
+
+.notif-item__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    padding-top: 0.25rem;
+    color: #98a2b3;
+}
+
+.notif-item__time {
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.notif-item__more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 6px;
+    color: #98a2b3;
+    font-size: 1.05rem;
+    line-height: 1;
+    letter-spacing: 0.04em;
+}
+
+.notif-item.is-expanded .notif-item__more {
+    transform: rotate(90deg);
+}
+
+@media (max-width: 768px) {
+    .notif-title {
+        font-size: 1.25rem;
+    }
+
+    .notif-item {
+        grid-template-columns: 2.2rem minmax(0, 1fr);
+        padding: 0.9rem 0.85rem;
+    }
+
+    .notif-item__meta {
+        grid-column: 2;
+        padding-top: 0;
+    }
+}

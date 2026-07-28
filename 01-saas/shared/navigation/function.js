@@ -1,4 +1,4 @@
-// saas/shared/navigation/function.js
+// 01-saas/shared/navigation/function.js
 // Navigation atelier : pages menu↔projet, onglets sidebar/inspector, vue 3D/2D.
 // Constantes → NavigationRules. État → NavigationState.
 // API : UIEvents.init, UIEvents.applyFromState (restore / realtime).
@@ -64,7 +64,7 @@ var UIEvents = (function () {
             if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) WorkspaceAutosave.saveNow();
             var menuUrl = (typeof NolimiAuth !== 'undefined' && NolimiAuth.getMenuUrl)
                 ? NolimiAuth.getMenuUrl()
-                : '../menu/pages/accueil/index.html';
+                : '../02-menu/pages/accueil/index.html';
             window.location.href = menuUrl;
         }
 
@@ -85,7 +85,7 @@ var UIEvents = (function () {
             btnBackWebsite.addEventListener('click', function () {
                 if (fichierDropdown) fichierDropdown.classList.add('hidden');
                 if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) WorkspaceAutosave.saveNow();
-                window.location.href = '../website/pages/accueil/index.html';
+                window.location.href = '../03-website/pages/accueil/index.html';
             });
         }
     }

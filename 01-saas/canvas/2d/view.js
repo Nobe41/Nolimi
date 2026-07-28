@@ -1,4 +1,4 @@
-// saas/canvas/2d/view.js
+// 01-saas/canvas/2d/view.js
 // Caméra, zoom, souris, redimensionnement.
 // Dimensions papier → Plans2DFeature (features/2d) ; pas de copie ici.
 

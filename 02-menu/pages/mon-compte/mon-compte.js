@@ -1,21 +1,25 @@
-// menu/pages/mon-compte/ — infos compte + déconnexion + retour site web.
+// 02-menu/pages/mon-compte/ — profil + déconnexion + retour site web.
 
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
 
+    window.__nolimiPageCleanup = function () {
+        window.__nolimiPageCleanup = null;
+    };
+
     function setText(id, value) {
         var el = document.getElementById(id);
         if (!el) return;
-        el.textContent = value || 'Non renseigné';
+        el.textContent = value || '—';
     }
 
-    function planLabel(meta) {
-        if (!meta) return null;
-        if (meta.license_plan) return String(meta.license_plan);
-        var count = parseInt(meta.license_count, 10);
-        if (count === 1) return '1 licence';
-        if (count > 1) return count + ' licences';
-        return null;
+    function initialsFromEmail(email) {
+        var local = String(email || '').split('@')[0] || '';
+        var parts = local.split(/[._+\-]+/).filter(Boolean);
+        if (parts.length >= 2) {
+            return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+        }
+        return local.slice(0, 2).toUpperCase() || '?';
     }
 
     function fillAccountInfo() {
@@ -30,9 +34,17 @@
             if (!user) return;
 
             var meta = user.user_metadata || {};
-            setText('compte-email', user.email || null);
-            setText('compte-manager', meta.license_manager_email || null);
-            setText('compte-plan', planLabel(meta));
+            var email = user.email || '';
+            var isAdmin = !!(Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user));
+            var manager = meta.license_manager_email || (isAdmin ? email : null);
+
+            setText('compte-email-display', email || null);
+            setText('compte-email', email || null);
+            setText('compte-manager', manager || null);
+            setText('compte-role', isAdmin ? 'Administrateur' : 'Collaborateur');
+
+            var avatar = document.getElementById('compte-avatar');
+            if (avatar) avatar.textContent = initialsFromEmail(email);
         }).catch(function () {});
     }
 
@@ -55,7 +67,7 @@
     var btnWebsite = document.getElementById('btn-back-website');
     if (btnWebsite) {
         btnWebsite.addEventListener('click', function () {
-            window.location.href = '../../../website/pages/accueil/index.html';
+            window.location.href = '../../../03-website/pages/accueil/index.html';
         });
     }
 })();

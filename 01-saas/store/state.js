@@ -1,4 +1,4 @@
-// saas/store/state.js
+// 01-saas/store/state.js
 // Mémoire globale partagée (scène 3D, projet ouvert, options d’affichage).
 // Chargé tôt dans app.html. Pas de logique métier ici.
 

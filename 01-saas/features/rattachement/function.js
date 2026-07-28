@@ -1,4 +1,4 @@
-// saas/features/rattachement/function.js
+// 01-saas/features/rattachement/function.js
 // LiaisonsFeature = façade des raccords entre sections (ligne / rayon / courbeS / spline).
 // Délègue à RattachementMath ; consommé par ProfileMath.buildExteriorProfile.
 // Alias RattachementsFeature pour compatibilité. UI des cartes → features/sections.

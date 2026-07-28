@@ -1,4 +1,4 @@
-// saas/features/2d/cotation.js
+// 01-saas/features/2d/cotation.js
 // Libellés de cotation du plan (Ø, R, courbe S…).
 // Le tracé des cotes est dans canvas/2d/tools.js.
 //

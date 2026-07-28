@@ -1,4 +1,4 @@
-// saas/canvas/2d/tools.js
+// 01-saas/canvas/2d/tools.js
 // Outils de trait (lignes, flèches, textes, mesures).
 // Épaisseurs / tirets → Plans2DRules.DRAW_STYLE.mainView.
 

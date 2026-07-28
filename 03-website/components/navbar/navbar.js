@@ -1,4 +1,4 @@
-// website/components/navbar/ — barre du haut du site.
+// 03-website/components/navbar/ — barre du haut du site.
 // Ce fichier : HTML de la navbar + injection dans la page.
 
 (function (global) {

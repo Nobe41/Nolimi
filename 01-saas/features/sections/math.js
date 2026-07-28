@@ -1,4 +1,4 @@
-// saas/features/sections/math.js
+// 01-saas/features/sections/math.js
 // Nettoyage des points du profil méridien (avant construction géométrique).
 //
 // Entrée  : [{ x: rayon_mm, y: hauteur_mm }, …]

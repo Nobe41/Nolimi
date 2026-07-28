@@ -1,4 +1,4 @@
-// website/components/footer/ — pied de page du site.
+// 03-website/components/footer/ — pied de page du site.
 // Ce fichier : HTML du footer + injection dans la page.
 
 (function (global) {

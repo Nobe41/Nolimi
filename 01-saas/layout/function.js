@@ -1,4 +1,4 @@
-// saas/layout/function.js
+// 01-saas/layout/function.js
 // Câblage UI de l’atelier : inputs inspector, accordéons, highlights, sync col↔bague.
 // API globales : setupListeners, scheduleViewRefresh, bindInspectorWheelScroll, viewport3D.
 // updateBouteille / draw2D viennent du canvas (pas ici).

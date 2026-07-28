@@ -1,4 +1,4 @@
-// saas/canvas/2d/rules.js
+// 01-saas/canvas/2d/rules.js
 // Réglages de la FENÊTRE 2D uniquement (viewport, zoom, DPR).
 // Papier / styles de plan → features/2d/rules.js (Plans2DRules).
 

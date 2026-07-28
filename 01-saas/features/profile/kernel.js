@@ -1,4 +1,4 @@
-// saas/features/profile/kernel.js
+// 01-saas/features/profile/kernel.js
 // GeomKernel = primitives géométriques 2D (segments droits + arcs de cercle).
 // Couche bas niveau réutilisable : pas de notion bouteille, pas de Three.js.
 // Consommé par ProfileMath et RattachementMath pour construire puis tesseller des profils.

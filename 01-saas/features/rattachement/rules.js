@@ -1,4 +1,4 @@
-// saas/features/rattachement/rules.js
+// 01-saas/features/rattachement/rules.js
 // Constantes des liaisons (rattachements) entre deux sections du profil.
 // Types : ligne, rayon, courbeS, spline. Pas de logique — consommé par RattachementMath.
 // L'indicateur UI « courbe S impossible » utilise COURBE_S_MIN_RADIUS_FACTOR.

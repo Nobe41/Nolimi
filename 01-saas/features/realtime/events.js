@@ -1,4 +1,4 @@
-// saas/features/realtime/events.js
+// 01-saas/features/realtime/events.js
 // Boutons et panneaux du menu « Partager la session ».
 // Créer une session, rejoindre via code/lien, copier l’URL, quitter.
 // Met à jour l’affichage selon RealtimeState ; la logique réseau est dans function.js.

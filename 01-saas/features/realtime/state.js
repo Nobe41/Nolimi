@@ -1,4 +1,4 @@
-// saas/features/realtime/state.js
+// 01-saas/features/realtime/state.js
 // Mémoire vive de la session partagée Supabase (une seule source de vérité locale).
 // Stocke : id session, connexion, rôle hôte/invité, nombre de participants.
 // Timestamps savedAt : éviter d’écraser le projet avec une version plus ancienne.

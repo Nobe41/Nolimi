@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — maillage corps (profil tourné autour de l’axe).
+// 01-saas/canvas/3d/bottle/ — maillage corps (profil tourné autour de l’axe).
 // Utilisé par build / export / highlight ; pas d’UI ici.
 
 var BottleMesh3D = (function () {

@@ -1,4 +1,4 @@
-// saas/layout/ui-controls.js
+// 01-saas/layout/ui-controls.js
 // Helpers UI génériques (pas de métier bouteille).
 // - sync des sliders range (--range-pct = piste remplie WebKit/Firefox)
 // - Entrée → appliquer + blur sur les champs number

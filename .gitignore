@@ -8,4 +8,4 @@
 .env*.local
 
 # Config Supabase locale (optionnelle, hors repo)
-saas/config/supabase.local.js
+01-saas/config/supabase.local.js

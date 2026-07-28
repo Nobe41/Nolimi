@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — met à jour la bouteille 3D (cache + orchestration).
+// 01-saas/canvas/3d/bottle/ — met à jour la bouteille 3D (cache + orchestration).
 // API publique : BottleView3D.
 // Étiquettes 3D → features/render (RenderLabels), pas ici.
 // Invalidation fine : géométrie / highlight / opacité / gravure.

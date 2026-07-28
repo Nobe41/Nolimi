@@ -1,4 +1,4 @@
-// website/pages/connexion/ — connexion compte + rejoindre une session via lien.
+// 03-website/pages/connexion/ — connexion compte + rejoindre une session via lien.
 
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;

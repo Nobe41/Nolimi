@@ -1,4 +1,4 @@
-// saas/features/render/labels.js
+// 01-saas/features/render/labels.js
 // Étiquettes PNG collées sur la surface de la bouteille (mode rendu activé).
 // Géométrie conforme via raycast ; cache par signature corps + paramètres.
 // État global : window.renderLabelState (créé et piloté par RenderFeature).

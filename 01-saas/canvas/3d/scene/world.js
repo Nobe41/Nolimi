@@ -1,4 +1,4 @@
-// saas/canvas/3d/scene/ — monde Three.js (caméra, renderer, axes, grille).
+// 01-saas/canvas/3d/scene/ — monde Three.js (caméra, renderer, axes, grille).
 // Remplit les globals : scene, camera, renderer, controls.
 // Fond / lumières de base → Scene3DBackground ; pipeline mode rendu → RenderScene.
 // API publique : SceneSetup3D (initScene, resize, setBackgroundScene, …).

@@ -1,4 +1,4 @@
-// saas/canvas/3d/ — démarre la fenêtre 3D (scène + bouteille + boucle de rendu).
+// 01-saas/canvas/3d/ — démarre la fenêtre 3D (scène + bouteille + boucle de rendu).
 // Point d’entrée : initLogiciel() / updateBouteille() → Canvas3DLifecycle.
 // Ordre : SceneSetup3D.initScene → BottleView3D.updateView → renderLoop.
 

@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — traits de section / joint de moule (pixels d’écran, Line2).
+// 01-saas/canvas/3d/bottle/ — traits de section / joint de moule (pixels d’écran, Line2).
 // Réglages : Canvas3DRules.SECTION_RING. Collés à la feuille, occlus à l’arrière.
 
 var BottleViewEdges = (function () {

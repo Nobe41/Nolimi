@@ -1,4 +1,4 @@
-// saas/canvas/2d/render.js
+// 01-saas/canvas/2d/render.js
 // Dessine la feuille (vues, profils, cotations).
 // Données / styles / cartouche → features/2d.
 

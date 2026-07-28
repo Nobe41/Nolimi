@@ -1,4 +1,4 @@
-// saas/features/render/scene.js
+// 01-saas/features/render/scene.js
 // Réglages visuels du viewport quand le mode rendu est activé.
 // Active tonemapping ACES et masque axes/grille ; pas de décor 3D (table, EXR…).
 // Fond et lumières restent ceux du canvas 3D de base (Scene3DBackground).

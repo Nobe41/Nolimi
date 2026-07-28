@@ -1,4 +1,4 @@
-// saas/features/sections/events.js
+// 01-saas/features/sections/events.js
 // Événements sections : sync DOM → state, ajout / suppression.
 //
 // syncAllFromDom : appelé avant save (store/storage.js)

@@ -1,4 +1,4 @@
-// saas/features/sections/state.js
+// 01-saas/features/sections/state.js
 // État runtime unique des sections (corps / piqûre / bague).
 //
 // Cycle de vie :

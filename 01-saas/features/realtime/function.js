@@ -1,4 +1,4 @@
-// saas/features/realtime/function.js
+// 01-saas/features/realtime/function.js
 // Cœur de la session partagée : connexion Supabase Realtime (broadcast + présence).
 // Synchronise le projet (payload autosave), les curseurs (cursor.js) et la caméra/vue (view.js).
 // Rôles : hôte (crée la session, envoie l’état) et invité (reçoit et suit).

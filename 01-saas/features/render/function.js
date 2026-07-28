@@ -1,4 +1,4 @@
-// saas/features/render/function.js
+// 01-saas/features/render/function.js
 // Point d’entrée du mode rendu : toggle, matériau verre, étiquettes PNG.
 // Branche les contrôles DOM, persiste l’état (autosave) et rafraîchit la bouteille.
 // Pas de scène décorative — uniquement verre + étiquettes sur le viewport existant.

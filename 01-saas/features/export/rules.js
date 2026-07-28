@@ -1,4 +1,4 @@
-// saas/features/export/rules.js
+// 01-saas/features/export/rules.js
 // Constantes du module export (deux sorties distinctes).
 // Export 3D → fichier STL (maillage pour impression / CAO).
 // Export 2D → fichier PDF (plan dessiné, capture du canvas).

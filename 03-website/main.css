@@ -1,4 +1,4 @@
-/* website/main.css — styles communs à toutes les pages du site. */
+/* 03-website/main.css — styles communs à toutes les pages du site. */
 
 @import url("../assets/brand/tokens.css");
 @import url("./components/navbar/navbar.css");

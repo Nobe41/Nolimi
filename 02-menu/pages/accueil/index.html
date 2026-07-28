@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- menu/pages/accueil/ — accueil après connexion (bouton Nouveau → atelier). -->
+<!-- 02-menu/pages/accueil/ — accueil après connexion + projets récents. -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -11,26 +11,30 @@
     <link rel="stylesheet" href="../../main.css">
     <link rel="stylesheet" href="./accueil.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../../../saas/config/supabase.config.js"></script>
-    <script src="../../../saas/lib/auth.js"></script>
+    <script src="../../../01-saas/config/supabase.config.js"></script>
+    <script src="../../../01-saas/lib/auth.js"></script>
+    <script src="../../../01-saas/store/cloud-projects.js"></script>
 </head>
 <body class="page page--menu">
     <script src="../../components/sidebar/sidebar.js"></script>
     <script>NolimiMenuSidebar.mount({ current: 'accueil' });</script>
 
     <main class="menu-main menu-main--accueil">
-        <section class="accueil-hero">
-            <h1 class="accueil-greeting" id="accueil-greeting">Bonjour</h1>
-            <p class="accueil-subtitle">Prêt à créer de grandes choses aujourd’hui&nbsp;?</p>
+        <header class="accueil-header">
+            <div class="accueil-header__text">
+                <h1 class="accueil-title" id="accueil-greeting">Bonjour</h1>
+                <p class="accueil-lead">Ne perdez pas de temps : concevez vos bouteilles super rapidement.</p>
+            </div>
             <button type="button" class="accueil-btn-nouveau" id="btn-nouveau">
-                <span class="accueil-btn-nouveau__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-                        <circle cx="12" cy="12" r="9.25"></circle>
-                        <path d="M12 8v8M8 12h8"></path>
-                    </svg>
-                </span>
-                Nouveau Projet
+                <svg class="accueil-btn-nouveau__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Nouveau projet
             </button>
+        </header>
+
+        <section class="accueil-recent">
+            <h2 class="accueil-recent__title">Projets récents</h2>
+            <p class="accueil-recent__status" id="accueil-recent-status" aria-live="polite">Chargement…</p>
+            <ul class="accueil-recent__list" id="accueil-recent-list" hidden></ul>
         </section>
     </main>
 

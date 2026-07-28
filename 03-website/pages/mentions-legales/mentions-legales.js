@@ -1,4 +1,4 @@
-// website/pages/mentions-legales/ — onglets des documents + bouton retour.
+// 03-website/pages/mentions-legales/ — onglets des documents + bouton retour.
 
 (function () {
     var VALID_TABS = ['mentions-legales', 'cgu', 'confidentialite', 'cgv'];

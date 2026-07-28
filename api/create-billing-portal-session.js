@@ -73,7 +73,7 @@ module.exports = async function handler(req, res) {
         });
     }
 
-    var returnUrl = siteUrl.replace(/\/$/, '') + '/menu/pages/abonnement/index.html';
+    var returnUrl = siteUrl.replace(/\/$/, '') + '/02-menu/pages/abonnement/index.html';
     var portal = await stripeVerify.stripeRequest(
         stripeSecretKey,
         'POST',

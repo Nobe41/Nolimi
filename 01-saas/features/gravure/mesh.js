@@ -1,4 +1,4 @@
-// saas/features/gravure/mesh.js
+// 01-saas/features/gravure/mesh.js
 // Couche 3D : transforme les cartes UI en géométrie sur la bouteille.
 // Entrées : getEngravingsData() + images PNG (window.engravingImages).
 // Relief normal → mesh extrudé collé à la surface. Inversé → perce le corps.

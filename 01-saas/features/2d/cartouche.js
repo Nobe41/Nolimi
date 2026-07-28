@@ -1,4 +1,4 @@
-// saas/features/2d/cartouche.js
+// 01-saas/features/2d/cartouche.js
 // Dessin du cartouche (grille + textes menus + résultats Calcul).
 // Styles / logo / formats → Plans2DRules. Appelé par canvas/2d/render.js.
 

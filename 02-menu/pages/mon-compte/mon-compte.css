@@ -1,89 +1,171 @@
-/* menu/pages/mon-compte/ — style formulaire (carte + champs). */
+/* 02-menu/pages/mon-compte/ — profil carte + actions. */
 
 .menu-main--mon-compte {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     width: 100%;
-}
-
-.compte-panel {
-    width: 100%;
-    max-width: 36rem;
-    background: var(--nolimi-surface);
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1.35rem 1.4rem 1.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    gap: 1.15rem;
 }
 
 .compte-title {
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: 1.45rem;
+    font-weight: 750;
     color: var(--nolimi-ink);
+    letter-spacing: -0.02em;
 }
 
-.compte-fields {
+.compte-card {
+    width: 100%;
+    max-width: 34rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 1.25rem 1.35rem 1.15rem;
     display: flex;
     flex-direction: column;
+    gap: 1.1rem;
+}
+
+.compte-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+}
+
+.compte-card__avatar {
+    flex-shrink: 0;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.compte-card__identity {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.compte-card__email {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--nolimi-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compte-card__role {
+    font-size: 0.88rem;
+    color: #98a2b3;
+}
+
+.compte-card__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding-top: 1.05rem;
+    border-top: 1px solid #eef0f3;
+}
+
+.compte-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 1rem;
 }
 
-.compte-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+.compte-row__label {
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    color: #98a2b3;
 }
 
-.compte-field__label {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #718096;
-}
-
-.compte-field__box {
-    width: 100%;
-    min-height: 2.65rem;
-    padding: 0.65rem 0.85rem;
-    font-size: 0.95rem;
-    line-height: 1.35;
+.compte-row__value {
+    font-size: 0.9rem;
     color: var(--nolimi-ink);
-    background: var(--nolimi-surface);
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    text-align: right;
     word-break: break-word;
 }
 
 .compte-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    padding-top: 0.15rem;
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+    max-width: 34rem;
 }
 
 .compte-btn {
-    padding: 0.5rem 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.95rem;
     font-size: 0.875rem;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
     border-radius: 8px;
-    border: 1px solid var(--nolimi-border);
+    border: 1px solid transparent;
     background: transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.compte-btn__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+}
+
+.compte-btn--secondary {
+    border-color: #d0d5dd;
     color: var(--nolimi-ink);
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    background: #fff;
 }
 
 .compte-btn--secondary:hover {
-    background: var(--nolimi-bg);
+    background: #f8f9fb;
 }
 
 .compte-btn--danger {
-    border-color: var(--nolimi-danger);
-    color: var(--nolimi-danger);
+    border: none;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    color: #e11d48;
+    background: transparent;
 }
 
 .compte-btn--danger:hover {
-    background: var(--nolimi-danger-soft);
+    background: #fff1f2;
+}
+
+@media (max-width: 768px) {
+    .compte-title {
+        font-size: 1.25rem;
+    }
+
+    .compte-card {
+        padding: 1.1rem 1rem;
+    }
+
+    .compte-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+    }
+
+    .compte-row__value {
+        text-align: left;
+    }
 }

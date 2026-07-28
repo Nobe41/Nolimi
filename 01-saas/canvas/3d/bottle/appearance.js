@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — opacité vue piqûre, ombres, coque interne.
+// 01-saas/canvas/3d/bottle/ — opacité vue piqûre, ombres, coque interne.
 // Mode verre → RenderMaterials.isGlassMode() (features/render).
 
 var BottleViewAppearance = (function () {

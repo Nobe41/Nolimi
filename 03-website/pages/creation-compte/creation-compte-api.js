@@ -1,4 +1,4 @@
-// website/pages/creation-compte/ — appel API création de comptes (Stripe vérifié côté serveur).
+// 03-website/pages/creation-compte/ — appel API création de comptes (Stripe vérifié côté serveur).
 
 var NolimiLicenseApi = (function () {
     function getStripeSessionId() {

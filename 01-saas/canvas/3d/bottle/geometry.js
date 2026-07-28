@@ -1,4 +1,4 @@
-// saas/canvas/3d/bottle/ — façade géométrie (compatibilité API).
+// 01-saas/canvas/3d/bottle/ — façade géométrie (compatibilité API).
 // Délègue à : BottleViewEdges, BottleViewSheets, BottleViewAppearance.
 // Charger edges.js + sheets.js + appearance.js avant ce fichier.
 

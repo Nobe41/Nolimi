@@ -1,4 +1,4 @@
-// saas/features/export/math.js
+// 01-saas/features/export/math.js
 // Utilitaires partagés par les deux exports.
 // PDF : résolution format papier (mm + options jsPDF).
 // STL : préparation / fusion de géométries Three.js avant export binaire.

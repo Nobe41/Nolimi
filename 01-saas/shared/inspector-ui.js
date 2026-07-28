@@ -1,4 +1,4 @@
-// saas/shared/inspector-ui.js
+// 01-saas/shared/inspector-ui.js
 // État UI inspecteur : accordéons, scroll, menus dropdown (sync session partagée / realtime).
 // API : collectState, applyState, notifyChange, bindScrollSync
 

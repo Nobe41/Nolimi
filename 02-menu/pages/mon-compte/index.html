@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- menu/pages/mon-compte/ — mon compte (infos licence + déconnexion). -->
+<!-- 02-menu/pages/mon-compte/ — mon compte (profil + déconnexion). -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -11,41 +11,47 @@
     <link rel="stylesheet" href="../../main.css">
     <link rel="stylesheet" href="./mon-compte.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../../../saas/config/supabase.config.js"></script>
-    <script src="../../../saas/lib/auth.js"></script>
+    <script src="../../../01-saas/config/supabase.config.js"></script>
+    <script src="../../../01-saas/lib/auth.js"></script>
 </head>
 <body class="page page--menu">
     <script src="../../components/sidebar/sidebar.js"></script>
     <script>NolimiMenuSidebar.mount({ current: 'mon-compte' });</script>
 
     <main class="menu-main menu-main--mon-compte">
-        <section class="compte-panel">
-            <h1 class="compte-title">Mon compte</h1>
+        <h1 class="compte-title">Mon compte</h1>
 
-            <div class="compte-fields">
-                <div class="compte-field">
-                    <label class="compte-field__label" for="compte-email">Adresse mail du compte</label>
-                    <div class="compte-field__box" id="compte-email" role="text">—</div>
+        <section class="compte-card">
+            <header class="compte-card__header">
+                <div class="compte-card__avatar" id="compte-avatar" aria-hidden="true">—</div>
+                <div class="compte-card__identity">
+                    <div class="compte-card__email" id="compte-email-display">—</div>
+                    <div class="compte-card__role" id="compte-role">—</div>
                 </div>
-                <div class="compte-field">
-                    <label class="compte-field__label" for="compte-manager">Gérant de l’abonnement</label>
-                    <div class="compte-field__box" id="compte-manager" role="text">—</div>
-                </div>
-                <div class="compte-field">
-                    <label class="compte-field__label" for="compte-plan">Type d’abonnement</label>
-                    <div class="compte-field__box" id="compte-plan" role="text">—</div>
-                </div>
-            </div>
+            </header>
 
-            <div class="compte-actions">
-                <button type="button" class="compte-btn compte-btn--secondary" id="btn-back-website">
-                    Retour au site web
-                </button>
-                <button type="button" class="compte-btn compte-btn--danger" id="btn-logout">
-                    Se déconnecter
-                </button>
+            <div class="compte-card__details">
+                <div class="compte-row">
+                    <span class="compte-row__label">Adresse email</span>
+                    <span class="compte-row__value" id="compte-email">—</span>
+                </div>
+                <div class="compte-row">
+                    <span class="compte-row__label">Administrateur</span>
+                    <span class="compte-row__value" id="compte-manager">—</span>
+                </div>
             </div>
         </section>
+
+        <div class="compte-actions">
+            <button type="button" class="compte-btn compte-btn--secondary" id="btn-back-website">
+                <svg class="compte-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.6 3.6 5.4 3.6 8.5S14.4 17.9 12 20.5C9.6 17.9 8.4 15.1 8.4 12S9.6 6.1 12 3.5Z"/></svg>
+                Retour au site web
+            </button>
+            <button type="button" class="compte-btn compte-btn--danger" id="btn-logout">
+                <svg class="compte-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4.5H6.5A2 2 0 0 0 4.5 6.5v11A2 2 0 0 0 6.5 19.5H10"/><path d="M14 8.5 18.5 12 14 15.5"/><path d="M18.5 12H9"/></svg>
+                Se déconnecter
+            </button>
+        </div>
     </main>
 
     <script src="./mon-compte.js"></script>

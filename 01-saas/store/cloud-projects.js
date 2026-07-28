@@ -1,6 +1,6 @@
-// saas/store/cloud-projects.js
+// 01-saas/store/cloud-projects.js
 // Projets + dossiers cloud (tables Supabase public.projects / public.folders).
-// Utilisé par : menu/pages/fichiers, app (Fichier → Enregistrer).
+// Utilisé par : 02-menu/pages/fichiers, app (Fichier → Enregistrer).
 
 var CloudProjects = (function () {
     var TABLE = 'projects';
@@ -126,6 +126,29 @@ var CloudProjects = (function () {
         });
     }
 
+    function renameFolder(folderId, name) {
+        if (!isUuid(folderId)) {
+            return Promise.reject(new Error('Dossier invalide.'));
+        }
+        var nextName = String(name || '').trim();
+        if (!nextName) {
+            return Promise.reject(new Error('Le nom du dossier ne peut pas être vide.'));
+        }
+        return requireUser().then(function (ctx) {
+            return ctx.sb
+                .from(FOLDERS)
+                .update({ name: nextName })
+                .eq('id', folderId)
+                .eq('user_id', ctx.user.id)
+                .select('id, name, parent_id, created_at')
+                .single()
+                .then(function (result) {
+                    if (result.error) return Promise.reject(result.error);
+                    return result.data;
+                });
+        });
+    }
+
     // Chemins plats pour le sélecteur à l’enregistrement
     function listFoldersWithPaths() {
         return listAllFolders().then(function (folders) {
@@ -192,6 +215,23 @@ var CloudProjects = (function () {
                 if (result.error) return Promise.reject(result.error);
                 return result.data || [];
             });
+        });
+    }
+
+    function listRecent(limit) {
+        var max = Math.max(1, Math.min(parseInt(limit, 10) || 8, 20));
+        return requireUser().then(function (ctx) {
+            return ctx.sb
+                .from(TABLE)
+                .select('id, name, folder_id, collab_workspace_id, created_at, updated_at')
+                .eq('user_id', ctx.user.id)
+                .is('collab_workspace_id', null)
+                .order('updated_at', { ascending: false })
+                .limit(max)
+                .then(function (result) {
+                    if (result.error) return Promise.reject(result.error);
+                    return result.data || [];
+                });
         });
     }
 
@@ -715,6 +755,7 @@ var CloudProjects = (function () {
 
     return {
         list: list,
+        listRecent: listRecent,
         listContents: listContents,
         listFolders: listFolders,
         listAllFolders: listAllFolders,
@@ -723,6 +764,7 @@ var CloudProjects = (function () {
         getFolder: getFolder,
         createFolder: createFolder,
         removeFolder: removeFolder,
+        renameFolder: renameFolder,
         get: get,
         create: create,
         createCollabProject: createCollabProject,

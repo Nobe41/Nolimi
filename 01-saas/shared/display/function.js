@@ -1,4 +1,4 @@
-// saas/shared/display/function.js
+// 01-saas/shared/display/function.js
 // Menu Affichage : axes, grille, anneaux de section, joint de moule.
 // Écrit window.displayOptions → SceneSetup3D.applyDisplayOptions + updateBouteille.
 // API : DisplayShared.init(), DisplayShared.syncTogglesFromOptions()

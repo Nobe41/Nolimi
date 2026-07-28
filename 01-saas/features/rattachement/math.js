@@ -1,4 +1,4 @@
-// saas/features/rattachement/math.js
+// 01-saas/features/rattachement/math.js
 // RattachementMath = géométrie des raccords entre sections du profil 2D.
 // LiaisonsFeature (function.js) expose buildProfileCurves ; types : ligne / rayon / courbeS / spline.
 // Primitives 2D → GeomKernel. Constantes → RattachementRules. Appelé par ProfileMath.buildExteriorProfile.

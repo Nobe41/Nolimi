@@ -1,4 +1,4 @@
-// saas/features/gravure/state.js
+// 01-saas/features/gravure/state.js
 // Mémoire côté UI (pas le mesh 3D).
 // Compteur d’IDs pour nommer les cartes ; images PNG chargées indexées par id.
 // Le moteur 3D (mesh.js) lit ces images via window.engravingImages.

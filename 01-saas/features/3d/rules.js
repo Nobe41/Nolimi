@@ -1,4 +1,4 @@
-// saas/features/3d/rules.js
+// 01-saas/features/3d/rules.js
 // Constantes lecture panneau → sections 3D (IDs, défauts piqûre/bague).
 // Pas de logique. Consommé par features/3d/data.js.
 //

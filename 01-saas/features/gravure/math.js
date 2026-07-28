@@ -1,4 +1,4 @@
-// saas/features/gravure/math.js
+// 01-saas/features/gravure/math.js
 // Pont UI → données : lit les champs d’une carte .gravure-item dans le DOM.
 // Retourne position, angle, taille, relief, miroir/inverser pour le mesh 3D.
 // Pas de géométrie ici — uniquement parsing des contrôles utilisateur.

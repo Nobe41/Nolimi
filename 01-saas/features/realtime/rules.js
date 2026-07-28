@@ -1,4 +1,4 @@
-// saas/features/realtime/rules.js
+// 01-saas/features/realtime/rules.js
 // Constantes du module « session partagée » (collaboration en temps réel).
 // Délais de debounce, couleurs des curseurs, préfixe canal Supabase, IDs DOM du menu.
 // Aucune logique ici — seulement des réglages réutilisés par function / cursor / view.

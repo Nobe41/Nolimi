@@ -1,4 +1,4 @@
-// saas/features/gravure/events.js
+// 01-saas/features/gravure/events.js
 // Couche UI : création/suppression de cartes, chargement PNG, save/restore projet.
 // Chaque changement appelle updateBouteille() → regénère le mesh 3D (mesh.js).
 // getEngravingsData() expose les paramètres actifs au moteur de relief.

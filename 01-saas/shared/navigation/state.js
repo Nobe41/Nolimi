@@ -1,4 +1,4 @@
-// saas/shared/navigation/state.js
+// 01-saas/shared/navigation/state.js
 // État runtime de la navigation (onglets + vue active).
 // Persisté dans l’autosave / sync realtime via getState / patch.
 

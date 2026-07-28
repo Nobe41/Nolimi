@@ -1,4 +1,4 @@
-// saas/features/realtime/view.js
+// 01-saas/features/realtime/view.js
 // Synchronisation de la vue entre participants (caméra 3D, pan/zoom 2D).
 // Inclut aussi onglets actifs, options d’affichage et état de l’inspecteur.
 // Broadcast throttlé ; ignore les messages plus anciens que le local.

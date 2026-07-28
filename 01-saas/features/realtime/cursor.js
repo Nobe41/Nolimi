@@ -1,4 +1,4 @@
-// saas/features/realtime/cursor.js
+// 01-saas/features/realtime/cursor.js
 // Curseurs des autres participants, affichés par-dessus le viewport (#viewport).
 // Position en coordonnées normalisées 0–1 (indépendant de la taille de l’écran).
 // Broadcast throttlé via Supabase ; masquage auto si plus de nouvelles positions.
