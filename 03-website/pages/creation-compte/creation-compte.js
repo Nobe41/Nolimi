@@ -16,12 +16,18 @@
     var paymentSuccessEl = document.querySelector('.payment-success');
 
     var stripeSessionId = Api ? Api.getStripeSessionId() : '';
-    var licenseCount = parseLicenseCount();
+    // Fallback URL (?licences=) ; la vraie valeur vient de la session Stripe (metadata licences).
+    var licenseCount = parseLicenseCountFromUrl();
     var adminEmail = '';
 
-    function parseLicenseCount() {
+    function parseLicenseCountFromUrl() {
         var count = parseInt(new URLSearchParams(window.location.search).get('licences'), 10);
-        return ALLOWED_COUNTS.indexOf(count) === -1 ? 1 : count;
+        return ALLOWED_COUNTS.indexOf(count) === -1 ? null : count;
+    }
+
+    function normalizeLicenseCount(value) {
+        var count = parseInt(value, 10);
+        return ALLOWED_COUNTS.indexOf(count) === -1 ? null : count;
     }
 
     function setAdminDisplay(text) {
@@ -30,7 +36,7 @@
     }
 
     function updateSubmitState() {
-        if (!stripeSessionId || !Api || !adminEmail) {
+        if (!stripeSessionId || !Api || !adminEmail || !licenseCount) {
             submitBtn.disabled = true;
             return;
         }
@@ -89,9 +95,9 @@
         form.hidden = true;
     }
 
-    // Affiche tout de suite la structure (admin + licences)
+    // Affiche tout de suite admin + un état de chargement pour les champs licences
     setAdminDisplay('Chargement…');
-    renderLicenseFields(licenseCount);
+    fieldsEl.innerHTML = '<p class="license-fields-hint">Chargement du nombre de licences…</p>';
     submitBtn.disabled = true;
 
     if (!stripeSessionId) {
@@ -113,8 +119,21 @@
                 updateSubmitState();
                 return;
             }
+
+            var fromStripe = normalizeLicenseCount(result.data.licenseCount);
+            var resolvedCount = fromStripe || licenseCount;
+            if (!resolvedCount) {
+                setAdminDisplay(result.data.email);
+                showFatal(
+                    'Nombre de licences introuvable sur ce paiement. Dans Stripe, ajoutez la metadata « licences » (1, 5 ou 10) sur chaque Payment Link.'
+                );
+                return;
+            }
+
+            licenseCount = resolvedCount;
             errEl.textContent = '';
             renderAdminField(result.data.email);
+            renderLicenseFields(licenseCount);
             updateSubmitState();
         }).catch(function () {
             setAdminDisplay('Erreur réseau');
