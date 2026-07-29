@@ -62,6 +62,9 @@ var UIEvents = (function () {
         function goToAppMenu() {
             if (fichierDropdown) fichierDropdown.classList.add('hidden');
             if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) WorkspaceAutosave.saveNow();
+            if (typeof NolimiInProgress !== 'undefined' && NolimiInProgress.captureFromAtelier) {
+                NolimiInProgress.captureFromAtelier();
+            }
             var menuUrl = (typeof NolimiAuth !== 'undefined' && NolimiAuth.getMenuUrl)
                 ? NolimiAuth.getMenuUrl()
                 : '../02-menu/pages/accueil/index.html';

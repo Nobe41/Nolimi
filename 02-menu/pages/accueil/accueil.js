@@ -34,6 +34,9 @@
 
     function openProject(projectId) {
         if (!Auth || !Auth.getAppUrl) return;
+        if (typeof NolimiResumeProject !== 'undefined' && NolimiResumeProject.clear) {
+            NolimiResumeProject.clear();
+        }
         window.location.href = Auth.getAppUrl(null, projectId);
     }
 
@@ -117,6 +120,9 @@
     if (btn) {
         btn.addEventListener('click', function () {
             if (!Auth || !Auth.getAppUrl) return;
+            if (typeof NolimiResumeProject !== 'undefined' && NolimiResumeProject.clear) {
+                NolimiResumeProject.clear();
+            }
             window.location.href = Auth.getAppUrl();
         });
     }

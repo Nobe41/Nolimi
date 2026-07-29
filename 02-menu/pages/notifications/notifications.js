@@ -1,12 +1,14 @@
 // 02-menu/pages/notifications/ — charge les notifs depuis mes-notifs/.
+// État lu / non lu : par compte (localStorage lié à l’id utilisateur).
 
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
-    var STORAGE_KEY = 'nolimi_notif_read_ids';
+    var NOTIF_READ_PREFIX = 'nolimi_notif_read_ids:';
     var CATALOG_URL = './mes-notifs/catalog.json';
     var listEl = document.getElementById('notif-list');
     var markAllBtn = document.getElementById('notif-mark-all');
     var notifications = [];
+    var currentUserId = null;
 
     window.__nolimiPageCleanup = function () {
         window.__nolimiPageCleanup = null;
@@ -19,9 +21,13 @@
         welcome: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v3M7.5 6.5 9 9M16.5 6.5 15 9"/><path d="M8 14c1.2 1.5 2.5 2.2 4 2.2s2.8-.7 4-2.2"/><path d="M6 19c2-3 4-4.5 6-4.5S16 16 18 19"/></svg>'
     };
 
+    function storageKey() {
+        return NOTIF_READ_PREFIX + (currentUserId || 'anon');
+    }
+
     function loadReadIds() {
         try {
-            var raw = localStorage.getItem(STORAGE_KEY);
+            var raw = localStorage.getItem(storageKey());
             if (raw == null) return [];
             var parsed = JSON.parse(raw);
             return Array.isArray(parsed) ? parsed : [];
@@ -32,7 +38,7 @@
 
     function saveReadIds(ids) {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+            localStorage.setItem(storageKey(), JSON.stringify(ids || []));
         } catch (e) {}
         if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.refreshNotifBadge === 'function') {
             NolimiMenuSidebar.refreshNotifBadge(notifications.length);
@@ -144,29 +150,61 @@
             });
     }
 
+    function bootNotifications() {
+        loadNotifications().then(function (items) {
+            notifications = items || [];
+            var validIds = notifications.map(function (n) { return n.id; });
+            var pruned = loadReadIds().filter(function (id) {
+                return validIds.indexOf(id) !== -1;
+            });
+            saveReadIds(pruned);
+            if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.setNotifTotal === 'function') {
+                NolimiMenuSidebar.setNotifTotal(notifications.length);
+            }
+            render();
+        }).catch(function () {
+            notifications = [];
+            render();
+        });
+    }
+
+    function resolveUserThenBoot() {
+        function done(user) {
+            currentUserId = user && user.id ? String(user.id) : null;
+            if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.setNotifUser === 'function') {
+                NolimiMenuSidebar.setNotifUser(user || null);
+            }
+            bootNotifications();
+        }
+
+        if (!Auth || !Auth.getClient) {
+            done(null);
+            return;
+        }
+        var sb = Auth.getClient();
+        if (!sb) {
+            done(null);
+            return;
+        }
+        sb.auth.getSession().then(function (result) {
+            var user = result && result.data && result.data.session
+                ? result.data.session.user
+                : null;
+            done(user);
+        }).catch(function () {
+            done(null);
+        });
+    }
+
     if (markAllBtn) {
         markAllBtn.addEventListener('click', markAllRead);
     }
 
-    loadNotifications().then(function (items) {
-        notifications = items || [];
-        var validIds = notifications.map(function (n) { return n.id; });
-        var pruned = loadReadIds().filter(function (id) {
-            return validIds.indexOf(id) !== -1;
-        });
-        saveReadIds(pruned);
-        if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.setNotifTotal === 'function') {
-            NolimiMenuSidebar.setNotifTotal(notifications.length);
-        }
-        render();
-    }).catch(function () {
-        notifications = [];
-        render();
-    });
-
     if (Auth && Auth.requireLicenseAccount) {
-        Auth.requireLicenseAccount().catch(function () {});
+        Auth.requireLicenseAccount().then(resolveUserThenBoot).catch(function () {});
     } else if (Auth && Auth.requireAccountSession) {
-        Auth.requireAccountSession().catch(function () {});
+        Auth.requireAccountSession().then(resolveUserThenBoot).catch(function () {});
+    } else {
+        resolveUserThenBoot();
     }
 })();

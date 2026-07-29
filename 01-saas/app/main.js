@@ -13,6 +13,53 @@ function getCloudProjectIdFromBoot() {
     }
 }
 
+function shouldResumeInProgress() {
+    try {
+        return new URLSearchParams(window.location.search).get('resume') === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function stripResumeParamFromUrl() {
+    try {
+        var u = new URL(window.location.href);
+        if (!u.searchParams.has('resume')) return;
+        u.searchParams.delete('resume');
+        window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+    } catch (e) {}
+}
+
+function applyInProgressIfNeeded(done) {
+    if (typeof NolimiInProgress === 'undefined' || !NolimiInProgress.load) {
+        if (typeof done === 'function') done(false);
+        return;
+    }
+    var entry = NolimiInProgress.load();
+    if (!entry || !entry.payload) {
+        if (typeof done === 'function') done(false);
+        return;
+    }
+
+    if (entry.projectId) {
+        currentCloudProjectId = entry.projectId;
+        if (typeof CloudProjects !== 'undefined' && CloudProjects.setProjectIdInUrl) {
+            CloudProjects.setProjectIdInUrl(entry.projectId);
+        }
+    }
+    currentCloudProjectName = entry.projectName || 'Projet en cours';
+
+    if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.applyProjectPayload) {
+        WorkspaceAutosave.applyProjectPayload(entry.payload, function () {
+            stripResumeParamFromUrl();
+            if (typeof done === 'function') done(true);
+        });
+        return;
+    }
+    stripResumeParamFromUrl();
+    if (typeof done === 'function') done(true);
+}
+
 function loadCloudProjectIfNeeded(projectId, done) {
     if (!projectId || typeof CloudProjects === 'undefined') {
         if (typeof done === 'function') done();
@@ -58,12 +105,13 @@ function bootAtelier() {
     }
 
     var cloudProjectId = getCloudProjectIdFromBoot();
+    var resumeInProgress = shouldResumeInProgress();
 
     // 3) Lancer le logiciel (léger délai pour laisser le DOM / scripts prêts)
     setTimeout(function () {
-        // Refresh = valeurs d’usine (pas de reprise autosave localStorage).
-        // Pour reprendre un projet : menu Fichiers.
-        if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.clear) {
+        // Refresh = valeurs d’usine (pas de reprise autosave localStorage),
+        // sauf reprise explicite depuis le panneau menu (?resume=1).
+        if (!resumeInProgress && typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.clear) {
             WorkspaceAutosave.clear();
         }
         if (typeof initLogiciel === 'function' && !isLogicielInit) {
@@ -77,6 +125,19 @@ function bootAtelier() {
             if (typeof WorkspaceAutosave !== 'undefined' && WorkspaceAutosave.saveNow) {
                 WorkspaceAutosave.saveNow();
             }
+        }
+
+        if (resumeInProgress) {
+            applyInProgressIfNeeded(function (ok) {
+                if (ok) {
+                    afterReady();
+                    return;
+                }
+                // Pas de brouillon → comportement normal
+                if (cloudProjectId) loadCloudProjectIfNeeded(cloudProjectId, afterReady);
+                else afterReady();
+            });
+            return;
         }
 
         if (cloudProjectId) {

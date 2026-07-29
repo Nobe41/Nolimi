@@ -62,23 +62,61 @@
         });
     }
 
-    function swapStyles(doc, pageUrl) {
-        document.querySelectorAll('link[data-soft-page-style]').forEach(function (l) {
-            l.remove();
-        });
-
+    function collectPageStyleHrefs(doc, pageUrl) {
+        var hrefs = [];
+        var seen = {};
         doc.querySelectorAll('link[rel="stylesheet"]').forEach(function (link) {
             var href = link.getAttribute('href');
             if (!href) return;
             var abs = new URL(href, pageUrl).href;
             if (!PAGE_STYLE_RE.test(abs) && !/^\.\/[^/]+\.css$/i.test(href)) return;
-            if (/main\.css|tokens\.css|sidebar\.css/i.test(abs)) return;
+            if (/main\.css|tokens\.css|sidebar\.css|resume-project\.css/i.test(abs)) return;
+            if (seen[abs]) return;
+            seen[abs] = true;
+            hrefs.push(abs);
+        });
+        return hrefs;
+    }
+
+    function preloadStylesheet(href) {
+        return new Promise(function (resolve) {
+            var same = null;
+            document.querySelectorAll('link[rel="stylesheet"]').forEach(function (link) {
+                if (link.href === href) same = link;
+            });
+            if (same) {
+                same.dataset.softPageStyle = '1';
+                resolve(same);
+                return;
+            }
 
             var l = document.createElement('link');
             l.rel = 'stylesheet';
-            l.href = abs;
+            l.href = href;
             l.dataset.softPageStyle = '1';
+            var done = false;
+            function finish() {
+                if (done) return;
+                done = true;
+                resolve(l);
+            }
+            l.onload = finish;
+            l.onerror = finish;
             document.head.appendChild(l);
+            setTimeout(finish, 1200);
+        });
+    }
+
+    function preparePageStyles(doc, pageUrl) {
+        var hrefs = collectPageStyleHrefs(doc, pageUrl);
+        return Promise.all(hrefs.map(preloadStylesheet)).then(function (links) {
+            var keep = {};
+            links.forEach(function (l) {
+                if (l && l.href) keep[l.href] = true;
+            });
+            document.querySelectorAll('link[data-soft-page-style]').forEach(function (l) {
+                if (!keep[l.href]) l.remove();
+            });
         });
     }
 
@@ -190,35 +228,53 @@
                 var doc = new DOMParser().parseFromString(html, 'text/html');
                 var entry = { html: html, doc: doc, url: new URL(url, window.location.href).href };
                 cache[key] = entry;
+                collectPageStyleHrefs(doc, entry.url).forEach(function (href) {
+                    preloadStylesheet(href);
+                });
                 return entry;
             });
     }
 
     function applyPage(entry, options) {
         cleanupCurrentPage();
-        swapStyles(entry.doc, entry.url);
 
         var root = ensurePageRoot();
-        var frag = extractPageContent(entry.doc);
-        root.innerHTML = '';
-        root.appendChild(frag);
+        root.classList.add('is-soft-swapping');
 
-        document.title = entry.doc.title || document.title;
-        updateSidebarActive(entry.url);
+        return preparePageStyles(entry.doc, entry.url).then(function () {
+            var frag = extractPageContent(entry.doc);
+            root.innerHTML = '';
+            root.appendChild(frag);
 
-        if (options.push !== false) {
-            history.pushState({ softNav: true }, '', entry.url);
-        }
+            document.title = entry.doc.title || document.title;
+            updateSidebarActive(entry.url);
 
-        var shared = neededSharedScripts(entry.doc, entry.url);
-        var pages = pageScripts(entry.doc, entry.url);
-        return loadScriptsSequential(shared, false)
-            .then(function () { return loadScriptsSequential(pages, true); })
-            .then(function () {
-                if (global.NolimiMenuSidebar && typeof NolimiMenuSidebar.refreshNotifBadge === 'function') {
-                    NolimiMenuSidebar.refreshNotifBadge();
-                }
+            if (options.push !== false) {
+                history.pushState({ softNav: true }, '', entry.url);
+            }
+
+            return new Promise(function (resolve) {
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        root.classList.remove('is-soft-swapping');
+                        resolve();
+                    });
+                });
             });
+        }).then(function () {
+            var shared = neededSharedScripts(entry.doc, entry.url);
+            var pages = pageScripts(entry.doc, entry.url);
+            return loadScriptsSequential(shared, false)
+                .then(function () { return loadScriptsSequential(pages, true); })
+                .then(function () {
+                    if (global.NolimiMenuSidebar && typeof NolimiMenuSidebar.refreshNotifBadge === 'function') {
+                        NolimiMenuSidebar.refreshNotifBadge();
+                    }
+                });
+        }).catch(function (err) {
+            root.classList.remove('is-soft-swapping');
+            throw err;
+        });
     }
 
     function navigate(url, options) {

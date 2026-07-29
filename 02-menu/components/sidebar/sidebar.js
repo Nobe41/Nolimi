@@ -3,9 +3,10 @@
 
 (function (global) {
     var LOGO = '../../../assets/brand/nolimi-logo-wordmark.jpg';
-    var NOTIF_STORAGE_KEY = 'nolimi_notif_read_ids';
+    var NOTIF_READ_PREFIX = 'nolimi_notif_read_ids:';
     var NOTIF_CATALOG_URL = '../notifications/mes-notifs/catalog.json';
     var notifTotal = 1;
+    var currentNotifUserId = null;
 
     var ICONS = {
         accueil: '<svg class="menu-sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5"/><path d="M6.5 9.5V20h11V9.5"/></svg>',
@@ -16,12 +17,35 @@
         abonnement: '<svg class="menu-sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M3.5 10h17"/></svg>'
     };
 
+    function notifReadStorageKey() {
+        return NOTIF_READ_PREFIX + (currentNotifUserId || 'anon');
+    }
+
+    function setNotifUser(user) {
+        currentNotifUserId = user && user.id ? String(user.id) : null;
+    }
+
+    function loadReadIds() {
+        try {
+            var raw = localStorage.getItem(notifReadStorageKey());
+            if (raw == null) return [];
+            var parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveReadIds(ids) {
+        try {
+            localStorage.setItem(notifReadStorageKey(), JSON.stringify(ids || []));
+        } catch (e) {}
+    }
+
     function unreadNotifCount(total) {
         var all = typeof total === 'number' ? total : notifTotal;
         try {
-            var raw = localStorage.getItem(NOTIF_STORAGE_KEY);
-            var read = raw == null ? [] : JSON.parse(raw);
-            if (!Array.isArray(read)) read = [];
+            var read = loadReadIds();
             return Math.max(0, all - read.length);
         } catch (e) {
             return all;
@@ -62,13 +86,8 @@
                         .catch(function () { return null; });
                 })).then(function (items) {
                     var ids = items.filter(Boolean).map(function (n) { return n.id; });
-                    try {
-                        var raw = localStorage.getItem(NOTIF_STORAGE_KEY);
-                        var read = raw == null ? [] : JSON.parse(raw);
-                        if (!Array.isArray(read)) read = [];
-                        read = read.filter(function (id) { return ids.indexOf(id) !== -1; });
-                        localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(read));
-                    } catch (e) {}
+                    var read = loadReadIds().filter(function (id) { return ids.indexOf(id) !== -1; });
+                    saveReadIds(read);
                     setNotifTotal(ids.length);
                     return ids.length;
                 });
@@ -236,6 +255,41 @@
         bindMobileMenu();
         loadNotifTotal();
         ensureSoftNav();
+        ensureResumeProject();
+    }
+
+    function ensureResumeProject() {
+        function start() {
+            if (global.NolimiResumeProject && typeof global.NolimiResumeProject.mount === 'function') {
+                global.NolimiResumeProject.mount();
+            }
+        }
+        if (global.NolimiResumeProject) {
+            start();
+            return;
+        }
+        if (document.documentElement.dataset.resumeProjectLoading) {
+            var wait = setInterval(function () {
+                if (!global.NolimiResumeProject) return;
+                clearInterval(wait);
+                start();
+            }, 30);
+            return;
+        }
+        document.documentElement.dataset.resumeProjectLoading = '1';
+        var src = '../../components/resume-project/resume-project.js';
+        var scripts = document.getElementsByTagName('script');
+        for (var i = 0; i < scripts.length; i++) {
+            var s = scripts[i].src || '';
+            if (s.indexOf('/sidebar/sidebar.js') !== -1) {
+                src = s.replace('/sidebar/sidebar.js', '/resume-project/resume-project.js');
+                break;
+            }
+        }
+        var el = document.createElement('script');
+        el.src = src;
+        el.onload = start;
+        document.body.appendChild(el);
     }
 
     function ensureSoftNav() {
@@ -277,36 +331,47 @@
         var current = options.current || 'accueil';
         var role = options.role || null;
 
-        if (role) {
-            inject(current, role);
+        function applyWithUser(user, resolvedRole) {
+            setNotifUser(user);
+            inject(current, resolvedRole || 'license');
+        }
+
+        var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
+        if (!Auth || !Auth.getClient) {
+            applyWithUser(null, role || 'license');
+            return;
+        }
+        var sb = Auth.getClient();
+        if (!sb) {
+            applyWithUser(null, role || 'license');
             return;
         }
 
-        // Détection auto du rôle (admin / admin+licence / licence)
-        inject(current, 'license');
-        var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
-        if (!Auth || !Auth.getClient) return;
-        var sb = Auth.getClient();
-        if (!sb) return;
+        // Affiche vite, puis recalcule badge / rôle avec le vrai compte
+        if (!role) inject(current, 'license');
+
         sb.auth.getSession().then(function (result) {
             var user = result && result.data && result.data.session
                 ? result.data.session.user
                 : null;
-            var role = 'license';
-            if (Auth.getAccountRole) {
-                role = Auth.getAccountRole(user) || 'license';
-            } else if (Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user)) {
-                role = 'admin';
+            var resolved = role || 'license';
+            if (!role) {
+                if (Auth.getAccountRole) {
+                    resolved = Auth.getAccountRole(user) || 'license';
+                } else if (Auth.isSubscriptionAdmin && Auth.isSubscriptionAdmin(user)) {
+                    resolved = 'admin';
+                }
             }
-            if (role !== 'license') {
-                inject(current, role);
-            }
-        }).catch(function () {});
+            applyWithUser(user, resolved);
+        }).catch(function () {
+            applyWithUser(null, role || 'license');
+        });
     }
 
     global.NolimiMenuSidebar = {
         mount: mount,
         refreshNotifBadge: refreshNotifBadge,
-        setNotifTotal: setNotifTotal
+        setNotifTotal: setNotifTotal,
+        setNotifUser: setNotifUser
     };
 })(window);

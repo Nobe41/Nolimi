@@ -2,6 +2,7 @@
 
 @import url("../assets/brand/tokens.css");
 @import url("./components/sidebar/sidebar.css");
+@import url("./components/resume-project/resume-project.css");
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -33,6 +34,10 @@ body.page--menu #menu-page-root {
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
+}
+
+body.page--menu #menu-page-root.is-soft-swapping {
+    visibility: hidden;
 }
 
 body.page--menu #menu-page-root > .main,
