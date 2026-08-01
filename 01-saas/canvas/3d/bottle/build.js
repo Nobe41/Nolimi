@@ -45,6 +45,7 @@ var BottleViewBuild = (function () {
         }
         if (bottleGroup) {
             bottleGroup.userData.isPiqure = false;
+            if (BottleViewGeometry.isGlassRenderMode()) bottleGroup.renderOrder = 1;
             BottleViewGeometry.enableMeshShadows(bottleGroup);
             sectionRingGroup.add(bottleGroup);
         }
@@ -88,7 +89,7 @@ var BottleViewBuild = (function () {
             bottleInnerGlassMesh.userData.isInterior = true;
             bottleInnerGlassMesh.castShadow = false;
             bottleInnerGlassMesh.receiveShadow = true;
-            bottleInnerGlassMesh.renderOrder = 3;
+            bottleInnerGlassMesh.renderOrder = 2;
             if (typeof Gravure3D !== 'undefined' && Gravure3D.punchHolesForInvertedEngravings) {
                 Gravure3D.punchHolesForInvertedEngravings(bottleInnerGlassMesh, sectionsData);
             }
@@ -117,7 +118,7 @@ var BottleViewBuild = (function () {
             piqSectionsInner.push(innerP);
         }
         var feuilleInner = BottleViewGeometry.buildPiqurePiedFeuille(s1Inner, piqSectionsInner[0], piqSectionsInner[0].H);
-        if (feuilleInner && !BottleViewGeometry.isGlassRenderMode()) {
+        if (feuilleInner) {
             feuilleInner.userData.isPiqure = true;
             feuilleInner.userData.isInterior = true;
             sectionRingGroup.add(feuilleInner);
@@ -131,10 +132,10 @@ var BottleViewBuild = (function () {
             sectionRingGroup.add(feuillePiqureStrip);
             var piqInnerSectionsData = BottleViewPanel.buildSectionsDataBundle(piqSectionsInner.slice(), 'rp');
             var piqStripInner = BottleViewGeometry.buildLiaisonRevolvedMesh(piqInnerSectionsData, 0x6f8ead, { inner: true });
-            if (piqStripInner && !BottleViewGeometry.isGlassRenderMode()) {
+            if (piqStripInner) {
                 piqStripInner.userData.isPiqure = true;
                 piqStripInner.userData.isInterior = true;
-                if (piqStripInner.material) {
+                if (piqStripInner.material && !BottleViewGeometry.isGlassRenderMode()) {
                     piqStripInner.material.side = THREE.BackSide;
                     if (piqStripInner.material.shininess !== undefined) piqStripInner.material.shininess = 20;
                 }
@@ -152,7 +153,7 @@ var BottleViewBuild = (function () {
             var lastPInner = piqSectionsInner[piqSectionsInner.length - 1];
             var rp3HInner = Math.max(lastPInner.H, rp3H + thicknessNow);
             var piqApexInner = BottleViewGeometry.buildPiqureFeuilleVersAxe(lastPInner, rp3HInner);
-            if (piqApexInner && !BottleViewGeometry.isGlassRenderMode()) {
+            if (piqApexInner) {
                 piqApexInner.userData.isPiqure = true;
                 piqApexInner.userData.isInterior = true;
                 if (piqApexInner.material) {
@@ -183,7 +184,7 @@ var BottleViewBuild = (function () {
             sectionRingGroup.add(feuilleColBague);
             var bagueInnerMat = BottleViewGeometry.getInnerShellMaterial();
             var feuilleColBagueInner = InterieurMath.createInsetMeshFromMesh(feuilleColBague, thicknessNow, bagueInnerMat);
-            if (feuilleColBagueInner && !BottleViewGeometry.isGlassRenderMode()) {
+            if (feuilleColBagueInner) {
                 punchInvertedEngravingsOnMesh(feuilleColBagueInner, sectionsData);
                 trackInvertedPunchMesh(feuilleColBagueInner, function () {
                     var secs = BottleViewPanel.getSectionsDataFromPanel();
@@ -227,7 +228,7 @@ var BottleViewBuild = (function () {
             }
             var bagueInnerSectionsData = BottleViewPanel.buildSectionsDataBundle(bagueInnerSections.slice(), 'rb');
             var bagueStripInner = BottleViewGeometry.buildLiaisonRevolvedMesh(bagueInnerSectionsData, 0x6f8ead, { inner: true });
-            if (bagueStripInner && !BottleViewGeometry.isGlassRenderMode()) {
+            if (bagueStripInner) {
                 punchInvertedEngravingsOnMesh(bagueStripInner, sectionsData);
                 trackInvertedPunchMesh(bagueStripInner, function () {
                     var bagueList = BottleViewPanel.collectBagueSectionsFromPanel();
@@ -248,7 +249,7 @@ var BottleViewBuild = (function () {
                 });
                 bagueStripInner.userData.isPiqure = false;
                 bagueStripInner.userData.isInterior = true;
-                if (bagueStripInner.material) {
+                if (bagueStripInner.material && !BottleViewGeometry.isGlassRenderMode()) {
                     bagueStripInner.material.side = THREE.BackSide;
                     if (bagueStripInner.material.shininess !== undefined) bagueStripInner.material.shininess = 20;
                 }
@@ -262,7 +263,7 @@ var BottleViewBuild = (function () {
             var bagueTopInner = InterieurMath.insetSection(bagueTop, thicknessNow);
             bagueTopInner.H = bagueTop.H;
             var lipSheet = BottleViewGeometry.buildPiqureBasHautFeuille(bagueTop, bagueTopInner);
-            if (lipSheet && !BottleViewGeometry.isGlassRenderMode()) {
+            if (lipSheet) {
                 punchInvertedEngravingsOnMesh(lipSheet, sectionsData);
                 trackInvertedPunchMesh(lipSheet, function () {
                     var bagueList = BottleViewPanel.collectBagueSectionsFromPanel();

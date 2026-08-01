@@ -12,7 +12,17 @@ var BottleViewAppearance = (function () {
     }
 
     function enableMeshShadows(obj) {
-        if (!obj || typeof THREE === 'undefined' || isGlassRenderMode()) return;
+        if (!obj || typeof THREE === 'undefined') return;
+        // En mode verre, pas d’ombres mesh (transmission) : ombre de contact gérée par RenderScene
+        if (isGlassRenderMode()) {
+            obj.traverse(function (node) {
+                if (node && node.isMesh) {
+                    node.castShadow = false;
+                    node.receiveShadow = false;
+                }
+            });
+            return;
+        }
         obj.traverse(function (node) {
             if (node && node.isMesh) {
                 node.castShadow = true;
@@ -28,29 +38,31 @@ var BottleViewAppearance = (function () {
         for (var c = 0; c < group.children.length; c++) {
             var obj = group.children[c];
             if (!obj.material) continue;
-            obj.material.transparent = true;
-            if (!obj.material.userData) obj.material.userData = {};
-            if (obj.material.userData.baseOpacity === undefined) {
-                obj.material.userData.baseOpacity = (obj.material.opacity !== undefined) ? obj.material.opacity : 1;
+            var mat = obj.material;
+            var isRenderGlass = !!(mat.userData && mat.userData.isRenderGlass);
+            mat.transparent = true;
+            if (!mat.userData) mat.userData = {};
+            if (mat.userData.baseOpacity === undefined) {
+                mat.userData.baseOpacity = (mat.opacity !== undefined) ? mat.opacity : 1;
             }
-            if (obj.material.userData.baseDepthWrite === undefined) {
-                obj.material.userData.baseDepthWrite = (obj.material.depthWrite !== undefined) ? obj.material.depthWrite : true;
+            if (mat.userData.baseDepthWrite === undefined) {
+                mat.userData.baseDepthWrite = (mat.depthWrite !== undefined) ? mat.depthWrite : true;
             }
-            var baseOpacity = obj.material.userData.baseOpacity;
-            var baseDepthWrite = obj.material.userData.baseDepthWrite;
+            var baseOpacity = mat.userData.baseOpacity;
+            var baseDepthWrite = mat.userData.baseDepthWrite;
             if (isPiqureView) {
                 var isPiqure = obj.userData.isPiqure === true;
                 var isInterior = obj.userData.isInterior === true;
                 if (isInterior) {
-                    obj.material.opacity = Math.min(baseOpacity, 0.2);
-                    obj.material.depthWrite = false;
+                    mat.opacity = Math.min(baseOpacity, isRenderGlass ? 0.35 : 0.2);
+                    mat.depthWrite = false;
                 } else {
-                    obj.material.opacity = isPiqure ? baseOpacity : Math.min(baseOpacity, 0.15);
-                    obj.material.depthWrite = isPiqure;
+                    mat.opacity = isPiqure ? baseOpacity : Math.min(baseOpacity, isRenderGlass ? 0.2 : 0.15);
+                    mat.depthWrite = isPiqure ? baseDepthWrite : false;
                 }
             } else {
-                obj.material.opacity = baseOpacity;
-                obj.material.depthWrite = baseDepthWrite;
+                mat.opacity = baseOpacity;
+                mat.depthWrite = baseDepthWrite;
             }
         }
     }

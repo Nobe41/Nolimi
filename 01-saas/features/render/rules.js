@@ -2,7 +2,7 @@
 // Constantes du « mode rendu » (toggle dans le panneau gauche).
 // Modes matériau : base (édition) ou verre (studio).
 // IDs DOM des contrôles étiquettes ; valeurs par défaut hauteur / taille / rotation.
-// Pas de scène décorative — bouteille + fond viewport uniquement.
+// Scène studio (IBL + ombre de contact) gérée par RenderScene.
 
 var RenderRules = (function () {
     return {

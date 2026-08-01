@@ -1,5 +1,5 @@
-// 01-saas/canvas/3d/scene/ — fond blanc + lumières de base (hors mode rendu).
-// Les scènes studio / EXR / tonemapping → features/render/scene.js (RenderScene).
+// 01-saas/canvas/3d/scene/ — fond blanc + lumières de base (édition).
+// Mode rendu studio (IBL, softboxes, ombre) → features/render/scene.js (RenderScene).
 
 var Scene3DBackground = (function () {
     var defaultLightLeft = null;

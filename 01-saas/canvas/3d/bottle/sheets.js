@@ -71,11 +71,18 @@ var BottleViewSheets = (function () {
         }
         var mat;
         if (options.inner) {
-            mat = new THREE.MeshPhongMaterial({
-                color: color || 0x6f8ead,
-                side: THREE.BackSide,
-                shininess: 20
-            });
+            var glassMode = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getRenderMaterialMode)
+                ? BottleMaterials.getRenderMaterialMode() === 'glass'
+                : false;
+            if (glassMode && typeof BottleMaterials !== 'undefined' && BottleMaterials.getInnerGlassMaterial) {
+                mat = BottleMaterials.getInnerGlassMaterial();
+            } else {
+                mat = new THREE.MeshPhongMaterial({
+                    color: color || 0x6f8ead,
+                    side: THREE.BackSide,
+                    shininess: 20
+                });
+            }
         } else if (typeof BottleMaterials !== 'undefined' && BottleMaterials.getGlassMaterial) {
             mat = BottleMaterials.getGlassMaterial(color || BottleMaterials.DEFAULT_GLASS_COLOR);
         }
