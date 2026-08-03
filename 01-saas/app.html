@@ -380,13 +380,11 @@
         </footer>
     </section>
 
-    <div id="guide-modal" class="guide-modal hidden" role="dialog" aria-modal="true" aria-labelledby="guide-modal-title" aria-hidden="true">
+    <div id="guide-modal" class="guide-modal hidden" role="dialog" aria-modal="true" aria-label="Guide Nolimi" aria-hidden="true">
         <div class="guide-modal__backdrop" data-guide-close></div>
         <div class="guide-modal__panel">
-            <header class="guide-modal__header">
-                <h2 id="guide-modal-title" class="guide-modal__title">Guide Nolimi</h2>
-                <button type="button" class="guide-modal__close" id="guide-modal-close" aria-label="Fermer le guide">&times;</button>
-            </header>
+            <h2 id="guide-modal-title" class="guide-modal__title visually-hidden">Guide Nolimi</h2>
+            <button type="button" class="guide-modal__close" id="guide-modal-close" aria-label="Fermer le guide">&times;</button>
             <div class="guide-modal__layout">
                 <nav class="guide-modal__menu" id="guide-menu" aria-label="Sommaire du guide"></nav>
                 <div class="guide-modal__main">
@@ -397,10 +395,10 @@
                         </div>
                         <button type="button" class="guide-modal__nav guide-modal__nav--next" id="guide-next" aria-label="Diapositive suivante">›</button>
                     </div>
-                    <footer class="guide-modal__footer">
+                    <div class="guide-modal__footer" hidden>
                         <div class="guide-modal__dots" id="guide-dots" role="tablist" aria-label="Pages de la section"></div>
                         <p class="guide-modal__counter"><span id="guide-slide-index">1</span> / <span id="guide-slide-total">1</span></p>
-                    </footer>
+                    </div>
                 </div>
             </div>
         </div>
@@ -504,6 +502,7 @@
     <script src="features/gravure/state.js"></script>
     <script src="features/gravure/bloc.js"></script>
     <script src="features/gravure/events.js"></script>
+    <script src="features/gravure/svg.js"></script>
     <script src="features/gravure/mesh.js"></script>
     <script src="app/main.js"></script>
 </body>

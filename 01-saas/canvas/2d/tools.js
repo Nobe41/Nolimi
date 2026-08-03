@@ -38,7 +38,7 @@ var Canvas2DTools = (function () {
         ctx.fill();
     }
 
-    // Texte à l’endroit (le dessin est retourné) + fond blanc
+    // Texte à l’endroit (le dessin est retourné)
     function drawFlippedLabel(ctx, text, drawingScale, textAlign, rotateRad) {
         ctx.save();
         ctx.scale(1, -1);
@@ -46,18 +46,8 @@ var Canvas2DTools = (function () {
         ctx.font = (3 / drawingScale) + 'px Arial';
         ctx.textAlign = textAlign;
         ctx.textBaseline = 'middle';
-        var txt = String(text);
-        var w = ctx.measureText(txt).width;
-        var h = 4 / drawingScale;
-        var pad = 0.5 / drawingScale;
-        ctx.fillStyle = '#ffffff';
-        if (textAlign === 'left') {
-            ctx.fillRect(-pad, -h / 2, w + pad * 2, h);
-        } else {
-            ctx.fillRect(-w / 2 - pad, -h / 2, w + pad * 2, h);
-        }
         ctx.fillStyle = '#000000';
-        ctx.fillText(txt, 0, 0);
+        ctx.fillText(String(text), 0, 0);
         ctx.restore();
     }
 
@@ -113,14 +103,42 @@ var Canvas2DTools = (function () {
         var bagueBase = bagueProfilePoints[0];
         if (!neck || !bagueBase) return;
 
+        var bridgePts = null;
+        if (typeof BottleViewPanel !== 'undefined' && BottleViewPanel.buildColToBagueBridgeData
+            && typeof BottleMaths !== 'undefined' && BottleMaths.buildExteriorProfile
+            && typeof GeomKernel !== 'undefined' && GeomKernel.tessellateProfile
+            && typeof BottleViewPanel.getSectionsDataFromPanel === 'function'
+            && typeof BottleViewPanel.collectBagueSectionsFromPanel === 'function') {
+            var mainSecs = BottleViewPanel.getSectionsDataFromPanel();
+            var bagueSecs = BottleViewPanel.collectBagueSectionsFromPanel();
+            var sTop = mainSecs && mainSecs.sections && mainSecs.sections.length
+                ? mainSecs.sections[mainSecs.sections.length - 1] : null;
+            var sPrev = mainSecs && mainSecs.sections && mainSecs.sections.length >= 2
+                ? mainSecs.sections[mainSecs.sections.length - 2] : null;
+            var b0 = bagueSecs && bagueSecs[0] ? bagueSecs[0] : null;
+            var b1 = bagueSecs && bagueSecs.length >= 2 ? bagueSecs[1] : null;
+            var bridge = BottleViewPanel.buildColToBagueBridgeData(sTop, b0, sPrev, b1);
+            if (bridge) {
+                var entities = BottleMaths.buildExteriorProfile(0, bridge);
+                bridgePts = GeomKernel.tessellateProfile(entities, 48);
+            }
+        }
+
         ctx.save();
         ctx.strokeStyle = '#000000';
         applyModelStroke(ctx, drawingScale, true);
         ctx.beginPath();
-        ctx.moveTo(neck.x, neck.y);
-        ctx.lineTo(bagueBase.x, bagueBase.y);
-        ctx.moveTo(-neck.x, neck.y);
-        ctx.lineTo(-bagueBase.x, bagueBase.y);
+        if (bridgePts && bridgePts.length >= 2) {
+            ctx.moveTo(bridgePts[0].x, bridgePts[0].y);
+            for (var i = 1; i < bridgePts.length; i++) ctx.lineTo(bridgePts[i].x, bridgePts[i].y);
+            ctx.moveTo(-bridgePts[0].x, bridgePts[0].y);
+            for (var j = 1; j < bridgePts.length; j++) ctx.lineTo(-bridgePts[j].x, bridgePts[j].y);
+        } else {
+            ctx.moveTo(neck.x, neck.y);
+            ctx.lineTo(bagueBase.x, bagueBase.y);
+            ctx.moveTo(-neck.x, neck.y);
+            ctx.lineTo(-bagueBase.x, bagueBase.y);
+        }
         ctx.stroke();
         ctx.restore();
     }

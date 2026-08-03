@@ -374,7 +374,8 @@ var CalculeVolumeMath = (function () {
         return Math.max(0, 2 * Math.min(topInner.a || 0, topInner.b || 0));
     }
 
-    // Dégarnie (mm) : hauteur vide sous le col pour une capacité utile cible (cl), par bisection.
+    // Niveau utile (mm) : hauteur du haut de bague jusqu'au niveau liquide
+    // pour une capacité utile cible (cl). Volume intérieur (parois inset) via bisection.
     function computeDegarnieMmFromUsefulCapacityCl(sectionsData, usefulCl) {
         var ctx = buildInteriorContext(sectionsData);
         var e = eps();

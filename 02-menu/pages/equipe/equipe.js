@@ -181,12 +181,9 @@
     }
 
     function updateAddButton(data) {
-        if (!addBtn) return;
-        var remaining = typeof data.remainingSlots === 'number' ? data.remainingSlots : 0;
         canManage = !!data.canManage;
-        addBtn.hidden = !canManage;
-        addBtn.disabled = !canManage || remaining <= 0;
-        addBtn.textContent = remaining <= 0 ? 'Plus de place' : 'Ajouter une licence';
+        if (!addBtn) return;
+        addBtn.hidden = true;
     }
 
     function setActiveFilter(filter) {

@@ -887,7 +887,7 @@ body.guide-modal-open {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: 16px;
 }
 
 .guide-modal.hidden {
@@ -905,22 +905,18 @@ body.guide-modal-open {
     z-index: 1;
     display: flex;
     flex-direction: column;
-    width: min(1080px, 100%);
-    max-height: min(90vh, 740px);
+    width: min(1180px, 88vw);
+    max-height: min(86vh, 780px);
+    height: min(86vh, 780px);
     background: var(--color-surface);
     border-radius: 12px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
     overflow: hidden;
+    border: none;
 }
 
 .guide-modal__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 18px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    flex-shrink: 0;
+    display: none;
 }
 
 .guide-modal__title {
@@ -930,22 +926,39 @@ body.guide-modal-open {
     color: #222;
 }
 
+.guide-modal__title.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .guide-modal__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 5;
     -webkit-appearance: none;
     appearance: none;
     border: none;
-    background: transparent;
-    width: 32px;
-    height: 32px;
+    background: rgba(255, 255, 255, 0.92);
+    width: 34px;
+    height: 34px;
     border-radius: 6px;
     font-size: 1.5rem;
     line-height: 1;
     color: var(--color-text-soft);
     cursor: pointer;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
 }
 
 .guide-modal__close:hover {
-    background: rgba(0, 0, 0, 0.06);
+    background: #fff;
     color: #111;
 }
 
@@ -962,7 +975,7 @@ body.guide-modal-open {
     flex-direction: column;
     gap: 2px;
     padding: 12px 10px;
-    border-right: 1px solid rgba(0, 0, 0, 0.08);
+    border-right: none;
     background: #f7f8fa;
     overflow-y: auto;
 }
@@ -1008,7 +1021,7 @@ body.guide-modal-open {
     justify-content: center;
     flex: 1;
     min-height: 0;
-    padding: 12px 48px;
+    padding: 4px 8px;
     background: #f7f8fa;
 }
 
@@ -1018,19 +1031,20 @@ body.guide-modal-open {
     justify-content: center;
     width: 100%;
     height: 100%;
-    min-height: 280px;
+    min-height: 0;
 }
 
 .guide-modal__img {
     display: block;
     max-width: 100%;
-    max-height: min(62vh, 520px);
-    width: auto;
-    height: auto;
+    max-height: 100%;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
-    border-radius: 4px;
-    background: var(--color-surface);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    border: none;
 }
 
 .guide-modal__nav {
@@ -1077,14 +1091,7 @@ body.guide-modal-open {
 }
 
 .guide-modal__footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 18px;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
-    flex-shrink: 0;
-    background: var(--color-surface);
+    display: none;
 }
 
 .guide-modal__dots {
@@ -1203,12 +1210,15 @@ body.guide-modal-open {
 
     /* Guide modal — mobile */
     .guide-modal {
-        padding: 12px;
+        padding: 8px;
     }
 
     .guide-modal__panel {
-        max-height: 92vh;
+        width: 100%;
+        max-height: 90vh;
+        height: 90vh;
         border-radius: 10px;
+        border: none;
     }
 
     .guide-modal__layout {
@@ -1222,7 +1232,7 @@ body.guide-modal-open {
         overflow-x: auto;
         overflow-y: hidden;
         border-right: none;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        border-bottom: none;
         padding: 8px;
         gap: 4px;
     }
@@ -1235,11 +1245,14 @@ body.guide-modal-open {
     }
 
     .guide-modal__body {
-        padding: 8px 40px;
+        padding: 4px 6px;
     }
 
     .guide-modal__img {
-        max-height: min(50vh, 360px);
+        max-width: 100%;
+        max-height: 100%;
+        width: 100%;
+        height: 100%;
     }
 
     .guide-modal__nav {

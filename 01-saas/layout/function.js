@@ -117,7 +117,7 @@ function setupListeners() {
         MAIN_RATTACHEMENTS.push({ id: 'r' + si + (si + 1), fromSection: si, toSection: si + 1 });
     }
 
-    // Spline (Bézier quadratique, amp = R * 0.3) : max R dans [0, 250] avec courbe à ≥ 5 mm de l’axe (x ≥ 5).
+    // Spline (Bézier quadratique, amp = |R| * 0.3) : max R avec courbe à ≥ 5 mm de l’axe.
     var SPLINE_MARGIN_AXIS_MM = 5;
     function computeSplineMaxR(p0, p1) {
         var dx = p1.x - p0.x;
@@ -283,7 +283,9 @@ function setupListeners() {
 
             if (type === 'courbeS') {
                 // Courbe S : slider = rayon R0 du 1er arc ; R1 est calculé automatiquement.
-                var courbeSMin = 5;
+                var courbeSMin = (typeof RattachementRules !== 'undefined' && RattachementRules.COURBE_S_ABS_MIN_MM != null)
+                    ? RattachementRules.COURBE_S_ABS_MIN_MM
+                    : 1;
                 rhoGroup.style.display = 'block';
                 rhoGroup.style.visibility = 'visible';
                 if (rangeInput) {
@@ -364,6 +366,56 @@ function setupListeners() {
         return { x: r, y: H };
     }
 
+    function getBagueColBridgePoints() {
+        var n = getMainSectionCount();
+        if (!n) return null;
+        var p0 = getSectionPointForRayon(n);
+        var H = getNumberValue('sb1-h', p0.y + 2);
+        var L = getNumberValue('sb1-L', p0.x * 2);
+        var p1 = { x: Math.max(0, L / 2), y: H };
+        var pPrev = n > 1 ? getSectionPointForRayon(n - 1) : null;
+        var pNext = null;
+        var sb2El = document.getElementById('sb2-h');
+        if (sb2El) {
+            pNext = {
+                x: Math.max(0, getNumberValue('sb2-L', L) / 2),
+                y: getNumberValue('sb2-h', H + 1)
+            };
+        }
+        return { p0: p0, p1: p1, pPrev: pPrev, pNext: pNext };
+    }
+
+    function applyCourbeSLimitsToInputs(rattId, p0, p1, pPrev, pNext) {
+        var numberInput = document.getElementById(rattId + '-rho');
+        var rangeInput = document.getElementById(rattId + '-rho-slider');
+        if (!numberInput) return;
+        var range = getCourbeSRange(p0, p1, pPrev, pNext);
+        var sliderMin = (typeof RattachementRules !== 'undefined' && RattachementRules.COURBE_S_ABS_MIN_MM != null)
+            ? RattachementRules.COURBE_S_ABS_MIN_MM
+            : 1;
+        var sliderMax = 400;
+        if (range) {
+            sliderMin = range.min;
+            sliderMax = range.max;
+        }
+        numberInput.min = sliderMin;
+        numberInput.max = sliderMax;
+        if (rangeInput) {
+            rangeInput.min = sliderMin;
+            rangeInput.max = sliderMax;
+        }
+        var v = parseFloat(numberInput.value);
+        if (isFinite(v)) {
+            if (v < sliderMin) {
+                numberInput.value = sliderMin;
+                if (rangeInput) rangeInput.value = sliderMin;
+            } else if (v > sliderMax) {
+                numberInput.value = sliderMax;
+                if (rangeInput) rangeInput.value = sliderMax;
+            }
+        }
+    }
+
     function getDistanceForRattachement(cfg) {
         var p0 = getSectionPointForRayon(cfg.fromSection);
         var p1 = getSectionPointForRayon(cfg.toSection);
@@ -387,7 +439,9 @@ function setupListeners() {
         var dy = p1.y - p0.y;
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d < 1e-6) return null;
-        var sliderMin = 5;
+        var sliderMin = (typeof RattachementRules !== 'undefined' && RattachementRules.COURBE_S_ABS_MIN_MM != null)
+            ? RattachementRules.COURBE_S_ABS_MIN_MM
+            : 1;
         var sliderMax = 400;
         if (typeof RattachementMath !== 'undefined') {
             if (RattachementMath.computeCourbeSMinR0) {
@@ -412,33 +466,13 @@ function setupListeners() {
             var p1 = getSectionPointForRayon(cfg.toSection);
             var pPrev = cfg.fromSection > 1 ? getSectionPointForRayon(cfg.fromSection - 1) : null;
             var pNext = cfg.toSection < getMainSectionCount() ? getSectionPointForRayon(cfg.toSection + 1) : null;
-            var range = getCourbeSRange(p0, p1, pPrev, pNext);
-            var numberInput = document.getElementById(cfg.id + '-rho');
-            var rangeInput = document.getElementById(cfg.id + '-rho-slider');
-            if (!numberInput) return;
-            var sliderMin = 5;
-            var sliderMax = 400;
-            if (range) {
-                sliderMin = range.min;
-                sliderMax = range.max;
-            }
-            numberInput.min = sliderMin;
-            numberInput.max = sliderMax;
-            if (rangeInput) {
-                rangeInput.min = sliderMin;
-                rangeInput.max = sliderMax;
-            }
-            var v = parseFloat(numberInput.value);
-            if (isFinite(v)) {
-                if (v < sliderMin) {
-                    numberInput.value = sliderMin;
-                    if (rangeInput) rangeInput.value = sliderMin;
-                } else if (v > sliderMax) {
-                    numberInput.value = sliderMax;
-                    if (rangeInput) rangeInput.value = sliderMax;
-                }
-            }
+            applyCourbeSLimitsToInputs(cfg.id, p0, p1, pPrev, pNext);
         });
+        var rb0Type = document.getElementById('rb0-type');
+        if (rb0Type && rb0Type.value === 'courbeS') {
+            var bridge = getBagueColBridgePoints();
+            if (bridge) applyCourbeSLimitsToInputs('rb0', bridge.p0, bridge.p1, bridge.pPrev, bridge.pNext);
+        }
     }
 
     // Sections déplacées : recalcule ρ Courbe S pour garder le même rapport ρ/d.
@@ -461,12 +495,42 @@ function setupListeners() {
             var rhoNew = Math.round(ratio * d * 10) / 10;
             var minR = parseFloat(numberInput.min);
             var maxR = parseFloat(numberInput.max);
-            if (!isFinite(minR)) minR = 5;
+            if (!isFinite(minR)) minR = (typeof RattachementRules !== 'undefined' && RattachementRules.COURBE_S_ABS_MIN_MM != null)
+                ? RattachementRules.COURBE_S_ABS_MIN_MM
+                : 1;
             if (!isFinite(maxR)) maxR = 400;
             rhoNew = Math.max(minR, Math.min(maxR, rhoNew));
             numberInput.value = rhoNew;
             if (rangeInput) rangeInput.value = rhoNew;
         });
+        var rb0Type = document.getElementById('rb0-type');
+        var rb0Input = document.getElementById('rb0-rho');
+        if (rb0Type && rb0Type.value === 'courbeS' && rb0Input) {
+            var bridge = getBagueColBridgePoints();
+            if (bridge) {
+                var dxb = bridge.p1.x - bridge.p0.x;
+                var dyb = bridge.p1.y - bridge.p0.y;
+                var db = Math.sqrt(dxb * dxb + dyb * dyb);
+                if (db >= 1e-6) {
+                    var currentRhoB = parseFloat(rb0Input.value);
+                    if (!isFinite(currentRhoB)) currentRhoB = db * 0.6;
+                    var ratioB = courbeSRatios.rb0;
+                    if (ratioB === undefined) {
+                        ratioB = currentRhoB / db;
+                        courbeSRatios.rb0 = ratioB;
+                    }
+                    var rhoNewB = Math.round(ratioB * db * 10) / 10;
+                    var minRB = parseFloat(rb0Input.min);
+                    var maxRB = parseFloat(rb0Input.max);
+                    if (!isFinite(minRB)) minRB = 1;
+                    if (!isFinite(maxRB)) maxRB = 400;
+                    rhoNewB = Math.max(minRB, Math.min(maxRB, rhoNewB));
+                    rb0Input.value = rhoNewB;
+                    var rb0Slider = document.getElementById('rb0-rho-slider');
+                    if (rb0Slider) rb0Slider.value = rhoNewB;
+                }
+            }
+        }
     }
 
     // Max ρ spline (surfaces qui se touchent).
@@ -500,12 +564,30 @@ function setupListeners() {
 
     // Centre ρ (R0) sur la liaison Courbe S indiquée.
     function setCourbeSRhoToMid(rattId) {
-        var cfg = MAIN_RATTACHEMENTS.find(function (c) { return c.id === rattId; });
-        if (!cfg) return;
-        var p0 = getSectionPointForRayon(cfg.fromSection);
-        var p1 = getSectionPointForRayon(cfg.toSection);
-        var pPrev = cfg.fromSection > 1 ? getSectionPointForRayon(cfg.fromSection - 1) : null;
-        var pNext = cfg.toSection < getMainSectionCount() ? getSectionPointForRayon(cfg.toSection + 1) : null;
+        var p0;
+        var p1;
+        var pPrev;
+        var pNext;
+        var d;
+        if (rattId === 'rb0') {
+            var bridge = getBagueColBridgePoints();
+            if (!bridge) return;
+            p0 = bridge.p0;
+            p1 = bridge.p1;
+            pPrev = bridge.pPrev;
+            pNext = bridge.pNext;
+            var dx = p1.x - p0.x;
+            var dy = p1.y - p0.y;
+            d = Math.sqrt(dx * dx + dy * dy);
+        } else {
+            var cfg = MAIN_RATTACHEMENTS.find(function (c) { return c.id === rattId; });
+            if (!cfg) return;
+            p0 = getSectionPointForRayon(cfg.fromSection);
+            p1 = getSectionPointForRayon(cfg.toSection);
+            pPrev = cfg.fromSection > 1 ? getSectionPointForRayon(cfg.fromSection - 1) : null;
+            pNext = cfg.toSection < getMainSectionCount() ? getSectionPointForRayon(cfg.toSection + 1) : null;
+            d = getDistanceForRattachement(cfg);
+        }
         var range = getCourbeSRange(p0, p1, pPrev, pNext);
         if (!range) return;
         var val = rattId === 'r34'
@@ -515,7 +597,6 @@ function setupListeners() {
         var sliderEl = document.getElementById(rattId + '-rho-slider');
         if (inputEl) inputEl.value = val;
         if (sliderEl) sliderEl.value = val;
-        var d = getDistanceForRattachement(cfg);
         if (d >= 1e-6) storeCourbeSRatio(rattId, val, d);
     }
 

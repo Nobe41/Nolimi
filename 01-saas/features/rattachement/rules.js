@@ -12,6 +12,8 @@ var RattachementRules = (function () {
         RAYON_MAX_CORNER_ANGLE_DEG: 155,
         SPLINE_STEPS: 48,
         MIN_SAFE_X: 1,
+        // Rayon minimal absolu du 1er arc (mm) — la géométrie peut imposer plus
+        COURBE_S_ABS_MIN_MM: 1,
         // Seuil relatif (× distance S0→S1) : en dessous, la courbe S est marquée impossible dans l'UI
         COURBE_S_MIN_RADIUS_FACTOR: 0.5
     };

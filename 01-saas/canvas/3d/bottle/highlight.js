@@ -207,6 +207,33 @@ var BottleViewHighlight = (function () {
         }
     }
 
+    // Panneau bague : liaison 1 = Col↔Bas bague, puis rb1, rb2…
+    function applyBagueLiaisonSurfaceTints(group, mainSections, bagueSections) {
+        if (!group || !bagueSections || !bagueSections.length || typeof THREE === 'undefined') return;
+        var panelId = 'panel-content-bague';
+        var tint = new THREE.Color(LIAISON_HIGHLIGHT_COLOR);
+        var nLiaisons = bagueSections.length; // rb0 + (n-1) internes
+        for (var li = 1; li <= nLiaisons; li++) {
+            if (!isLiaisonHighlighted(panelId, li)) continue;
+            var yMin;
+            var yMax;
+            if (li === 1) {
+                var sTop = mainSections && mainSections.length ? mainSections[mainSections.length - 1] : null;
+                if (!sTop || !bagueSections[0]) continue;
+                yMin = Math.min(sTop.H, bagueSections[0].H);
+                yMax = Math.max(sTop.H, bagueSections[0].H);
+            } else {
+                var range = getLiaisonYRange(bagueSections, li - 1);
+                if (!range) continue;
+                yMin = range.yMin;
+                yMax = range.yMax;
+            }
+            group.traverse(function (obj) {
+                addBandToMesh(obj, yMin, yMax, tint, LIAISON_TINT_MIX);
+            });
+        }
+    }
+
     function removeOverlayChildren(sectionRingGroup) {
         clearLiaisonSurfaceTints();
         if (!sectionRingGroup) return;
@@ -249,7 +276,7 @@ var BottleViewHighlight = (function () {
         }
         applyLiaisonSurfaceTints(group, sections, 'panel-content-sections');
         applyLiaisonSurfaceTints(group, piqSections, 'panel-content-piqure');
-        applyLiaisonSurfaceTints(group, bagueSections, 'panel-content-bague');
+        applyBagueLiaisonSurfaceTints(group, sections, bagueSections);
     }
 
     return {

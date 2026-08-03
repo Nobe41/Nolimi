@@ -34,6 +34,7 @@ var Bottle3DRules = (function () {
         ],
         BAGUE_SECTION_DEFAULT_L: 35,
         BAGUE_LIAISON_PREFIX: 'rb',        // rb1, rb2… entre sections bague
+        BAGUE_COL_LIAISON_ID: 'rb0',       // Col ↔ Bas bague (hors rb1…)
 
         // Corps : indices si le DOM n’est pas prêt
         MAIN_SECTION_FALLBACK_INDICES: [1, 2, 3, 4, 5],

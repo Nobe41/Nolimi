@@ -38,6 +38,8 @@ var BottleView3D = (function () {
         if (sectionRingGroup) {
             if (scene) scene.remove(sectionRingGroup);
             detachPersistedFromSectionRing();
+            // Les matériaux gravure sont disposés avec le groupe : invalider le cache sinon poche invisible
+            if (typeof Gravure3D !== 'undefined' && Gravure3D.invalidateScene) Gravure3D.invalidateScene();
             disposeThreeHierarchy(sectionRingGroup);
             sectionRingGroup = null;
         }
@@ -89,6 +91,14 @@ var BottleView3D = (function () {
             'bag:' + buildSectionsSliceSignature(bagueSections),
             'rpd:' + buildBottleBodySignature(piqData),
             'rbd:' + buildBottleBodySignature(bagueData),
+            'rcb:' + (function () {
+                var sList = sectionsData && sectionsData.sections ? sectionsData.sections : [];
+                var b0 = bagueSections && bagueSections[0];
+                if (!sList.length || !b0 || !BottleViewPanel.buildColToBagueBridgeData) return '';
+                var sPrevB = sList.length >= 2 ? sList[sList.length - 2] : null;
+                var b1 = bagueSections.length >= 2 ? bagueSections[1] : null;
+                return buildBottleBodySignature(BottleViewPanel.buildColToBagueBridgeData(sList[sList.length - 1], b0, sPrevB, b1));
+            })(),
             'rp3:' + Math.round(BottleViewPanel.getPanelValue('rp3-h', 30) * 100) / 100,
             'th:' + Math.round(thicknessNow * 100) / 100,
             'rm:' + ((typeof RenderMaterials !== 'undefined' && RenderMaterials.getMaterialMode) ? RenderMaterials.getMaterialMode() : ((typeof BottleMaterials !== 'undefined' && BottleMaterials.getRenderMaterialMode) ? BottleMaterials.getRenderMaterialMode() : 'base')),
@@ -184,7 +194,7 @@ var BottleView3D = (function () {
 
     function refreshGravureScene(sectionsData) {
         if (typeof Gravure3D !== 'undefined' && Gravure3D.updateScene && scene && sectionsData) {
-            Gravure3D.updateScene(scene, sectionsData);
+            Gravure3D.updateScene(scene, sectionsData, sectionRingGroup);
         }
     }
 
@@ -286,6 +296,7 @@ var BottleView3D = (function () {
     function dispose() {
         if (sectionRingGroup && scene) scene.remove(sectionRingGroup);
         detachPersistedFromSectionRing();
+        if (typeof Gravure3D !== 'undefined' && Gravure3D.invalidateScene) Gravure3D.invalidateScene();
         disposeThreeHierarchy(sectionRingGroup);
         if (bottleGroup) {
             disposeThreeHierarchy(bottleGroup);

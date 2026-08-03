@@ -13,11 +13,49 @@ var RattachementMath = (function () {
     var RAYON_TOL_MM = RULES.QUARTER_ARC_TOLERANCE_MM || 0.5;
     var RAYON_MIN_ANGLE_DEG = RULES.RAYON_MIN_CORNER_ANGLE_DEG || 25;
     var RAYON_MAX_ANGLE_DEG = RULES.RAYON_MAX_CORNER_ANGLE_DEG || 155;
+    var COURBE_S_ABS_MIN = RULES.COURBE_S_ABS_MIN_MM != null ? RULES.COURBE_S_ABS_MIN_MM : 1;
 
     function dist2d(A, B) {
         var dx = B.x - A.x;
         var dy = B.y - A.y;
         return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function normalizeDir(dx, dy) {
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 1e-9) return null;
+        return { x: dx / d, y: dy / d };
+    }
+
+    // Point de contrôle Bézier quadratique (rho signé = côté « autour »).
+    function quadraticSplineMid(P0, P1, R) {
+        var dx = P1.x - P0.x;
+        var dy = P1.y - P0.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 1e-6 || Math.abs(R) < 1e-3) return null;
+        var nx = -dy / d;
+        var ny = dx / d;
+        if (R < 0) { nx = -nx; ny = -ny; }
+        var amp = Math.abs(R) * 0.3;
+        if (amp > d * 0.9) amp = d * 0.9;
+        return {
+            x: (P0.x + P1.x) * 0.5 + nx * amp,
+            y: (P0.y + P1.y) * 0.5 + ny * amp
+        };
+    }
+
+    // Tangentes unitaires aux extrémités d’une spline quadratique (pour que la courbe S s’y colle).
+    function quadraticSplineEndTangents(P0, P1, R) {
+        var dx = P1.x - P0.x;
+        var dy = P1.y - P0.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 1e-6) return null;
+        var chord = { x: dx / d, y: dy / d };
+        var mid = quadraticSplineMid(P0, P1, R);
+        if (!mid) return { T0: chord, T1: chord };
+        var t0 = normalizeDir(mid.x - P0.x, mid.y - P0.y) || chord;
+        var t1 = normalizeDir(P1.x - mid.x, P1.y - mid.y) || chord;
+        return { T0: t0, T1: t1 };
     }
 
     /** T ∈ [A,B] (sur le segment fini, pas sur le prolongement de la droite). */
@@ -343,14 +381,17 @@ var RattachementMath = (function () {
 
     // --- Courbe S : deux arcs tangents entre S0 et S1 ---
 
-    function prepareCourbeSFrame(P0, P1, prevPoint, nextPoint) {
+    function prepareCourbeSFrame(P0, P1, prevPoint, nextPoint, T0opt, T1opt) {
         var Dx = P1.x - P0.x;
         var Dy = P1.y - P0.y;
         var dS = Math.sqrt(Dx * Dx + Dy * Dy);
         if (dS < 1e-6) return null;
         var T0x = Dx / dS;
         var T0y = Dy / dS;
-        if (prevPoint) {
+        if (T0opt && isFinite(T0opt.x) && isFinite(T0opt.y)) {
+            var t0d = Math.sqrt(T0opt.x * T0opt.x + T0opt.y * T0opt.y);
+            if (t0d > 1e-9) { T0x = T0opt.x / t0d; T0y = T0opt.y / t0d; }
+        } else if (prevPoint) {
             var pdx = P0.x - prevPoint.x;
             var pdy = P0.y - prevPoint.y;
             var pd = Math.sqrt(pdx * pdx + pdy * pdy);
@@ -358,12 +399,18 @@ var RattachementMath = (function () {
         }
         var T1x = Dx / dS;
         var T1y = Dy / dS;
-        if (nextPoint) {
+        if (T1opt && isFinite(T1opt.x) && isFinite(T1opt.y)) {
+            var t1d = Math.sqrt(T1opt.x * T1opt.x + T1opt.y * T1opt.y);
+            if (t1d > 1e-9) { T1x = T1opt.x / t1d; T1y = T1opt.y / t1d; }
+        } else if (nextPoint) {
             var ndx = nextPoint.x - P1.x;
             var ndy = nextPoint.y - P1.y;
             var nd = Math.sqrt(ndx * ndx + ndy * ndy);
             if (nd > 1e-6) { T1x = ndx / nd; T1y = ndy / nd; }
         }
+        // Sens du parcours P0→P1
+        if (T0x * Dx + T0y * Dy < 0) { T0x = -T0x; T0y = -T0y; }
+        if (T1x * Dx + T1y * Dy < 0) { T1x = -T1x; T1y = -T1y; }
         var n0x = -T0y;
         var n0y = T0x;
         var DdotN0 = Dx * n0x + Dy * n0y;
@@ -383,11 +430,11 @@ var RattachementMath = (function () {
     function resolveCourbeSPick(P0, P1, frame) {
         if (!frame) return null;
         var dS = frame.dS;
-        var minR = 5;
+        var minR = COURBE_S_ABS_MIN;
         var candidates = [];
 
         function tryCandidate(R, useFallback) {
-            if (!(R > minR)) return;
+            if (!(R >= minR)) return;
             if (!canCourbeSConfigWork(P0, P1, frame, R, useFallback)) return;
             candidates.push({ R: R, useFallback: useFallback });
         }
@@ -476,13 +523,13 @@ var RattachementMath = (function () {
         var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint);
         var pick = resolveCourbeSPick(P0, P1, frame);
         if (!frame || !pick) return null;
-        var absMin = 5;
+        var absMin = COURBE_S_ABS_MIN;
         var hi = pick.R;
         if (!canCourbeSConfigWorkAnyMode(P0, P1, frame, hi)) return null;
 
         var lo = absMin;
         if (!canCourbeSConfigWorkAnyMode(P0, P1, frame, lo)) {
-            var step = Math.max(0.25, frame.dS * 0.005);
+            var step = Math.max(0.1, frame.dS * 0.005);
             var found = null;
             for (var r0 = absMin + step; r0 <= hi; r0 += step) {
                 if (canCourbeSConfigWorkAnyMode(P0, P1, frame, r0)) {
@@ -509,7 +556,7 @@ var RattachementMath = (function () {
         var pick = resolveCourbeSPick(P0, P1, frame);
         if (!frame || !pick) return null;
         var lo = computeCourbeSMinR0(P0, P1, prevPoint, nextPoint);
-        if (lo == null) lo = 5;
+        if (lo == null) lo = COURBE_S_ABS_MIN;
         var hi = pick.R;
         if (!canCourbeSConfigWork(P0, P1, frame, hi, pick.useFallback)) return pick.R;
         while (hi < 2500 && canCourbeSConfigWork(P0, P1, frame, hi * 1.2, pick.useFallback)) {
@@ -626,10 +673,27 @@ var RattachementMath = (function () {
                 }
                 lastPoint = { x: sec1.x, y: sec1.y };
             } else if (type === 'courbeS') {
-                // Deux arcs tangents ; rho = rayon du 1er arc (R0), le 2e est calculé
+                // Deux arcs tangents ; rho = rayon du 1er arc (R0), le 2e est calculé.
+                // Si voisin = spline, on reprend sa tangente d’extrémité (comme avec une ligne).
                 var prevPoint = i > 0 ? { x: points[i - 1].x, y: points[i - 1].y } : null;
                 var nextPoint = i + 2 < points.length ? { x: points[i + 2].x, y: points[i + 2].y } : null;
-                var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint);
+                if (!prevPoint && data.edgeEndpointPrev && data.edgeEndpointPrev[i]) {
+                    prevPoint = data.edgeEndpointPrev[i];
+                }
+                if (!nextPoint && data.edgeEndpointNext && data.edgeEndpointNext[i]) {
+                    nextPoint = data.edgeEndpointNext[i];
+                }
+                var T0opt = null;
+                var T1opt = null;
+                if (i > 0 && (edgeTypes[i - 1] || DEFAULT_EDGE_TYPE) === 'spline') {
+                    var tanIn = quadraticSplineEndTangents(points[i - 1], points[i], rhos[i - 1] || DEFAULT_RHO);
+                    if (tanIn) T0opt = tanIn.T1;
+                }
+                if (i + 2 < points.length && (edgeTypes[i + 1] || DEFAULT_EDGE_TYPE) === 'spline') {
+                    var tanOut = quadraticSplineEndTangents(points[i + 1], points[i + 2], rhos[i + 1] || DEFAULT_RHO);
+                    if (tanOut) T1opt = tanOut.T0;
+                }
+                var frame = prepareCourbeSFrame(P0, P1, prevPoint, nextPoint, T0opt, T1opt);
                 if (!frame) {
                     entities.push(K.LineSegment(P0.x, P0.y, P1.x, P1.y));
                     lastPoint = { x: P1.x, y: P1.y };
@@ -640,7 +704,7 @@ var RattachementMath = (function () {
                         lastPoint = { x: P1.x, y: P1.y };
                     } else {
                         var R0 = (R > 0) ? R : pick.R;
-                        R0 = Math.max(5, R0);
+                        R0 = Math.max(COURBE_S_ABS_MIN, R0);
                         var useFb = pick.useFallback;
                         var R1 = computeCourbeSPartnerRadius(R0, frame, useFb);
                         if (R1 == null) {
@@ -659,7 +723,7 @@ var RattachementMath = (function () {
                     }
                 }
             } else if (type === 'spline') {
-                // Courbe quadratique discrétisée en segments ; rho = amplitude / côté de la courbure
+                // Courbe quadratique discrétisée ; rho = amplitude / côté (« autour » si négatif)
                 var dxSp = P1.x - P0.x;
                 var dySp = P1.y - P0.y;
                 var dSp = Math.sqrt(dxSp * dxSp + dySp * dySp);
@@ -667,12 +731,9 @@ var RattachementMath = (function () {
                     entities.push(K.LineSegment(P0.x, P0.y, P1.x, P1.y));
                     lastPoint = { x: P1.x, y: P1.y };
                 } else {
-                    var nxSp = -dySp / dSp;
-                    var nySp = dxSp / dSp;
-                    if (R < 0) { nxSp = -nxSp; nySp = -nySp; }
-                    var amp = Math.abs(R) * 0.3;
-                    var midSpX = (P0.x + P1.x) * 0.5 + nxSp * amp;
-                    var midSpY = (P0.y + P1.y) * 0.5 + nySp * amp;
+                    var midSp = quadraticSplineMid(P0, P1, R);
+                    var midSpX = midSp ? midSp.x : (P0.x + P1.x) * 0.5;
+                    var midSpY = midSp ? midSp.y : (P0.y + P1.y) * 0.5;
                     var prevX = P0.x;
                     var prevY = P0.y;
                     for (var k = 1; k <= SPLINE_STEPS; k++) {

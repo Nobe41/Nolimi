@@ -108,8 +108,10 @@ var BottleViewExport = (function () {
             var bague1 = bagueSections[0];
             var sTop = sections[sections.length - 1];
             var sPrev = sections.length >= 2 ? sections[sections.length - 2] : null;
+            var bagueNext = bagueSections.length >= 2 ? bagueSections[1] : null;
             if (sTop) {
-                var feuilleColBague = track(BottleViewGeometry.buildNeckToBagueFeuille(sPrev, sTop, bague1, sectionsData, glassColor, tessOpts));
+                var bridgeData = BottleViewPanel.buildColToBagueBridgeData(sTop, bague1, sPrev, bagueNext);
+                var feuilleColBague = track(BottleViewGeometry.buildLiaisonRevolvedMesh(bridgeData, glassColor, { tessOverride: revTess }));
                 punch(feuilleColBague);
             }
             var bagueSectionsData = BottleViewPanel.buildSectionsDataBundle(bagueSections.slice(), 'rb');

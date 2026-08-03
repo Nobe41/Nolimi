@@ -39,6 +39,7 @@ var BottleViewAppearance = (function () {
             var obj = group.children[c];
             if (!obj.material) continue;
             var mat = obj.material;
+            if (mat.userData && mat.userData.keepOpaque) continue;
             var isRenderGlass = !!(mat.userData && mat.userData.isRenderGlass);
             mat.transparent = true;
             if (!mat.userData) mat.userData = {};

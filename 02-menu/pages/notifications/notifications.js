@@ -1,14 +1,13 @@
 // 02-menu/pages/notifications/ — charge les notifs depuis mes-notifs/.
-// État lu / non lu : par compte (localStorage lié à l’id utilisateur).
+// État lu / non lu : par compte, sync cloud via NolimiNotifReads.
 
 (function () {
     var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;
-    var NOTIF_READ_PREFIX = 'nolimi_notif_read_ids:';
+    var Reads = typeof NolimiNotifReads !== 'undefined' ? NolimiNotifReads : null;
     var CATALOG_URL = './mes-notifs/catalog.json';
     var listEl = document.getElementById('notif-list');
     var markAllBtn = document.getElementById('notif-mark-all');
     var notifications = [];
-    var currentUserId = null;
 
     window.__nolimiPageCleanup = function () {
         window.__nolimiPageCleanup = null;
@@ -21,25 +20,11 @@
         welcome: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v3M7.5 6.5 9 9M16.5 6.5 15 9"/><path d="M8 14c1.2 1.5 2.5 2.2 4 2.2s2.8-.7 4-2.2"/><path d="M6 19c2-3 4-4.5 6-4.5S16 16 18 19"/></svg>'
     };
 
-    function storageKey() {
-        return NOTIF_READ_PREFIX + (currentUserId || 'anon');
+    function getReadIds() {
+        return Reads && Reads.getReadIds ? Reads.getReadIds() : [];
     }
 
-    function loadReadIds() {
-        try {
-            var raw = localStorage.getItem(storageKey());
-            if (raw == null) return [];
-            var parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function saveReadIds(ids) {
-        try {
-            localStorage.setItem(storageKey(), JSON.stringify(ids || []));
-        } catch (e) {}
+    function refreshBadge() {
         if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.refreshNotifBadge === 'function') {
             NolimiMenuSidebar.refreshNotifBadge(notifications.length);
         }
@@ -50,21 +35,22 @@
     }
 
     function markRead(id) {
-        var ids = loadReadIds();
-        if (ids.indexOf(id) === -1) {
-            ids.push(id);
-            saveReadIds(ids);
-        }
+        if (!Reads || !Reads.markRead) return;
+        Reads.markRead(id).then(refreshBadge);
     }
 
     function markAllRead() {
-        saveReadIds(notifications.map(function (n) { return n.id; }));
-        render();
+        if (!Reads || !Reads.markAllRead) return;
+        var ids = notifications.map(function (n) { return n.id; });
+        Reads.markAllRead(ids).then(function () {
+            render();
+            refreshBadge();
+        });
     }
 
     function render() {
         if (!listEl) return;
-        var readIds = loadReadIds();
+        var readIds = getReadIds();
         listEl.innerHTML = '';
 
         if (!notifications.length) {
@@ -150,27 +136,35 @@
             });
     }
 
+    function syncReadsThen(done) {
+        if (Reads && Reads.sync) {
+            Reads.sync().then(done).catch(done);
+            return;
+        }
+        done();
+    }
+
     function bootNotifications() {
-        loadNotifications().then(function (items) {
-            notifications = items || [];
-            var validIds = notifications.map(function (n) { return n.id; });
-            var pruned = loadReadIds().filter(function (id) {
-                return validIds.indexOf(id) !== -1;
+        syncReadsThen(function () {
+            loadNotifications().then(function (items) {
+                notifications = items || [];
+                var validIds = notifications.map(function (n) { return n.id; });
+                if (Reads && Reads.prune) Reads.prune(validIds);
+                if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.setNotifTotal === 'function') {
+                    NolimiMenuSidebar.setNotifTotal(notifications.length);
+                }
+                render();
+                refreshBadge();
+            }).catch(function () {
+                notifications = [];
+                render();
             });
-            saveReadIds(pruned);
-            if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.setNotifTotal === 'function') {
-                NolimiMenuSidebar.setNotifTotal(notifications.length);
-            }
-            render();
-        }).catch(function () {
-            notifications = [];
-            render();
         });
     }
 
     function resolveUserThenBoot() {
         function done(user) {
-            currentUserId = user && user.id ? String(user.id) : null;
+            if (Reads && Reads.setUser) Reads.setUser(user || null);
             if (window.NolimiMenuSidebar && typeof NolimiMenuSidebar.setNotifUser === 'function') {
                 NolimiMenuSidebar.setNotifUser(user || null);
             }

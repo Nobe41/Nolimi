@@ -1,6 +1,6 @@
 // 01-saas/features/gravure/state.js
 // Mémoire côté UI (pas le mesh 3D).
-// Compteur d’IDs pour nommer les cartes ; images PNG chargées indexées par id.
+// Compteur d’IDs pour nommer les cartes ; images SVG chargées indexées par id.
 // Le moteur 3D (mesh.js) lit ces images via window.engravingImages.
 
 var GravureState = (function () {
@@ -26,6 +26,12 @@ var GravureState = (function () {
     }
 
     function setImage(id, img) {
+        if (img) {
+            img._maskBitmap = null;
+            img._maskBitmapKey = '';
+            img._svgParsed = null;
+            img._svgParsedKey = '';
+        }
         images[id] = img;
     }
 

@@ -1,6 +1,6 @@
 // 01-saas/features/gravure/bloc.js
 // Couche UI pure : génère le HTML d’une carte gravure (accordion + sliders).
-// Chaque carte = une gravure dans le panneau latéral (PNG, Y, angle, relief…).
+// Chaque carte = une gravure dans le panneau latéral (SVG, Y, angle, relief…).
 // Les valeurs saisies ici sont relues par events.js puis mesh.js pour le 3D.
 
 var GravureBloc = (function () {
@@ -35,7 +35,7 @@ var GravureBloc = (function () {
             + '<button class="accordion sub-accordion">Gravure ' + index + '</button>'
             + '<div class="panel-controls">'
             + '<div class="control-group"><div class="label-row"><label for="gravure-enabled-' + id + '">Activer</label><div class="input-wrapper"><input type="checkbox" class="gravure-enabled" id="gravure-enabled-' + id + '"' + enabledChecked + '></div></div></div>'
-            + '<div class="control-group"><div class="label-row"><label>Fichier image (PNG)</label></div><div class="gravure-file-row"><button type="button" class="gravure-file-btn">Parcourir…</button><input type="file" id="gravure-file-' + id + '" class="gravure-file" accept=".png,image/png,image/*" data-id="' + id + '"><span id="gravure-filename-' + id + '" class="gravure-filename">' + fileName + '</span></div></div>'
+            + '<div class="control-group"><div class="label-row"><label>Fichier SVG</label></div><div class="gravure-file-row"><button type="button" class="gravure-file-btn">Parcourir…</button><input type="file" id="gravure-file-' + id + '" class="gravure-file" accept=".svg,image/svg+xml" data-id="' + id + '"><span id="gravure-filename-' + id + '" class="gravure-filename">' + fileName + '</span></div></div>'
             + '<div class="control-group"><div class="label-row"><label for="gravure-flip-' + id + '">Miroir</label><div class="input-wrapper"><input type="checkbox" class="gravure-flip" id="gravure-flip-' + id + '"' + flipChecked + '></div></div></div>'
             + '<div class="control-group"><div class="label-row"><label for="gravure-invert-' + id + '">Inverser</label><div class="input-wrapper"><input type="checkbox" class="gravure-invert" id="gravure-invert-' + id + '"' + invertChecked + '></div></div></div>'
             + '<div class="control-group"><div class="label-row"><label>Hauteur (Y)</label><div class="input-wrapper"><input type="number" id="gravure-y-num-' + id + '" value="' + y + '" min="' + lim('y', 'min', 10) + '" max="' + lim('y', 'max', 350) + '"><span class="unit">mm</span></div></div><input type="range" class="gravure-y" id="gravure-y-slider-' + id + '" min="' + lim('y', 'min', 10) + '" max="' + lim('y', 'max', 350) + '" step="' + lim('y', 'step', 1) + '" value="' + y + '"></div>'

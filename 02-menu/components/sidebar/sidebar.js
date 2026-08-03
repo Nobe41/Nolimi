@@ -1,9 +1,9 @@
 // menu/components/sidebar/ — menu latéral + barre mobile (hamburger).
 // Ce fichier : HTML de la sidebar + injection dans la page.
+// Badge notifs : état lu syncé via NolimiNotifReads (Supabase, multi-appareils).
 
 (function (global) {
     var LOGO = '../../../assets/brand/nolimi-logo-wordmark.jpg';
-    var NOTIF_READ_PREFIX = 'nolimi_notif_read_ids:';
     var NOTIF_CATALOG_URL = '../notifications/mes-notifs/catalog.json';
     var notifTotal = 1;
     var currentNotifUserId = null;
@@ -17,36 +17,58 @@
         abonnement: '<svg class="menu-sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M3.5 10h17"/></svg>'
     };
 
-    function notifReadStorageKey() {
-        return NOTIF_READ_PREFIX + (currentNotifUserId || 'anon');
+    function ensureNotifReads(done) {
+        if (global.NolimiNotifReads) {
+            done();
+            return;
+        }
+        if (document.documentElement.dataset.notifReadsLoading) {
+            var wait = setInterval(function () {
+                if (!global.NolimiNotifReads) return;
+                clearInterval(wait);
+                done();
+            }, 30);
+            return;
+        }
+        document.documentElement.dataset.notifReadsLoading = '1';
+        var src = '../../components/notif-reads/notif-reads.js';
+        var scripts = document.getElementsByTagName('script');
+        for (var i = 0; i < scripts.length; i++) {
+            var s = scripts[i].src || '';
+            if (s.indexOf('/sidebar/sidebar.js') !== -1) {
+                src = s.replace('/sidebar/sidebar.js', '/notif-reads/notif-reads.js');
+                break;
+            }
+        }
+        var el = document.createElement('script');
+        el.src = src;
+        el.onload = done;
+        el.onerror = done;
+        document.body.appendChild(el);
+    }
+
+    function notifReads() {
+        return global.NolimiNotifReads || null;
     }
 
     function setNotifUser(user) {
         currentNotifUserId = user && user.id ? String(user.id) : null;
+        var reads = notifReads();
+        if (reads && reads.setUser) reads.setUser(user || null);
     }
 
     function loadReadIds() {
-        try {
-            var raw = localStorage.getItem(notifReadStorageKey());
-            if (raw == null) return [];
-            var parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function saveReadIds(ids) {
-        try {
-            localStorage.setItem(notifReadStorageKey(), JSON.stringify(ids || []));
-        } catch (e) {}
+        var reads = notifReads();
+        if (reads && reads.getReadIds) return reads.getReadIds();
+        return [];
     }
 
     function unreadNotifCount(total) {
         var all = typeof total === 'number' ? total : notifTotal;
+        var reads = notifReads();
+        if (reads && reads.unreadCount) return reads.unreadCount(all);
         try {
-            var read = loadReadIds();
-            return Math.max(0, all - read.length);
+            return Math.max(0, all - loadReadIds().length);
         } catch (e) {
             return all;
         }
@@ -66,36 +88,44 @@
             if (stored != null) notifTotal = Math.max(0, parseInt(stored, 10) || 0);
         } catch (e) {}
 
-        return fetch(NOTIF_CATALOG_URL, { cache: 'no-store' })
-            .then(function (response) {
-                if (!response.ok) return [];
-                return response.json();
-            })
-            .then(function (files) {
-                if (!Array.isArray(files) || !files.length) {
-                    setNotifTotal(0);
-                    return 0;
-                }
-                return Promise.all(files.map(function (file) {
-                    var path = '../notifications/mes-notifs/' + file + (/\.json$/i.test(file) ? '' : '/message.json');
-                    return fetch(path, { cache: 'no-store' })
-                        .then(function (response) {
-                            if (!response.ok) return null;
-                            return response.json();
-                        })
-                        .catch(function () { return null; });
-                })).then(function (items) {
-                    var ids = items.filter(Boolean).map(function (n) { return n.id; });
-                    var read = loadReadIds().filter(function (id) { return ids.indexOf(id) !== -1; });
-                    saveReadIds(read);
-                    setNotifTotal(ids.length);
-                    return ids.length;
+        function afterSync() {
+            return fetch(NOTIF_CATALOG_URL, { cache: 'no-store' })
+                .then(function (response) {
+                    if (!response.ok) return [];
+                    return response.json();
+                })
+                .then(function (files) {
+                    if (!Array.isArray(files) || !files.length) {
+                        setNotifTotal(0);
+                        return 0;
+                    }
+                    return Promise.all(files.map(function (file) {
+                        var path = '../notifications/mes-notifs/' + file + (/\.json$/i.test(file) ? '' : '/message.json');
+                        return fetch(path, { cache: 'no-store' })
+                            .then(function (response) {
+                                if (!response.ok) return null;
+                                return response.json();
+                            })
+                            .catch(function () { return null; });
+                    })).then(function (items) {
+                        var ids = items.filter(Boolean).map(function (n) { return n.id; });
+                        var reads = notifReads();
+                        if (reads && reads.prune) reads.prune(ids);
+                        setNotifTotal(ids.length);
+                        return ids.length;
+                    });
+                })
+                .catch(function () {
+                    refreshNotifBadge(notifTotal);
+                    return notifTotal;
                 });
-            })
-            .catch(function () {
-                refreshNotifBadge(notifTotal);
-                return notifTotal;
-            });
+        }
+
+        var reads = notifReads();
+        if (reads && reads.sync) {
+            return reads.sync().then(afterSync).catch(afterSync);
+        }
+        return afterSync();
     }
 
     function link(current, name, href, label, badgeCount) {
@@ -253,7 +283,13 @@
 
         document.body.insertAdjacentHTML('afterbegin', html);
         bindMobileMenu();
-        loadNotifTotal();
+        ensureNotifReads(function () {
+            var reads = notifReads();
+            if (reads && reads.setUser && currentNotifUserId) {
+                reads.setUser({ id: currentNotifUserId });
+            }
+            loadNotifTotal();
+        });
         ensureSoftNav();
         ensureResumeProject();
     }
@@ -332,8 +368,10 @@
         var role = options.role || null;
 
         function applyWithUser(user, resolvedRole) {
-            setNotifUser(user);
-            inject(current, resolvedRole || 'license');
+            ensureNotifReads(function () {
+                setNotifUser(user);
+                inject(current, resolvedRole || 'license');
+            });
         }
 
         var Auth = typeof NolimiAuth !== 'undefined' ? NolimiAuth : null;

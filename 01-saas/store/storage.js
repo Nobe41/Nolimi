@@ -3,6 +3,7 @@
 //   1) WorkspaceAutosave — localStorage (debounce + intervalle). Un refresh repart des défauts
 //      (clear au boot). Reprise = Ouvrir un fichier JSON. resetToDefaults = bouton NOUVEAU.
 //   2) Fichier JSON — File System Access API / download (menu Fichier)
+// Le payload projet = données bouteille uniquement (pas caméra / onglets / menus).
 // Globals utiles : clearProjectFileBinding, currentFileHandle (state.js)
 
 var WorkspaceAutosave = (function () {
@@ -43,12 +44,8 @@ var WorkspaceAutosave = (function () {
         if (typeof SectionsState !== 'undefined' && SectionsState.getState) {
             payload.sectionsState = SectionsState.getState();
         }
-        if (typeof NavigationState !== 'undefined' && NavigationState.getState) {
-            payload.navigationState = NavigationState.getState();
-        }
-        if (typeof window !== 'undefined' && window.displayOptions) {
-            payload.displayOptions = window.displayOptions;
-        }
+        // Pas de navigationState / displayOptions / viewState :
+        // à l’ouverture on repart toujours sur la vue de base.
         if (typeof GravureEvents !== 'undefined' && GravureEvents.collectSaveState) {
             payload.gravureState = GravureEvents.collectSaveState();
         }
@@ -63,9 +60,6 @@ var WorkspaceAutosave = (function () {
             payload.interiorState = {
                 glassThicknessMm: window.interiorState.glassThicknessMm
             };
-        }
-        if (typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.collectViewState) {
-            payload.viewState = RealtimeViewSync.collectViewState();
         }
         return payload;
     }
@@ -86,6 +80,68 @@ var WorkspaceAutosave = (function () {
         }
     }
 
+    function resetCameraViews() {
+        if (typeof camera !== 'undefined' && camera && typeof SceneSetup3D !== 'undefined') {
+            var sceneRules = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.SCENE) ? Canvas3DRules.SCENE : {};
+            var pos = sceneRules.CAMERA_POSITION || { x: 400, y: 300, z: 400 };
+            var targetY = sceneRules.CONTROLS_TARGET_Y != null ? sceneRules.CONTROLS_TARGET_Y : 150;
+            camera.position.set(pos.x, pos.y, pos.z);
+            camera.zoom = 1;
+            camera.updateProjectionMatrix();
+            if (typeof controls !== 'undefined' && controls) {
+                controls.target.set(0, targetY, 0);
+                controls.update();
+            }
+        }
+        if (typeof Canvas2DView !== 'undefined' && Canvas2DView.setCamera && Canvas2DView.getCamera) {
+            var size = { w: 0, h: 0 };
+            var view2dEl = document.getElementById('viewport-2d');
+            if (view2dEl) {
+                size.w = view2dEl.clientWidth || 0;
+                size.h = view2dEl.clientHeight || 0;
+            }
+            if (size.w > 0 && size.h > 0) {
+                Canvas2DView.setCamera({ x: size.w / 2, y: size.h / 2, zoom: 0 });
+            }
+            if (typeof resizeCanvas2D === 'function') resizeCanvas2D();
+        }
+    }
+
+    // Onglets, affichage, caméras : vue d’arrivée à chaque ouverture de projet.
+    function applyDefaultWorkspaceView() {
+        var defaultNav = {
+            activeLeftTab: 'sections',
+            activeBarTab: 'sections',
+            activeView: '3d'
+        };
+        if (typeof NavigationState !== 'undefined' && NavigationState.patch) {
+            NavigationState.patch(defaultNav);
+        }
+        if (typeof UIEvents !== 'undefined' && UIEvents.applyFromState) {
+            UIEvents.applyFromState(defaultNav);
+        }
+        if (typeof window !== 'undefined') {
+            window.displayOptions = (typeof createDefaultDisplayOptions === 'function')
+                ? createDefaultDisplayOptions()
+                : { showAxes: true, showGrid: true, showSectionRings: true, showMoldJoint: true };
+            if (typeof DisplayShared !== 'undefined' && DisplayShared.syncTogglesFromOptions) {
+                DisplayShared.syncTogglesFromOptions();
+            }
+        }
+        if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) {
+            SceneSetup3D.applyDisplayOptions();
+        }
+        if (typeof InspectorUISync !== 'undefined' && InspectorUISync.applyState) {
+            InspectorUISync.applyState({
+                openAccordions: [],
+                activeSectionIndex: 0,
+                inspectorScroll: 0,
+                openDropdown: null
+            });
+        }
+        resetCameraViews();
+    }
+
     function applyProjectPayload(payload, done) {
         if (!payload) {
             if (typeof done === 'function') done();
@@ -100,18 +156,6 @@ var WorkspaceAutosave = (function () {
             if (typeof UIInspector !== 'undefined' && UIInspector.renderSections) {
                 UIInspector.renderSections();
             }
-            if (normalized.displayOptions && typeof window !== 'undefined') {
-                if (!window.displayOptions) {
-                    window.displayOptions = (typeof createDefaultDisplayOptions === 'function')
-                        ? createDefaultDisplayOptions()
-                        : { showAxes: true, showGrid: true, showSectionRings: true, showMoldJoint: true };
-                }
-                Object.assign(window.displayOptions, normalized.displayOptions);
-                // Resync checkboxes Affichage (DisplayShared.init a déjà tourné avec les défauts)
-                if (typeof DisplayShared !== 'undefined' && DisplayShared.syncTogglesFromOptions) {
-                    DisplayShared.syncTogglesFromOptions();
-                }
-            }
             if (normalized.interiorState && typeof window !== 'undefined') {
                 window.interiorState = {
                     glassThicknessMm: normalized.interiorState.glassThicknessMm
@@ -121,17 +165,10 @@ var WorkspaceAutosave = (function () {
                 }
             }
             applyInputValues(normalized.inputs);
-            if (normalized.navigationState && typeof NavigationState !== 'undefined' && NavigationState.patch) {
-                NavigationState.patch(normalized.navigationState);
-            }
-            if (normalized.viewState && typeof RealtimeViewSync !== 'undefined' && RealtimeViewSync.applyViewState) {
-                RealtimeViewSync.applyViewState(normalized.viewState, { force: true });
-            } else if (normalized.navigationState && typeof UIEvents !== 'undefined' && UIEvents.applyFromState) {
-                UIEvents.applyFromState(normalized.navigationState);
-            }
+            // Ignore navigationState / displayOptions / viewState des anciens fichiers
+            applyDefaultWorkspaceView();
             if (typeof setupListeners === 'function') setupListeners();
             if (typeof UIControls !== 'undefined' && UIControls.syncAllRangeSliders) UIControls.syncAllRangeSliders();
-            if (typeof SceneSetup3D !== 'undefined' && SceneSetup3D.applyDisplayOptions) SceneSetup3D.applyDisplayOptions();
             if (typeof Validator !== 'undefined' && Validator.applyAllUserConstraints) Validator.applyAllUserConstraints();
         } finally {
             isApplyingRestore = false;
@@ -139,6 +176,7 @@ var WorkspaceAutosave = (function () {
 
         function afterRenderRestore() {
             if (typeof updateBouteille === 'function') updateBouteille();
+            applyDefaultWorkspaceView();
             if (typeof done === 'function') done();
         }
 
@@ -183,33 +221,6 @@ var WorkspaceAutosave = (function () {
             localStorage.removeItem(AUTOSAVE_KEY);
         } catch (e) { /* ignore */ }
         pendingRestore = null;
-    }
-
-    function resetCameraViews() {
-        if (typeof camera !== 'undefined' && camera && typeof SceneSetup3D !== 'undefined') {
-            var sceneRules = (typeof Canvas3DRules !== 'undefined' && Canvas3DRules.SCENE) ? Canvas3DRules.SCENE : {};
-            var pos = sceneRules.CAMERA_POSITION || { x: 400, y: 300, z: 400 };
-            var targetY = sceneRules.CONTROLS_TARGET_Y != null ? sceneRules.CONTROLS_TARGET_Y : 150;
-            camera.position.set(pos.x, pos.y, pos.z);
-            camera.zoom = 1;
-            camera.updateProjectionMatrix();
-            if (typeof controls !== 'undefined' && controls) {
-                controls.target.set(0, targetY, 0);
-                controls.update();
-            }
-        }
-        if (typeof Canvas2DView !== 'undefined' && Canvas2DView.setCamera && Canvas2DView.getCamera) {
-            var size = { w: 0, h: 0 };
-            var view2dEl = document.getElementById('viewport-2d');
-            if (view2dEl) {
-                size.w = view2dEl.clientWidth || 0;
-                size.h = view2dEl.clientHeight || 0;
-            }
-            if (size.w > 0 && size.h > 0) {
-                Canvas2DView.setCamera({ x: size.w / 2, y: size.h / 2, zoom: 0 });
-            }
-            if (typeof resizeCanvas2D === 'function') resizeCanvas2D();
-        }
     }
 
     // Remet le projet aux valeurs d’usine (sections, UI, caméras, gravure…).

@@ -104,11 +104,28 @@ var UIInspector = (function () {
         container.innerHTML = html;
     }
 
-    // Panneau bague : sections sb* + liaisons rb*
+    // Panneau bague (column-reverse) : rb0 sous Bas bague visuellement → rb0 avant sb1 dans le DOM
     function renderBague(container) {
         if (!container || typeof SectionsBloc === 'undefined') return;
         var state = getState();
+        if (!state.bagueColLiaison) {
+            state.bagueColLiaison = {
+                id: (R.BAGUE_COL_LIAISON_ID || 'rb0'),
+                type: 'courbeS',
+                rho: 1,
+                rhoMin: 1,
+                rhoMax: DEF.rhoMax,
+                rhoStep: DEF.rhoStep
+            };
+        }
         var html = '';
+        var liaisonNum = 1;
+        var colL = state.bagueColLiaison;
+        if (!colL.id) colL.id = R.BAGUE_COL_LIAISON_ID || 'rb0';
+        if (!colL.type) colL.type = 'courbeS';
+        // Avant sb1 dans le DOM → sous Bas bague à l’écran (flex column-reverse)
+        html += SectionsBloc.buildSimpleLiaisonCard(colL.id, liaisonNum, colL);
+        liaisonNum++;
         for (var i = 0; i < state.bagueSections.length; i++) {
             html += SectionsBloc.buildBagueSectionCard(state.bagueSections[i], i);
             if (i < state.bagueSections.length - 1) {
@@ -120,7 +137,8 @@ var UIInspector = (function () {
                     rhoStep: DEF.rhoStep
                 };
                 state.bagueLiaisons[i] = r;
-                html += SectionsBloc.buildSimpleLiaisonCard(r.id, i + 1, r);
+                html += SectionsBloc.buildSimpleLiaisonCard(r.id, liaisonNum, r);
+                liaisonNum++;
             }
         }
         container.innerHTML = html;

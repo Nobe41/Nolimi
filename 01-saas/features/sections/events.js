@@ -181,6 +181,26 @@ var SectionsEvents = (function () {
             });
         }
         state.bagueLiaisons = liaisons;
+
+        var colId = (typeof SectionsRules !== 'undefined' && SectionsRules.BAGUE_COL_LIAISON_ID)
+            ? SectionsRules.BAGUE_COL_LIAISON_ID
+            : 'rb0';
+        var colBase = state.bagueColLiaison || {
+            id: colId,
+            type: 'courbeS',
+            rho: 1,
+            rhoMin: 1,
+            rhoMax: DEF.rhoMax,
+            rhoStep: DEF.rhoStep
+        };
+        state.bagueColLiaison = {
+            id: colId,
+            rho: getNum(colId + '-rho', colBase.rho),
+            rhoMin: colBase.rhoMin != null ? colBase.rhoMin : DEF.rhoMin,
+            rhoMax: colBase.rhoMax != null ? colBase.rhoMax : DEF.rhoMax,
+            rhoStep: colBase.rhoStep != null ? colBase.rhoStep : DEF.rhoStep,
+            type: getSelect(colId + '-type', colBase.type || 'courbeS')
+        };
     }
 
     // Après insert/delete : réattribue sp, sp2… et rp1, rp2…

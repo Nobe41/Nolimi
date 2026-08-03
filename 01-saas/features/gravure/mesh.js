@@ -1,8 +1,7 @@
 // 01-saas/features/gravure/mesh.js
-// Couche 3D : transforme les cartes UI en géométrie sur la bouteille.
-// Entrées : getEngravingsData() + images PNG (window.engravingImages).
-// Relief normal → mesh extrudé collé à la surface. Inversé → perce le corps.
-// UI (cartes, sliders) → events.js + bloc.js. Qualité → GravureRules.MESH.
+// Couche 3D : SVG noir → polygones courbes → extrusion simple sur la bouteille.
+// Entrées : getEngravingsData() + window.engravingImages[_id]._svgSource.
+// UI → events.js + bloc.js. Qualité → GravureRules.MESH.
 
 var Gravure3D = (function () {
     var engravingGroup = null;
@@ -81,14 +80,14 @@ var Gravure3D = (function () {
         return {
             complex: complex,
             gridCap: complex
-                ? (MESH.GRID_CAP_COMPLEX != null ? MESH.GRID_CAP_COMPLEX : 256)
-                : (MESH.GRID_CAP_DEFAULT != null ? MESH.GRID_CAP_DEFAULT : 512),
+                ? (MESH.GRID_CAP_COMPLEX != null ? MESH.GRID_CAP_COMPLEX : 96)
+                : (MESH.GRID_CAP_DEFAULT != null ? MESH.GRID_CAP_DEFAULT : 144),
             profileRes: complex
-                ? (MESH.PROFILE_RES_COMPLEX != null ? MESH.PROFILE_RES_COMPLEX : 32)
-                : (MESH.PROFILE_RES_DEFAULT != null ? MESH.PROFILE_RES_DEFAULT : 72),
+                ? (MESH.PROFILE_RES_COMPLEX != null ? MESH.PROFILE_RES_COMPLEX : 28)
+                : (MESH.PROFILE_RES_DEFAULT != null ? MESH.PROFILE_RES_DEFAULT : 56),
             thetaBuckets: complex
-                ? (MESH.THETA_BUCKETS_COMPLEX != null ? MESH.THETA_BUCKETS_COMPLEX : 96)
-                : (MESH.THETA_BUCKETS_DEFAULT != null ? MESH.THETA_BUCKETS_DEFAULT : 160)
+                ? (MESH.THETA_BUCKETS_COMPLEX != null ? MESH.THETA_BUCKETS_COMPLEX : 72)
+                : (MESH.THETA_BUCKETS_DEFAULT != null ? MESH.THETA_BUCKETS_DEFAULT : 120)
         };
     }
 
@@ -98,6 +97,7 @@ var Gravure3D = (function () {
         if (!engravings || !engravings.length) return false;
         for (var i = 0; i < engravings.length; i++) {
             if (!engravings[i].invert) continue;
+            if (engravings[i].enabled === false) continue;
             var widthMM = Math.max(1, parseFloat(engravings[i].width) || 50);
             var centerY = isFinite(parseFloat(engravings[i].y)) ? parseFloat(engravings[i].y) : 150;
             var heightMM = widthMM;
@@ -127,8 +127,8 @@ var Gravure3D = (function () {
 
         var edgeTypes = (surfaceInput.edgeTypes || []).slice();
         var rhos = (surfaceInput.rhos || []).slice();
-        edgeTypes.push('ligne');
-        rhos.push(0);
+        edgeTypes.push(panelSelect('rb0-type', 'courbeS'));
+        rhos.push(panelSigned('rb0-rho', 1));
         for (var e = 0; e < bague.length - 1; e++) {
             var rbId = 'rb' + (e + 1);
             edgeTypes.push(panelSelect(rbId + '-type', 'ligne'));
@@ -211,64 +211,100 @@ var Gravure3D = (function () {
         return { x: r * Math.cos(theta), y: y, z: r * Math.sin(theta), r: r };
     }
 
-    // PNG → grille binaire (masque) projetée sur la surface cylindrique/elliptique
-    function buildEngravingMask(img, g, gridCap) {
-        if (!img || !img.width || !img.height) return null;
+    // Parse SVG noir → courbes mathématiques (cache)
+    function parseSvgPolygonsCached(img) {
+        if (!img || !img._svgSource || typeof GravureSvg === 'undefined' || !GravureSvg.parse) return null;
+        var flatFrac = MESH.SVG_FLATNESS_FRAC != null ? MESH.SVG_FLATNESS_FRAC : 0.00055;
+        var minFlat = MESH.SVG_MIN_FLATNESS != null ? MESH.SVG_MIN_FLATNESS : 0.025;
+        var key = ['ink3', img._svgSource.length, flatFrac, minFlat].join('|');
+        if (img._svgParsed && img._svgParsedKey === key) return img._svgParsed;
+        var parsed = GravureSvg.parse(img._svgSource, {
+            flatnessFrac: flatFrac,
+            minFlatness: minFlat
+        });
+        img._svgParsedKey = key;
+        img._svgParsed = parsed;
+        return parsed;
+    }
+
+    // Contours noirs : courbes C/Q/A conservées + polygones pour punch
+    function buildEngravingMeta(img, g) {
+        if (!img || !img._svgSource) return null;
+        var parsed = parseSvgPolygonsCached(img);
+        if (!parsed) return null;
+        var hasCurves = parsed.curves && parsed.curves.length;
+        var hasPolys = parsed.polygons && parsed.polygons.length;
+        if (!hasCurves && !hasPolys) return null;
+
         var widthMM = Math.max(1, parseFloat(g.width) || 50);
         var depthMM = Math.max(0.05, parseFloat(g.depth) || 1.5);
         var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
         var baseAngle = isFinite(parseFloat(g.angle)) ? parseFloat(g.angle) : 0;
-        var heightMM = widthMM * (img.height / img.width);
-        var maxGrid = Math.max(48, gridCap || (MESH.GRID_CAP_DEFAULT != null ? MESH.GRID_CAP_DEFAULT : 512));
-        var imgDiv = Math.max(1, MESH.MASK_IMG_DIVISOR != null ? MESH.MASK_IMG_DIVISOR : 1);
-        var gridW = Math.max(48, Math.min(maxGrid, Math.ceil(img.width / imgDiv)));
-        var gridH = Math.max(48, Math.min(maxGrid, Math.ceil(img.height / imgDiv)));
-        var srcMax = MESH.MASK_SRC_MAX != null ? MESH.MASK_SRC_MAX : 2048;
-        var alphaThr = MESH.MASK_ALPHA_THRESHOLD != null ? MESH.MASK_ALPHA_THRESHOLD : 0.3;
-        var srcScale = Math.min(1, srcMax / Math.max(img.width, img.height));
-        var srcW = Math.max(1, Math.round(img.width * srcScale));
-        var srcH = Math.max(1, Math.round(img.height * srcScale));
-        var off = document.createElement('canvas');
-        off.width = srcW; off.height = srcH;
-        var ctx = off.getContext('2d');
-        if (!ctx) return null;
-        ctx.drawImage(img, 0, 0, srcW, srcH);
-        var pixels = ctx.getImageData(0, 0, srcW, srcH).data;
-
-        function alphaAtUV(u, v) {
-            var px = Math.max(0, Math.min(srcW - 1, Math.round(u * (srcW - 1))));
-            var py = Math.max(0, Math.min(srcH - 1, Math.round(v * (srcH - 1))));
-            return pixels[(py * srcW + px) * 4 + 3] / 255;
-        }
-
-        var mask = new Uint8Array(gridW * gridH);
-        for (var my = 0; my < gridH; my++) {
-            for (var mx = 0; mx < gridW; mx++) {
-                var u0 = mx / gridW, v0 = my / gridH, du = 1 / gridW, dv = 1 / gridH;
-                var c1 = alphaAtUV(u0 + du * 0.25, v0 + dv * 0.25);
-                var c2 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.25);
-                var c3 = alphaAtUV(u0 + du * 0.25, v0 + dv * 0.75);
-                var c4 = alphaAtUV(u0 + du * 0.75, v0 + dv * 0.75);
-                mask[my * gridW + mx] = (((c1 + c2 + c3 + c4) * 0.25) >= alphaThr) ? 1 : 0;
+        var flip = !!g.flip;
+        var invert = !!g.invert;
+        var aspect = parsed.height / Math.max(1e-6, parsed.width);
+        var heightMM = widthMM * aspect;
+        var uvPolys = [];
+        if (hasPolys) {
+            for (var pi = 0; pi < parsed.polygons.length; pi++) {
+                var src = parsed.polygons[pi];
+                var uv = [];
+                for (var pj = 0; pj < src.length; pj++) {
+                    uv.push({
+                        x: (src[pj].x - parsed.minX) / parsed.width,
+                        y: (src[pj].y - parsed.minY) / parsed.height
+                    });
+                }
+                if (uv.length >= 3) uvPolys.push(uv);
             }
         }
-
+        // Punch / invert : toujours des polygones UV (même si on part des courbes)
+        if (!uvPolys.length && hasCurves && typeof GravureSvg !== 'undefined' && GravureSvg.sampleCurveSubpath) {
+            var flatSvg = Math.max(
+                0.01,
+                (MESH.SVG_CURVE_FLATNESS_MM != null ? MESH.SVG_CURVE_FLATNESS_MM : 0.06)
+                    / Math.max(widthMM, 1e-6) * parsed.width
+            );
+            for (var ci = 0; ci < parsed.curves.length; ci++) {
+                var cpts = GravureSvg.sampleCurveSubpath(parsed.curves[ci], flatSvg);
+                if (!cpts || cpts.length < 3) continue;
+                var cuv = [];
+                for (var ck = 0; ck < cpts.length; ck++) {
+                    cuv.push({
+                        x: (cpts[ck].x - parsed.minX) / parsed.width,
+                        y: (cpts[ck].y - parsed.minY) / parsed.height
+                    });
+                }
+                if (cuv.length >= 3) uvPolys.push(cuv);
+            }
+        }
+        if (!uvPolys.length && !hasCurves) return null;
         return {
-            mask: mask,
-            gridW: gridW,
-            gridH: gridH,
+            curves: hasCurves ? parsed.curves : null,
+            svgMinX: parsed.minX,
+            svgMinY: parsed.minY,
+            svgWidth: parsed.width,
+            svgHeight: parsed.height,
+            polygons: uvPolys,
             widthMM: widthMM,
             heightMM: heightMM,
             depthMM: depthMM,
             centerY: centerY,
             baseAngle: baseAngle,
-            flip: !!g.flip,
-            invert: !!g.invert
+            flip: flip,
+            invert: invert,
+            enabled: g.enabled !== false,
+            vector: true
         };
     }
 
+    function buildEngravingMask(img, g) {
+        return buildEngravingMeta(img, g);
+    }
+
     function sampleMaskSolid(meta, radiusAt, y, theta) {
-        if (!meta || !meta.mask) return false;
+        if (!meta || !meta.polygons || !meta.polygons.length) return false;
+        if (typeof GravureSvg === 'undefined' || !GravureSvg.pointInPolygons) return false;
         var baseRadius = Math.max(1, radiusAt(meta.centerY, meta.baseAngle));
         var dTheta = theta - meta.baseAngle;
         while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
@@ -278,9 +314,7 @@ var Gravure3D = (function () {
         if (meta.flip) uMap = 1 - uMap;
         var vMap = 0.5 - ((y - meta.centerY) / meta.heightMM);
         if (uMap < 0 || uMap > 1 || vMap < 0 || vMap > 1) return false;
-        var ix = Math.max(0, Math.min(meta.gridW - 1, Math.floor(uMap * meta.gridW)));
-        var iy = Math.max(0, Math.min(meta.gridH - 1, Math.floor(vMap * meta.gridH)));
-        return meta.mask[iy * meta.gridW + ix] === 1;
+        return GravureSvg.pointInPolygons(uMap, vMap, meta.polygons);
     }
 
     function prepareMetaPunchBounds(meta, radiusAt) {
@@ -339,12 +373,14 @@ var Gravure3D = (function () {
             var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
             var heightMM = widthMM;
             if (img && img.width && img.height) heightMM = widthMM * (img.height / img.width);
+            if (!img || !img._svgSource) continue;
+            if (g.enabled === false) continue;
             var limits = getEngravingAdaptiveLimits(surfaceInput, {
                 centerY: centerY,
                 heightMM: heightMM,
                 widthMM: widthMM
             });
-            var meta = buildEngravingMask(img, g, limits.gridCap);
+            var meta = buildEngravingMeta(img, g);
             if (!meta) continue;
             meta.radiusAt = createRadiusSampler(extended, {
                 profileRes: limits.profileRes,
@@ -388,19 +424,22 @@ var Gravure3D = (function () {
             if (vr < 1e-6) continue;
             if (sampleMaskSolid(meta, radiusAt, vy, Math.atan2(vz, vx))) insideCount++;
         }
-        if (insideCount >= 2) return true;
-        if (insideCount === 0) return false;
         var cx = (pos.getX(i0) + pos.getX(i1) + pos.getX(i2)) / 3;
         var cy = (pos.getY(i0) + pos.getY(i1) + pos.getY(i2)) / 3;
         var cz = (pos.getZ(i0) + pos.getZ(i1) + pos.getZ(i2)) / 3;
         var cr = Math.sqrt(cx * cx + cz * cz);
-        if (cr < 1e-6) return false;
-        return sampleMaskSolid(meta, radiusAt, cy, Math.atan2(cz, cx));
+        var centerInside = false;
+        if (cr >= 1e-6) {
+            centerInside = sampleMaskSolid(meta, radiusAt, cy, Math.atan2(cz, cx));
+        }
+        // Trou réel : centre dans la forme, ou majorité des sommets
+        return centerInside || insideCount >= 2;
     }
 
-    // Mode inversé : retire les triangles du corps bouteille sous le masque
+    // Mode inversé : ouvre la peau extérieure sous le masque (pas l’intérieur → la poche reste visible)
     function punchHolesForInvertedEngravings(mesh, surfaceInput) {
         if (!mesh || !mesh.geometry || typeof THREE === 'undefined') return;
+        if (mesh.userData && mesh.userData.isInterior) return;
         var geo = mesh.geometry;
         var pos = geo.attributes.position;
         var index = geo.index;
@@ -415,6 +454,7 @@ var Gravure3D = (function () {
             var remove = false;
             for (var ii = 0; ii < inverted.length && !remove; ii++) {
                 var meta = inverted[ii];
+                if (!meta.polygons || !meta.polygons.length) continue;
                 if (triangleOutsideMetaBounds(meta, pos, i0, i1, i2)) continue;
                 if (triangleShouldCutAtEngravingBorder(meta, meta.radiusAt, pos, i0, i1, i2)) remove = true;
             }
@@ -424,63 +464,306 @@ var Gravure3D = (function () {
         geo.computeVertexNormals();
     }
 
-    // Relief sortant (ou entrant si invert) : voxels du masque → triangles 3D
+    function contourRingsUV(meta) {
+        var rings = [];
+        var flatSvg = Math.max(
+            0.01,
+            (MESH.SVG_CURVE_FLATNESS_MM != null ? MESH.SVG_CURVE_FLATNESS_MM : 0.06)
+                / Math.max(meta.widthMM, 1e-6) * (meta.svgWidth || 1)
+        );
+        if (meta.curves && meta.curves.length && typeof GravureSvg !== 'undefined' && GravureSvg.sampleCurveSubpath) {
+            for (var ci = 0; ci < meta.curves.length; ci++) {
+                var pts = GravureSvg.sampleCurveSubpath(meta.curves[ci], flatSvg);
+                if (!pts || pts.length < 3) continue;
+                var uv = [];
+                for (var i = 0; i < pts.length; i++) {
+                    uv.push({
+                        x: (pts[i].x - meta.svgMinX) / Math.max(1e-9, meta.svgWidth),
+                        y: (pts[i].y - meta.svgMinY) / Math.max(1e-9, meta.svgHeight)
+                    });
+                }
+                if (uv.length >= 3) rings.push(uv);
+            }
+        }
+        if (!rings.length && meta.polygons && meta.polygons.length) {
+            for (var pi = 0; pi < meta.polygons.length; pi++) {
+                if (meta.polygons[pi] && meta.polygons[pi].length >= 3) rings.push(meta.polygons[pi]);
+            }
+        }
+        return rings;
+    }
+
+    function cleanUvRing(ring) {
+        var pts = [];
+        for (var i = 0; i < ring.length; i++) {
+            var p = ring[i];
+            if (!pts.length || Math.abs(pts[pts.length - 1].x - p.x) > 1e-10 || Math.abs(pts[pts.length - 1].y - p.y) > 1e-10) {
+                pts.push({ x: p.x, y: p.y });
+            }
+        }
+        if (pts.length >= 2 && Math.abs(pts[0].x - pts[pts.length - 1].x) < 1e-10 && Math.abs(pts[0].y - pts[pts.length - 1].y) < 1e-10) {
+            pts.pop();
+        }
+        return pts;
+    }
+
+    function ringArea2(pts) {
+        var a = 0;
+        for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+            a += pts[j].x * pts[i].y - pts[i].x * pts[j].y;
+        }
+        return a;
+    }
+
+    function pointInTri2(p, a, b, c) {
+        function cross(p0, p1, p2) {
+            return (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y);
+        }
+        var s = cross(a, b, c) >= 0 ? 1 : -1;
+        return s * cross(a, b, p) >= -1e-12 && s * cross(b, c, p) >= -1e-12 && s * cross(c, a, p) >= -1e-12;
+    }
+
+    function triangulateUvRing(ring) {
+        var pts = cleanUvRing(ring);
+        if (pts.length < 3) return null;
+        if (ringArea2(pts) < 0) pts = pts.slice().reverse();
+
+        if (typeof THREE !== 'undefined' && THREE.ShapeUtils && THREE.ShapeUtils.triangulateShape) {
+            try {
+                var contour = [];
+                for (var ci = 0; ci < pts.length; ci++) contour.push(new THREE.Vector2(pts[ci].x, pts[ci].y));
+                var faces = THREE.ShapeUtils.triangulateShape(contour, []);
+                if (faces && faces.length) return { pts: pts, faces: faces };
+            } catch (e) { /* earclip */ }
+        }
+
+        var idx = [];
+        for (var i = 0; i < pts.length; i++) idx.push(i);
+        var facesEc = [];
+        var guard = 0;
+        var maxGuard = pts.length * pts.length + 16;
+        while (idx.length > 3 && guard++ < maxGuard) {
+            var earFound = false;
+            for (var k = 0; k < idx.length; k++) {
+                var i0 = idx[(k - 1 + idx.length) % idx.length];
+                var i1 = idx[k];
+                var i2 = idx[(k + 1) % idx.length];
+                var a = pts[i0], b = pts[i1], c = pts[i2];
+                var cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+                if (cross <= 1e-12) continue;
+                var hasPoint = false;
+                for (var t = 0; t < idx.length; t++) {
+                    var ii = idx[t];
+                    if (ii === i0 || ii === i1 || ii === i2) continue;
+                    if (pointInTri2(pts[ii], a, b, c)) { hasPoint = true; break; }
+                }
+                if (hasPoint) continue;
+                facesEc.push([i0, i1, i2]);
+                idx.splice(k, 1);
+                earFound = true;
+                break;
+            }
+            if (!earFound) break;
+        }
+        if (idx.length === 3) facesEc.push([idx[0], idx[1], idx[2]]);
+        return facesEc.length ? { pts: pts, faces: facesEc } : null;
+    }
+
+    // Subdiv 2D agressive : plus de longues diagonales → plus de traits au milieu
+    function subdivideUvFaces(pts, faces, maxEdgeUV) {
+        var max2 = maxEdgeUV * maxEdgeUV;
+        var verts = pts.map(function (p) { return { x: p.x, y: p.y }; });
+        var tris = faces.map(function (f) { return [f[0], f[1], f[2]]; });
+        var edgeMid = Object.create(null);
+
+        function mid(i0, i1) {
+            var a = i0 < i1 ? i0 : i1;
+            var b = i0 < i1 ? i1 : i0;
+            var key = a + ':' + b;
+            if (edgeMid[key] != null) return edgeMid[key];
+            var m = verts.length;
+            verts.push({
+                x: (verts[i0].x + verts[i1].x) * 0.5,
+                y: (verts[i0].y + verts[i1].y) * 0.5
+            });
+            edgeMid[key] = m;
+            return m;
+        }
+        function len2(i0, i1) {
+            var dx = verts[i0].x - verts[i1].x;
+            var dy = verts[i0].y - verts[i1].y;
+            return dx * dx + dy * dy;
+        }
+
+        var guard = 0;
+        while (guard++ < 14) {
+            edgeMid = Object.create(null);
+            // rebuild mids each pass from current verts — keep stable mids across tris in one pass
+            var next = [];
+            var splitAny = false;
+            for (var t = 0; t < tris.length; t++) {
+                var a = tris[t][0], b = tris[t][1], c = tris[t][2];
+                var d01 = len2(a, b), d12 = len2(b, c), d20 = len2(c, a);
+                var longest = d01, e = 0;
+                if (d12 > longest) { longest = d12; e = 1; }
+                if (d20 > longest) { longest = d20; e = 2; }
+                if (longest <= max2) {
+                    next.push([a, b, c]);
+                    continue;
+                }
+                splitAny = true;
+                if (e === 0) {
+                    var m01 = mid(a, b);
+                    next.push([a, m01, c], [m01, b, c]);
+                } else if (e === 1) {
+                    var m12 = mid(b, c);
+                    next.push([a, b, m12], [a, m12, c]);
+                } else {
+                    var m20 = mid(c, a);
+                    next.push([a, b, m20], [m20, b, c]);
+                }
+            }
+            tris = next;
+            if (!splitAny) break;
+        }
+        return { pts: verts, faces: tris };
+    }
+
+    // Relief sortant = dessus+parois+fond (courbes SVG).
+    // Inverser = comme l’ancien PNG : punch d’ouverture + poche (fond + parois), courbes SVG.
     function buildReliefEngravingGeometry(meta, radiusAt) {
+        if (!meta || typeof THREE === 'undefined') return null;
+        var rings = contourRingsUV(meta);
+        if (!rings.length) return null;
+
         var widthMM = meta.widthMM;
-        var depthMM = meta.depthMM;
-        var centerY = meta.centerY;
-        var baseAngle = meta.baseAngle;
         var heightMM = meta.heightMM;
+        var depthMM = Math.max(0.05, meta.depthMM);
         var flip = meta.flip;
         var invert = meta.invert;
-        var gridW = meta.gridW;
-        var gridH = meta.gridH;
-        var mask = meta.mask;
-        var baseRadius = Math.max(1, radiusAt(centerY, baseAngle));
-        var dirDepth = invert ? -depthMM : depthMM;
+        var baseRadius = Math.max(1, radiusAt(meta.centerY, meta.baseAngle));
+        var centerY = meta.centerY;
+        var baseAngle = meta.baseAngle;
+        // Poche assez profonde pour rester lisible ; légèrement rentrée pour éviter le z-fight du punch
+        var dirDepth = invert ? -Math.max(depthMM, 1.2) : depthMM;
+        var openDepth = invert ? -0.2 : 0;
+        var maxEdgeUV = 0.55 / Math.max(widthMM, heightMM, 1e-6);
 
-        function isSolid(ix, iy) { return !(ix < 0 || iy < 0 || ix >= gridW || iy >= gridH) && mask[iy * gridW + ix] === 1; }
-        var vertices = [], indices = [];
-        function pushPoint(uRaw, vRaw, outwardDepth) {
+        var vertices = [];
+        var indices = [];
+        var capCache = Object.create(null);
+
+        function project(uRaw, vRaw, outwardDepth) {
             var uMap = flip ? (1 - uRaw) : uRaw;
             var xCentered = (uMap - 0.5) * widthMM;
             var yMM = centerY + (0.5 - vRaw) * heightMM;
             var theta = baseAngle + (xCentered / baseRadius);
             var surf = getSurfacePoint(radiusAt, yMM, theta);
-            if (!isFinite(surf.x) || !isFinite(surf.y) || !isFinite(surf.z)) return -1;
+            if (!isFinite(surf.x) || !isFinite(surf.y) || !isFinite(surf.z)) return null;
             var nx = Math.cos(theta), nz = Math.sin(theta);
-            vertices.push(surf.x + nx * outwardDepth, yMM, surf.z + nz * outwardDepth);
-            return (vertices.length / 3) - 1;
-        }
-        function addQuad(a, b, c, d) {
-            if (a < 0 || b < 0 || c < 0 || d < 0) return;
-            indices.push(a, b, c);
-            indices.push(a, c, d);
+            return {
+                x: surf.x + nx * outwardDepth,
+                y: yMM,
+                z: surf.z + nz * outwardDepth
+            };
         }
 
-        for (var gy = 0; gy < gridH; gy++) {
-            for (var gx = 0; gx < gridW; gx++) {
-                if (!isSolid(gx, gy)) continue;
-                var u0 = gx / gridW, u1 = (gx + 1) / gridW, v0 = gy / gridH, v1 = (gy + 1) / gridH;
-                var t00 = pushPoint(u0, v0, dirDepth), t10 = pushPoint(u1, v0, dirDepth), t11 = pushPoint(u1, v1, dirDepth), t01 = pushPoint(u0, v1, dirDepth);
-                addQuad(t00, t10, t11, t01);
-                var b00 = pushPoint(u0, v0, 0), b10 = pushPoint(u1, v0, 0), b11 = pushPoint(u1, v1, 0), b01 = pushPoint(u0, v1, 0);
-                if (!invert) addQuad(b01, b11, b10, b00);
-                if (!isSolid(gx - 1, gy)) addQuad(b00, t00, t01, b01);
-                if (!isSolid(gx + 1, gy)) addQuad(b11, t11, t10, b10);
-                if (!isSolid(gx, gy - 1)) addQuad(b10, t10, t00, b00);
-                if (!isSolid(gx, gy + 1)) addQuad(b01, t01, t11, b11);
+        function pushVert(u, v, outwardDepth) {
+            var key = (u * 1e5 | 0) + ',' + (v * 1e5 | 0) + ',' + (outwardDepth * 1e3 | 0);
+            if (capCache[key] != null) return capCache[key];
+            var p = project(u, v, outwardDepth);
+            if (!p) return -1;
+            vertices.push(p.x, p.y, p.z);
+            var idx = (vertices.length / 3) - 1;
+            capCache[key] = idx;
+            return idx;
+        }
+
+        function pushWall(u, v, outwardDepth) {
+            var p = project(u, v, outwardDepth);
+            if (!p) return -1;
+            vertices.push(p.x, p.y, p.z);
+            return (vertices.length / 3) - 1;
+        }
+
+        function addTri(a, b, c) {
+            if (a < 0 || b < 0 || c < 0) return;
+            indices.push(a, b, c);
+        }
+        function addQuad(a, b, c, d) {
+            addTri(a, b, c);
+            addTri(a, c, d);
+        }
+
+        for (var ri = 0; ri < rings.length; ri++) {
+            var ring = cleanUvRing(rings[ri]);
+            if (ring.length < 3) continue;
+
+            var tri = triangulateUvRing(ring);
+            if (tri) {
+                var dense = subdivideUvFaces(tri.pts, tri.faces, maxEdgeUV);
+                for (var fi = 0; fi < dense.faces.length; fi++) {
+                    var f = dense.faces[fi];
+                    var p0 = dense.pts[f[0]], p1 = dense.pts[f[1]], p2 = dense.pts[f[2]];
+
+                    // Fond (invert) ou dessus (relief) — même winding que l’ancien PNG
+                    var t0 = pushVert(p0.x, p0.y, dirDepth);
+                    var t1 = pushVert(p1.x, p1.y, dirDepth);
+                    var t2 = pushVert(p2.x, p2.y, dirDepth);
+                    addTri(t0, t1, t2);
+
+                    // Face contre la surface : seulement en relief sortant
+                    if (!invert) {
+                        var b0 = pushVert(p0.x, p0.y, 0);
+                        var b1 = pushVert(p1.x, p1.y, 0);
+                        var b2 = pushVert(p2.x, p2.y, 0);
+                        addTri(b0, b2, b1);
+                    }
+                }
+            }
+
+            // Parois contour : ouverture ↔ fond/dessus (courbe SVG)
+            for (var e = 0; e < ring.length; e++) {
+                var a = ring[e];
+                var b = ring[(e + 1) % ring.length];
+                var ta = pushWall(a.x, a.y, dirDepth);
+                var tb = pushWall(b.x, b.y, dirDepth);
+                var ba = pushWall(a.x, a.y, openDepth);
+                var bb = pushWall(b.x, b.y, openDepth);
+                // Invert : winding vers l’intérieur de la poche (visible depuis l’extérieur)
+                if (invert) addQuad(ba, bb, tb, ta);
+                else addQuad(ba, ta, tb, bb);
             }
         }
+
         if (!indices.length) return null;
-        return { vertices: vertices, indices: indices };
+        var geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geom.setIndex(indices);
+        geom.computeVertexNormals();
+        return geom;
     }
 
     function createEngravingMaterial() {
-        var mat = (typeof BottleMaterials !== 'undefined' && BottleMaterials.getGlassMaterial)
-            ? BottleMaterials.getGlassMaterial(BottleMaterials.DEFAULT_GLASS_COLOR)
-            : new THREE.MeshPhongMaterial({ color: 0x99bbdd, side: THREE.DoubleSide });
+        // Même couleur que la bouteille (invert / miroir / relief) — opaque pour rester visible
+        var mat;
+        if (typeof BottleMaterials !== 'undefined' && BottleMaterials.getBaseMaterial) {
+            mat = BottleMaterials.getBaseMaterial(BottleMaterials.DEFAULT_GLASS_COLOR);
+        } else {
+            mat = new THREE.MeshPhongMaterial({ color: 0x99bbdd });
+        }
         mat.side = THREE.DoubleSide;
+        mat.transparent = false;
+        mat.opacity = 1;
+        mat.depthWrite = true;
+        mat.depthTest = true;
+        mat.polygonOffset = true;
+        mat.polygonOffsetFactor = -1;
+        mat.polygonOffsetUnits = -1;
+        if (!mat.userData) mat.userData = {};
+        mat.userData.keepOpaque = true;
+        mat.userData.baseOpacity = 1;
+        mat.userData.baseDepthWrite = true;
         return mat;
     }
 
@@ -495,31 +778,30 @@ var Gravure3D = (function () {
 
         for (var gi = 0; gi < engravings.length; gi++) {
             var g = engravings[gi], img = images[g.id];
-            if (!img || !img.width || !img.height) continue;
+            if (!img || !img._svgSource) continue;
+            if (g.enabled === false) continue;
             var widthMM = Math.max(1, parseFloat(g.width) || 50);
             var centerY = isFinite(parseFloat(g.y)) ? parseFloat(g.y) : 150;
-            var heightMM = widthMM * (img.height / img.width);
+            var heightMM = widthMM;
+            if (img.width && img.height) heightMM = widthMM * (img.height / img.width);
             var limits = getEngravingAdaptiveLimits(surfaceInput, {
                 centerY: centerY,
                 heightMM: heightMM,
                 widthMM: widthMM
             });
-            var meta = buildEngravingMask(img, g, limits.gridCap);
+            var meta = buildEngravingMeta(img, g);
             if (!meta) continue;
             var radiusAt = createRadiusSampler(extended, {
                 profileRes: limits.profileRes,
                 thetaBuckets: limits.thetaBuckets
             });
-            var built = buildReliefEngravingGeometry(meta, radiusAt);
-            if (!built) continue;
-            var geom = new THREE.BufferGeometry();
-            geom.setAttribute('position', new THREE.Float32BufferAttribute(built.vertices, 3));
-            geom.setIndex(built.indices);
-            geom.computeVertexNormals();
+            var geom = buildReliefEngravingGeometry(meta, radiusAt);
+            if (!geom) continue;
             var mat = createEngravingMaterial();
             var mesh = new THREE.Mesh(geom, mat);
             mesh.userData.isPiqure = false;
             mesh.userData.isInterior = false;
+            mesh.renderOrder = 3;
             group.add(mesh);
         }
         return group.children.length ? group : null;
@@ -554,7 +836,7 @@ var Gravure3D = (function () {
             var img = images[g.id];
             gParts.push([
                 g.id || '',
-                img ? (img.width + 'x' + img.height) : '0',
+                img ? (img._svgSource ? ('svg' + img._svgSource.length) : (img.width + 'x' + img.height)) : '0',
                 Math.round((g.y || 0) * 100) / 100,
                 Math.round((g.angle || 0) * 10000) / 10000,
                 Math.round((g.width || 0) * 100) / 100,
@@ -582,7 +864,7 @@ var Gravure3D = (function () {
             var img = images[g.id];
             parts.push([
                 g.id || '',
-                img ? (img.width + 'x' + img.height) : '0',
+                img ? (img._svgSource ? ('svg' + img._svgSource.length) : (img.width + 'x' + img.height)) : '0',
                 Math.round((g.y || 0) * 100) / 100,
                 Math.round((g.angle || 0) * 10000) / 10000,
                 Math.round((g.width || 0) * 100) / 100,
@@ -599,24 +881,34 @@ var Gravure3D = (function () {
         BottleView3D.applyViewOpacity(engravingGroup);
     }
 
+    // Appelé avant dispose du sectionRingGroup : force une vraie reconstruction (évite matériaux déjà disposés)
+    function invalidateScene() {
+        engravingGroup = null;
+        lastEngravingSignature = '';
+    }
+
     // Reconstruit le groupe de meshes gravure si la signature a changé
-    function updateScene(scene, surfaceInput) {
+    function updateScene(scene, surfaceInput, parentGroup) {
         if (!scene || !surfaceInput) return;
+        var parent = parentGroup || scene;
         var sig = buildEngravingSceneSignature(surfaceInput);
         if (sig === lastEngravingSignature && engravingGroup) {
-            if (engravingGroup.parent !== scene) scene.add(engravingGroup);
+            if (engravingGroup.parent !== parent) {
+                if (engravingGroup.parent) engravingGroup.parent.remove(engravingGroup);
+                parent.add(engravingGroup);
+            }
             return;
         }
         lastEngravingSignature = sig;
         if (engravingGroup) {
-            scene.remove(engravingGroup);
+            if (engravingGroup.parent) engravingGroup.parent.remove(engravingGroup);
             disposeGroup(engravingGroup);
             engravingGroup = null;
         }
         engravingGroup = buildEngravingsGroup(surfaceInput);
         if (engravingGroup) {
             engravingGroup.userData.isBottleExportRoot = true;
-            scene.add(engravingGroup);
+            parent.add(engravingGroup);
             if (typeof BottleView3D !== 'undefined' && BottleView3D.applyViewOpacity) {
                 BottleView3D.applyViewOpacity(engravingGroup);
             }
@@ -625,6 +917,7 @@ var Gravure3D = (function () {
 
     return {
         updateScene: updateScene,
+        invalidateScene: invalidateScene,
         refreshEngravingOpacity: refreshEngravingOpacity,
         applyInvertedEngravingsToBottleMesh: punchHolesForInvertedEngravings,
         punchHolesForInvertedEngravings: punchHolesForInvertedEngravings,

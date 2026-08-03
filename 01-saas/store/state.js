@@ -16,7 +16,7 @@ var currentCloudProjectName = null;
 // true après le 1er initLogiciel() (évite de ré-init le moteur 3D)
 var isLogicielInit = false;
 
-// PNG des gravures (clé = id carte) — features/gravure
+// SVG des gravures (clé = id carte) — features/gravure
 window.engravingImages = {};
 
 // Source UNIQUE des défauts Affichage (storage / display / realtime y puisent)

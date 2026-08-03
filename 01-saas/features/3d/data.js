@@ -125,6 +125,55 @@ var Bottle3DData = (function () {
         };
     }
 
+    // Pont Col → Bas bague (liaison rb0).
+    // sPrev / bagueNext : voisins pour tangentes G1 (comme le reste des Courbe S).
+    function buildColToBagueBridgeData(sTop, bague1, sPrev, bagueNext) {
+        if (!sTop || !bague1) return null;
+        var id = R.BAGUE_COL_LIAISON_ID || 'rb0';
+        var s0 = {
+            H: sTop.H,
+            a: sTop.a,
+            b: sTop.b,
+            shape: sTop.shape,
+            carreNiveau: sTop.carreNiveau
+        };
+        var s1 = {
+            H: bague1.H,
+            a: bague1.a,
+            b: bague1.b,
+            shape: bague1.shape,
+            carreNiveau: bague1.carreNiveau
+        };
+        if (s1.H < s0.H) s1.H = s0.H;
+        if (s1.H <= s0.H + 1e-6) s1.H = s0.H + 0.01;
+        var out = {
+            sections: [s0, s1],
+            edgeTypes: [getPanelSelectValue(id + '-type', 'courbeS')],
+            rhos: [getPanelValueSigned(id + '-rho', 1)]
+        };
+        if (sPrev && isFinite(sPrev.H) && sPrev.H < s0.H - 1e-6) {
+            out.profileNeighborPrev = {
+                H: sPrev.H,
+                a: sPrev.a,
+                b: sPrev.b,
+                shape: sPrev.shape,
+                carreNiveau: sPrev.carreNiveau
+            };
+        }
+        if (bagueNext && isFinite(bagueNext.H) && bagueNext.H > s1.H + 1e-6) {
+            out.profileNeighborNext = {
+                H: bagueNext.H,
+                a: bagueNext.a,
+                b: bagueNext.b,
+                shape: bagueNext.shape,
+                carreNiveau: bagueNext.carreNiveau
+            };
+        }
+        // Sans voisin : guide vertical (paroi cylindrique) pour coller Col / Bas bague
+        out.verticalEndTangents = true;
+        return out;
+    }
+
     // --- Corps ---
 
     // Diamètres par défaut corps si input absent (s1=71, s2-s3=85, reste=32)
@@ -257,6 +306,7 @@ var Bottle3DData = (function () {
         buildSectionsDataBundle: buildSectionsDataBundle,
         collectPiqureSectionsFromPanel: collectPiqureSectionsFromPanel,
         collectBagueSectionsFromPanel: collectBagueSectionsFromPanel,
+        buildColToBagueBridgeData: buildColToBagueBridgeData,
         isPiqureViewActive: isPiqureViewActive
     };
 })();

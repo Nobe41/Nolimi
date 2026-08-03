@@ -167,8 +167,10 @@ var BottleViewBuild = (function () {
         var bague1 = bagueSections[0];
         var sTop = sections && sections.length ? sections[sections.length - 1] : null;
         var sPrev = sections && sections.length >= 2 ? sections[sections.length - 2] : null;
-        if (sTop) {
-            var feuilleColBague = BottleViewGeometry.buildNeckToBagueFeuille(sPrev, sTop, bague1, sectionsData, BottleMaterials.DEFAULT_GLASS_COLOR);
+        var bagueNext = bagueSections.length >= 2 ? bagueSections[1] : null;
+        if (sTop && bague1) {
+            var bridgeData = BottleViewPanel.buildColToBagueBridgeData(sTop, bague1, sPrev, bagueNext);
+            var feuilleColBague = BottleViewGeometry.buildLiaisonRevolvedMesh(bridgeData, BottleMaterials.DEFAULT_GLASS_COLOR);
             punchInvertedEngravingsOnMesh(feuilleColBague, sectionsData);
             trackInvertedPunchMesh(feuilleColBague, function () {
                 var secs = BottleViewPanel.getSectionsDataFromPanel();
@@ -177,31 +179,37 @@ var BottleViewBuild = (function () {
                 if (!secList.length || !bagueList.length) return null;
                 var sTopNow = secList[secList.length - 1];
                 var sPrevNow = secList.length >= 2 ? secList[secList.length - 2] : null;
-                return BottleViewGeometry.buildNeckToBagueFeuille(sPrevNow, sTopNow, bagueList[0], secs, BottleMaterials.DEFAULT_GLASS_COLOR);
+                var bNextNow = bagueList.length >= 2 ? bagueList[1] : null;
+                var bridgeNow = BottleViewPanel.buildColToBagueBridgeData(sTopNow, bagueList[0], sPrevNow, bNextNow);
+                return BottleViewGeometry.buildLiaisonRevolvedMesh(bridgeNow, BottleMaterials.DEFAULT_GLASS_COLOR);
             });
-            feuilleColBague.userData.isPiqure = false;
-            BottleViewGeometry.enableMeshShadows(feuilleColBague);
-            sectionRingGroup.add(feuilleColBague);
-            var bagueInnerMat = BottleViewGeometry.getInnerShellMaterial();
-            var feuilleColBagueInner = InterieurMath.createInsetMeshFromMesh(feuilleColBague, thicknessNow, bagueInnerMat);
-            if (feuilleColBagueInner) {
-                punchInvertedEngravingsOnMesh(feuilleColBagueInner, sectionsData);
-                trackInvertedPunchMesh(feuilleColBagueInner, function () {
-                    var secs = BottleViewPanel.getSectionsDataFromPanel();
-                    var secList = secs.sections || [];
-                    var bagueList = BottleViewPanel.collectBagueSectionsFromPanel();
-                    if (!secList.length || !bagueList.length) return null;
-                    var sTopNow = secList[secList.length - 1];
-                    var sPrevNow = secList.length >= 2 ? secList[secList.length - 2] : null;
-                    var outer = BottleViewGeometry.buildNeckToBagueFeuille(sPrevNow, sTopNow, bagueList[0], secs, BottleMaterials.DEFAULT_GLASS_COLOR);
-                    var tNow = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
-                        ? InterieurMath.getThicknessMm()
-                        : thicknessNow;
-                    return InterieurMath.createInsetMeshFromMesh(outer, tNow, BottleViewGeometry.getInnerShellMaterial());
-                });
-                feuilleColBagueInner.userData.isPiqure = false;
-                feuilleColBagueInner.userData.isInterior = true;
-                sectionRingGroup.add(feuilleColBagueInner);
+            if (feuilleColBague) {
+                feuilleColBague.userData.isPiqure = false;
+                BottleViewGeometry.enableMeshShadows(feuilleColBague);
+                sectionRingGroup.add(feuilleColBague);
+                var bagueInnerMat = BottleViewGeometry.getInnerShellMaterial();
+                var feuilleColBagueInner = InterieurMath.createInsetMeshFromMesh(feuilleColBague, thicknessNow, bagueInnerMat);
+                if (feuilleColBagueInner) {
+                    punchInvertedEngravingsOnMesh(feuilleColBagueInner, sectionsData);
+                    trackInvertedPunchMesh(feuilleColBagueInner, function () {
+                        var secs = BottleViewPanel.getSectionsDataFromPanel();
+                        var secList = secs.sections || [];
+                        var bagueList = BottleViewPanel.collectBagueSectionsFromPanel();
+                        if (!secList.length || !bagueList.length) return null;
+                        var sTopNow = secList[secList.length - 1];
+                        var sPrevNow = secList.length >= 2 ? secList[secList.length - 2] : null;
+                        var bNextNow = bagueList.length >= 2 ? bagueList[1] : null;
+                        var bridgeNow = BottleViewPanel.buildColToBagueBridgeData(sTopNow, bagueList[0], sPrevNow, bNextNow);
+                        var outer = BottleViewGeometry.buildLiaisonRevolvedMesh(bridgeNow, BottleMaterials.DEFAULT_GLASS_COLOR);
+                        var tNow = (typeof InterieurMath !== 'undefined' && InterieurMath.getThicknessMm)
+                            ? InterieurMath.getThicknessMm()
+                            : thicknessNow;
+                        return InterieurMath.createInsetMeshFromMesh(outer, tNow, BottleViewGeometry.getInnerShellMaterial());
+                    });
+                    feuilleColBagueInner.userData.isPiqure = false;
+                    feuilleColBagueInner.userData.isInterior = true;
+                    sectionRingGroup.add(feuilleColBagueInner);
+                }
             }
         }
         var bagueSectionsData = BottleViewPanel.buildSectionsDataBundle(bagueSections.slice(), 'rb');

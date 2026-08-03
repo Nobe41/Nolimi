@@ -18,7 +18,8 @@ var SectionsState = (function () {
             piqureSections: [],
             piqureLiaisons: [],
             bagueSections: [],
-            bagueLiaisons: []
+            bagueLiaisons: [],
+            bagueColLiaison: null
         };
     }
 

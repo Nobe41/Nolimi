@@ -1,6 +1,6 @@
 // 01-saas/shared/navigation/state.js
 // État runtime de la navigation (onglets + vue active).
-// Persisté dans l’autosave / sync realtime via getState / patch.
+// Non persisté dans le fichier projet : réinitialisé à l’ouverture.
 
 var NavigationState = (function () {
     var state = {

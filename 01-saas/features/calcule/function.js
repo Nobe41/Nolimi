@@ -93,7 +93,7 @@ var CalculeVolumeFeature = (function () {
             return 'Volume total: calcul indisponible';
         }
         return 'Capacite ras bord: ' + formatVolumeCl(results.volumeMm3) + ' cl'
-            + '\nDegarnie: ' + results.degarnieMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm'
+            + '\nNiveau utile: ' + results.degarnieMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm'
             + '\nChambre d expansion: ' + results.chamberPct.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'
             + '\nØ brochage: ' + results.canuleMm.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mm'
             + '\nPoids verre: ' + results.poidsVerreG.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' g';
@@ -128,7 +128,7 @@ var CalculeVolumeFeature = (function () {
         el.textContent = isMobileLayout() ? '' : getResultsText(lastResults);
     }
 
-    // Agrège tous les résultats : ras bord, dégarnie, chambre d'expansion, poids verre (g).
+    // Agrège tous les résultats : ras bord, niveau utile, chambre d'expansion, poids verre (g).
     function computeFromSectionsData(sectionsData) {
         if (typeof CalculeVolumeMath === 'undefined' || !CalculeVolumeMath.computeTotalInteriorVolumeMm3) {
             return { available: false };
@@ -141,12 +141,12 @@ var CalculeVolumeFeature = (function () {
         var rasBordCl = volumeMm3 / mm3PerCl();
         var st = getState();
         var capaciteUtileCl = Math.min(rasBordCl, clampCapaciteUtileCl(st.capaciteUtileCl));
-        var degarnieMmBrut = CalculeVolumeMath.computeDegarnieMmFromUsefulCapacityCl
+        // Niveau utile (mm) = hauteur du haut de bague jusqu'au niveau liquide
+        // (volume intérieur, parois prises en compte). Le bouchon n'entre pas ici.
+        var niveauUtileMm = CalculeVolumeMath.computeDegarnieMmFromUsefulCapacityCl
             ? CalculeVolumeMath.computeDegarnieMmFromUsefulCapacityCl(data, capaciteUtileCl)
             : 0;
         var bouchonMm = st.bouchonRentrantOn ? clampBouchonRentrantMm(st.bouchonRentrantMm) : 0;
-        // Dégarnie affichée = hauteur libre au-dessus du liquide, hors bouchon rentrant
-        var degarnieMm = Math.max(0, degarnieMmBrut - bouchonMm);
         var chamberPct = CalculeVolumeMath.computeExpansionChamberPct
             ? CalculeVolumeMath.computeExpansionChamberPct(data, capaciteUtileCl, bouchonMm)
             : 0;
@@ -162,7 +162,7 @@ var CalculeVolumeFeature = (function () {
             volumeMm3: volumeMm3,
             rasBordCl: rasBordCl,
             capaciteUtileCl: capaciteUtileCl,
-            degarnieMm: degarnieMm,
+            degarnieMm: Math.max(0, niveauUtileMm),
             chamberPct: chamberPct,
             canuleMm: canuleMm,
             poidsVerreG: poidsVerreG

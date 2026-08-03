@@ -115,6 +115,16 @@ var SectionsRules = (function () {
         { id: 'rb2', rho: 5, rhoMin: 0, rhoMax: 400, rhoStep: 0.5 }
     ];
 
+    // Liaison Col (dernière section corps) ↔ Bas bague — id fixe rb0 (hors renumérotation rb1…)
+    var bagueColLiaison = {
+        id: 'rb0',
+        type: 'courbeS',
+        rho: 1,
+        rhoMin: 1,
+        rhoMax: 400,
+        rhoStep: 0.5
+    };
+
     return {
         IDS: IDS,
         DEFAULT_LIAISON: DEFAULT_LIAISON,
@@ -124,6 +134,7 @@ var SectionsRules = (function () {
         selectProfilOptions: selectProfilOptions,
         selectFormeOptions: selectFormeOptions,
         resolveSectionDimensions: resolveSectionDimensions,
+        BAGUE_COL_LIAISON_ID: 'rb0',
         // Clone profond → état runtime (SectionsState)
         createInitialState: function () {
             return {
@@ -132,7 +143,8 @@ var SectionsRules = (function () {
                 piqureSections: clone(piqureSections),
                 piqureLiaisons: clone(piqureLiaisons),
                 bagueSections: clone(bagueSections),
-                bagueLiaisons: clone(bagueLiaisons)
+                bagueLiaisons: clone(bagueLiaisons),
+                bagueColLiaison: clone(bagueColLiaison)
             };
         }
     };

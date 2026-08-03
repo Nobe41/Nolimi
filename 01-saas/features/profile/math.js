@@ -104,9 +104,33 @@ var ProfileMath = (function () {
             ? SectionsMaths.computeSectionPoints(rawPoints)
             : rawPoints;
 
+        // Voisins hors mesh (ex. pont Col↔bague) → tangentes Courbe S comme sur le corps
+        var payload = sectionsData;
+        if (sectionsData.profileNeighborPrev || sectionsData.profileNeighborNext || sectionsData.verticalEndTangents) {
+            payload = {};
+            for (var k in sectionsData) {
+                if (Object.prototype.hasOwnProperty.call(sectionsData, k)) payload[k] = sectionsData[k];
+            }
+            if (sectionsData.profileNeighborPrev) {
+                var sp = sectionsData.profileNeighborPrev;
+                var rp = getSectionRadiusAtAngle(sp.a, sp.b, sp.shape || DEFAULT_SHAPE, typeof sp.carreNiveau === 'number' ? sp.carreNiveau : DEFAULT_CARRE_NIVEAU, theta);
+                payload.edgeEndpointPrev = [{ x: Math.max(MIN_PROFILE_RADIUS, rp), y: sp.H }];
+            } else if (sectionsData.verticalEndTangents && sectionPoints.length) {
+                payload.edgeEndpointPrev = [{ x: sectionPoints[0].x, y: sectionPoints[0].y - 1 }];
+            }
+            if (sectionsData.profileNeighborNext) {
+                var sn = sectionsData.profileNeighborNext;
+                var rn = getSectionRadiusAtAngle(sn.a, sn.b, sn.shape || DEFAULT_SHAPE, typeof sn.carreNiveau === 'number' ? sn.carreNiveau : DEFAULT_CARRE_NIVEAU, theta);
+                payload.edgeEndpointNext = [{ x: Math.max(MIN_PROFILE_RADIUS, rn), y: sn.H }];
+            } else if (sectionsData.verticalEndTangents && sectionPoints.length) {
+                var last = sectionPoints[sectionPoints.length - 1];
+                payload.edgeEndpointNext = [{ x: last.x, y: last.y + 1 }];
+            }
+        }
+
         // Délégation aux raccords (ligne / rayon / courbeS / spline) → rattachement/function.js
         if (typeof LiaisonsFeature !== 'undefined' && LiaisonsFeature.buildProfileCurves) {
-            return LiaisonsFeature.buildProfileCurves(sectionPoints, sectionsData);
+            return LiaisonsFeature.buildProfileCurves(sectionPoints, payload);
         }
         return [];
     }

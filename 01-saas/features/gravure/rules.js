@@ -1,7 +1,7 @@
 // 01-saas/features/gravure/rules.js
 // Constantes gravure : deux couches séparées.
-// DEFAULTS / LIMITS / IDS → panneau UI (cartes, sliders, PNG).
-// MESH → qualité du relief 3D (grille masque, tessellation, liaisons complexes).
+// DEFAULTS / LIMITS / IDS → panneau UI (cartes, sliders, SVG).
+// MESH → tessellation des courbes SVG + échantillonnage surface.
 // Pas de logique ici.
 
 var GravureRules = (function () {
@@ -27,25 +27,26 @@ var GravureRules = (function () {
             depth: { min: 0.1, max: 5, step: 0.1 }
         },
 
-        // Qualité relief (adaptatif si liaison complexe)
         MESH: {
             COMPLEX_LIAISON_TYPES: ['spline', 'courbeS', 'rayon'],
             COMPLEX_LIAISON_MARGIN_MIN: 4,
             COMPLEX_LIAISON_MARGIN_RHO_FACTOR: 0.35,
-            // Résolution masque PNG (grille de relief)
-            GRID_CAP_DEFAULT: 512,
-            GRID_CAP_COMPLEX: 256,
-            MASK_SRC_MAX: 2048,
-            MASK_IMG_DIVISOR: 1,
-            MASK_ALPHA_THRESHOLD: 0.3,
-            // Échantillonnage surface
-            PROFILE_RES_DEFAULT: 72,
-            PROFILE_RES_COMPLEX: 32,
-            THETA_BUCKETS_DEFAULT: 160,
-            THETA_BUCKETS_COMPLEX: 96,
+            // Preview SVG → Image (chargement UI)
+            MASK_SRC_MAX: 768,
+            SVG_RASTER_DEFAULT: 768,
+            // Tessellation des courbes (plus petit = plus fidèle aux Bézier SVG)
+            SVG_FLATNESS_FRAC: 0.00055,
+            SVG_MIN_FLATNESS: 0.025,
+            // Échantillonnage mesh des Bézier (mm sur la gravure)
+            SVG_CURVE_FLATNESS_MM: 0.06,
+            // Échantillonnage surface bouteille
+            PROFILE_RES_DEFAULT: 56,
+            PROFILE_RES_COMPLEX: 28,
+            THETA_BUCKETS_DEFAULT: 120,
+            THETA_BUCKETS_COMPLEX: 72,
             // Tessellation corps quand gravure inversée
-            BOTTLE_TESS_SIMPLE: { nTheta: 512, meridianRes: 256 },
-            BOTTLE_TESS_COMPLEX: { nTheta: 384, meridianRes: 192 }
+            BOTTLE_TESS_SIMPLE: { nTheta: 384, meridianRes: 192 },
+            BOTTLE_TESS_COMPLEX: { nTheta: 288, meridianRes: 144 }
         }
     };
 })();

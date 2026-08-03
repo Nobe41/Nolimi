@@ -1,5 +1,5 @@
 // 01-saas/features/gravure/events.js
-// Couche UI : création/suppression de cartes, chargement PNG, save/restore projet.
+// Couche UI : création/suppression de cartes, chargement SVG, save/restore projet.
 // Chaque changement appelle updateBouteille() → regénère le mesh 3D (mesh.js).
 // getEngravingsData() expose les paramètres actifs au moteur de relief.
 
@@ -14,9 +14,72 @@ var GravureEvents = (function () {
         }
     }
 
+    function meshRules() {
+        return (typeof GravureRules !== 'undefined' && GravureRules.MESH) ? GravureRules.MESH : {};
+    }
+
+    function parseSvgSize(svgText) {
+        var def = meshRules().SVG_RASTER_DEFAULT || 768;
+        var out = { w: def, h: def };
+        if (!svgText) return out;
+        var vb = svgText.match(/viewBox\s*=\s*["']?\s*([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)/);
+        if (vb) {
+            var vw = parseFloat(vb[3]);
+            var vh = parseFloat(vb[4]);
+            if (isFinite(vw) && vw > 0 && isFinite(vh) && vh > 0) {
+                out.w = vw;
+                out.h = vh;
+            }
+        }
+        var wm = svgText.match(/\bwidth\s*=\s*["']?\s*([-\d.eE+]+)/);
+        var hm = svgText.match(/\bheight\s*=\s*["']?\s*([-\d.eE+]+)/);
+        if (wm) {
+            var ww = parseFloat(wm[1]);
+            if (isFinite(ww) && ww > 0) out.w = ww;
+        }
+        if (hm) {
+            var hh = parseFloat(hm[1]);
+            if (isFinite(hh) && hh > 0) out.h = hh;
+        }
+        return out;
+    }
+
+    function svgTextToDataUrl(svgText) {
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+    }
+
+    // Charge un SVG en Image avec dimensions fiables pour le masque 3D
+    function loadSvgIntoImage(svgText, done) {
+        var size = parseSvgSize(svgText);
+        var maxSrc = meshRules().MASK_SRC_MAX || 768;
+        var scale = Math.min(1, maxSrc / Math.max(size.w, size.h, 1));
+        var rw = Math.max(1, Math.round(size.w * scale));
+        var rh = Math.max(1, Math.round(size.h * scale));
+        var dataUrl = svgTextToDataUrl(svgText);
+        var img = new Image();
+        img.onload = function () {
+            var nw = img.naturalWidth || img.width || rw;
+            var nh = img.naturalHeight || img.height || rh;
+            if (!nw || !nh) {
+                nw = rw;
+                nh = rh;
+            }
+            img.width = nw;
+            img.height = nh;
+            img._svgSource = svgText;
+            img._svgDataUrl = dataUrl;
+            done(img);
+        };
+        img.onerror = function () { done(null); };
+        img.src = dataUrl;
+    }
+
     function imageToDataUrl(img) {
         if (!img) return null;
-        if (img.src && img.src.indexOf('data:') === 0) return img.src;
+        if (img._svgDataUrl) return img._svgDataUrl;
+        if (img.src && (img.src.indexOf('data:image/svg') === 0 || img.src.indexOf('data:') === 0)) {
+            return img.src;
+        }
         try {
             var w = img.naturalWidth || img.width;
             var h = img.naturalHeight || img.height;
@@ -25,6 +88,8 @@ var GravureEvents = (function () {
             canvas.width = w;
             canvas.height = h;
             var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0);
             return canvas.toDataURL('image/png');
         } catch (err) {
@@ -115,58 +180,81 @@ var GravureEvents = (function () {
             if (item.imageDataUrl) {
                 pending += 1;
                 (function (entry) {
+                    var url = entry.imageDataUrl;
+                    if (url.indexOf('data:image/svg') === 0) {
+                        var raw = url.replace(/^data:image\/svg\+xml[^,]*,/, '');
+                        var svgText;
+                        try {
+                            svgText = decodeURIComponent(raw);
+                        } catch (e1) {
+                            try { svgText = atob(raw); } catch (e2) { svgText = null; }
+                        }
+                        if (svgText) {
+                            loadSvgIntoImage(svgText, function (img) {
+                                if (img) GravureState.setImage(entry.id, img);
+                                markDone();
+                            });
+                            return;
+                        }
+                    }
                     var img = new Image();
                     img.onload = function () {
+                        if (!img.width && img.naturalWidth) img.width = img.naturalWidth;
+                        if (!img.height && img.naturalHeight) img.height = img.naturalHeight;
                         GravureState.setImage(entry.id, img);
                         markDone();
                     };
                     img.onerror = markDone;
-                    img.src = entry.imageDataUrl;
+                    img.src = url;
                 })(item);
             }
         }
-        if (pending === 0) finish();
+        if (pending <= 0) finish();
     }
 
     function removeEngraving(id) {
         var card = document.getElementById('gravure-' + id);
-        if (card) {
-            card.remove();
-            GravureBloc.updateTitles();
-        }
-        GravureState.removeImage(id);
+        if (card && card.parentNode) card.parentNode.removeChild(card);
+        if (typeof GravureState !== 'undefined' && GravureState.removeImage) GravureState.removeImage(id);
+        window.engravingImages = GravureState.getImages();
+        GravureBloc.updateTitles();
         scheduleProjectSave();
         triggerUpdate();
     }
 
-    // Données lues par mesh.js : uniquement les gravures activées
     function getEngravingsData() {
-        var items = document.querySelectorAll('.gravure-item');
-        var data = [];
-        items.forEach(function (item) {
+        var items = [];
+        var gravureItems = document.querySelectorAll('.gravure-item');
+        gravureItems.forEach(function (item) {
             var parsed = GravureMath.parseItemData(item);
-            if (parsed.enabled) data.push(parsed);
+            if (parsed) items.push(parsed);
         });
-        return data;
+        return items;
     }
 
     function bindNumericSlider(numId, sliderId) {
         var num = document.getElementById(numId);
         var slider = document.getElementById(sliderId);
         if (!num || !slider) return;
+        var raf = 0;
+        function scheduleMeshUpdate() {
+            scheduleProjectSave();
+            if (raf) return;
+            raf = requestAnimationFrame(function () {
+                raf = 0;
+                triggerUpdate();
+            });
+        }
         function applyFromNum() {
             slider.value = num.value;
-            if (typeof UIControls !== 'undefined' && UIControls.syncRangeSlider) {
-                UIControls.syncRangeSlider(slider);
-            }
-            triggerUpdate();
+            scheduleMeshUpdate();
         }
         function applyFromSlider() {
             num.value = slider.value;
-            triggerUpdate();
+            scheduleMeshUpdate();
         }
-        if (typeof UIControls !== 'undefined' && UIControls.bindApplyOnEnter) {
-            UIControls.bindApplyOnEnter(num, applyFromNum);
+        if (num.type === 'range') {
+            num.addEventListener('input', applyFromNum);
         } else {
             num.addEventListener('keydown', function (e) {
                 if (e.key !== 'Enter') return;
@@ -174,11 +262,12 @@ var GravureEvents = (function () {
                 applyFromNum();
                 num.blur();
             });
+            num.addEventListener('change', applyFromNum);
         }
         slider.addEventListener('input', applyFromSlider);
     }
 
-    // Charge le PNG en mémoire (GravureState) — le mesh 3D l’utilise ensuite
+    // Charge le SVG en mémoire (GravureState) — le mesh 3D l’utilise ensuite
     function bindFileCard(card, id) {
         var fileInput = card.querySelector('.gravure-file');
         var fileBtn = card.querySelector('.gravure-file-btn');
@@ -191,25 +280,33 @@ var GravureEvents = (function () {
         function handleSelectedFile(file) {
             if (!file) { fileNameDisplay.textContent = ''; return; }
             var lowerName = (file.name || '').toLowerCase();
-            var isPngMime = file.type === 'image/png';
-            var isPngExt = lowerName.endsWith('.png');
-            if (!isPngMime && !isPngExt) {
-                fileNameDisplay.textContent = 'Fichier non PNG';
+            var isSvgMime = file.type === 'image/svg+xml' || file.type === 'text/xml' || file.type === 'application/xml';
+            var isSvgExt = lowerName.endsWith('.svg');
+            if (!isSvgMime && !isSvgExt) {
+                fileNameDisplay.textContent = 'Fichier non SVG';
                 fileInput.value = '';
                 return;
             }
             fileNameDisplay.textContent = file.name;
             var reader = new FileReader();
             reader.onload = function (event) {
-                var img = new Image();
-                img.onload = function () {
+                var svgText = event.target.result;
+                if (!svgText || typeof svgText !== 'string') {
+                    fileNameDisplay.textContent = 'SVG invalide';
+                    return;
+                }
+                loadSvgIntoImage(svgText, function (img) {
+                    if (!img) {
+                        fileNameDisplay.textContent = 'SVG invalide';
+                        return;
+                    }
                     GravureState.setImage(id, img);
+                    window.engravingImages = GravureState.getImages();
                     scheduleProjectSave();
                     triggerUpdate();
-                };
-                img.src = event.target.result;
+                });
             };
-            reader.readAsDataURL(file);
+            reader.readAsText(file);
         }
 
         fileInput.addEventListener('change', function (e) { handleSelectedFile(e.target.files[0]); });
